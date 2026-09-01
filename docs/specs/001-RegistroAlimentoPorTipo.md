@@ -68,21 +68,37 @@ Como administrador, quiero corregir o anular una recepción bajo reglas controla
 
 ### Edge Cases
 
-- La cantidad de bultos, el peso nominal por bulto y el precio neto por bulto deben ser mayores que cero.
-- La fecha de vencimiento no puede ser anterior a la fecha de ingreso.
-- No se puede confirmar una recepción sin código de lote, tipo de alimento, etapa de crianza, cantidad de bultos, peso nominal por bulto, marca, precio neto, impuesto y fechas.
-- Un tipo de alimento y cada recepción deben estar asociados exactamente a una etapa de crianza.
-- Una nueva entrega con un código de lote existente debe crear una recepción independiente; sus cantidades, fechas, costos y vencimiento no deben fusionarse con las entradas anteriores.
-- El inventario debe manejar internamente las existencias en kilogramos netos, incluidos los saldos procedentes del fraccionamiento de bultos.
-- Cuando se utilice solo una parte de un bulto, el saldo restante debe conservar su relación con el lote, la recepción y la etapa original.
-- La selección automática de existencias debe priorizar la fecha de vencimiento más próxima y, si existe empate, la fecha de ingreso más antigua.
-- El sistema no debe asignar alimento vencido.
-- El sistema debe bloquear cualquier asignación cuando la etapa del alimento no coincida exactamente con la etapa actual del galpón de destino.
-- El alimento sobrante en una sub-bodega debe reincorporarse a la bodega central en kilogramos netos, conservando su lote, recepción y etapa original.
-- Cuando un galpón cambie de etapa, el sobrante correspondiente a la etapa anterior debe devolverse obligatoriamente a la bodega central.
-- El alimento devuelto solo puede volver a asignarse a galpones que se encuentren en la misma etapa compatible.
-- Una edición, ajuste o anulación no puede producir existencias negativas ni romper la trazabilidad de movimientos anteriores.
-- Ningún cambio puede borrar silenciosamente una recepción, un movimiento o un registro de auditoría.
+1. **Gestión de Fechas y Caducidad de Alimento**
+   - **Boundary Condition**: Si una recepción tiene como fecha de vencimiento el mismo día del ingreso, o si múltiples recepciones comparten la misma fecha de vencimiento, el sistema permite el registro (si no está vencido) y prioriza el despacho por regla FEFO. Ante empate en la fecha de vencimiento, desempata priorizando la fecha de ingreso más antigua (FIFO) y posteriormente por menor ID de recepción.
+   - **Error Scenario**: Si se intenta registrar o despachar alimento cuya fecha de vencimiento sea menor o igual a la fecha actual de la operación, el sistema bloquea automáticamente la transacción notificando que el alimento está vencido sin modificar el inventario.
+
+2. **Asignación, Fraccionamiento y Control de Existencias Negativas**
+   - **Boundary Condition**: Si la cantidad solicitada en un despacho es exactamente igual al saldo de una recepción o requiere fraccionar/agotar múltiples lotes, el sistema despacha los kilogramos netos requeridos (admitiendo decimales), deja la recepción en 0 kg y agota lotes en orden FEFO sin generar inconsistencias.
+   - **Error Scenario**: Si una asignación, ajuste o anulación formal resultaría en existencias negativas (porque las existencias en bodega central son inferiores a la cantidad a revertir/descontar debido a despachos previos), el sistema bloquea la operación para impedir saldos negativos en el inventario.
+
+3. **Validación de Etapas de Crianza entre Alimento y Galpón**
+   - **Boundary Condition**: Al solicitar un despacho hacia un galpón, el sistema verifica que la etapa de crianza asociada al alimento registrado en bodega central coincida exactamente con la etapa activa del galpón de destino.
+   - **Error Scenario**: Si se intenta asignar alimento a un galpón cuya etapa actual no coincide exactamente con la etapa del alimento, el sistema rechaza el despacho notificando el error de incompatibilidad sin alterar las existencias.
+
+4. **Devolución por Cambio de Etapa y Reincorporación de Sobrantes**
+   - **Boundary Condition**: Cuando un galpón cambia de etapa de crianza conservando sobrantes de alimento en su sub-bodega, el sistema reincorpora los kilogramos netos devueltos a la bodega central conservando intacta su asociación con el lote y etapa original.
+   - **Error Scenario**: Si se intenta despachar alimento de la nueva etapa antes de completar la devolución total del sobrante de la etapa anterior, o si posteriormente se intenta asignar el alimento devuelto a un galpón de etapa incompatible, el sistema bloquea la operación exigiendo primero la devolución total o rechazando el despacho por incompatibilidad.
+
+5. **Restricción de Edición Directa según Movimientos Registrados**
+   - **Boundary Condition**: Si una recepción de alimento no registra ninguna salida o despacho posterior, el sistema permite su edición directa siempre que el administrador proporcione una justificación por escrito.
+   - **Error Scenario**: Si una recepción registra al menos una salida o movimiento de inventario posterior, el sistema bloquea cualquier intento de edición directa o eliminación física, exigiendo realizar un ajuste o anulación formal con justificación.
+
+6. **Justificación de Modificaciones e Inmutabilidad del Historial**
+   - **Boundary Condition**: Cuando un administrador realiza un ajuste, edición o anulación proporcionando una justificación textual por escrito, el sistema procesa el cambio y registra en la auditoría el usuario, fecha, hora, valores anteriores, valores nuevos y motivo.
+   - **Error Scenario**: Si el administrador no proporciona una justificación por escrito (o la deja vacía/con espacios en blanco), o si se intenta eliminar silenciosamente un registro de recepción, movimiento o auditoría, el sistema rechaza la operación manteniendo la inmutabilidad de los datos.
+
+7. **Límites de Campos Numéricos e Impuestos**
+   - **Boundary Condition**: La cantidad de bultos debe ser un entero estrictamente mayor a cero (`> 0`), el peso nominal y precio por bulto flotantes estrictamente mayores a cero (`> 0`), y el impuesto mayor o igual a cero (`>= 0`). Si el impuesto es 0%, el sistema calcula el costo neto sin recargo tributario.
+   - **Error Scenario**: Si se ingresan valores numéricos menores o iguales a cero, o si se omiten campos obligatorios o introducen datos de tipo inválido (ej. caracteres alfabéticos en bultos), el sistema rechaza el registro e informa los campos a corregir sin modificar el inventario.
+
+8. **Control de Autorización por Roles de Usuario**
+   - **Boundary Condition**: Cuando un usuario autenticado con rol de administrador ejecuta cualquier registro, modificación, ajuste o anulación, el sistema valida la sesión y autoriza la transacción registrando el evento en auditoría.
+   - **Error Scenario**: Si un usuario sin rol de administrador intenta registrar, editar, ajustar o anular una recepción, el sistema rechaza la operación por falta de autorización, impidiendo cualquier modificación en el inventario.
 
 ## Requirements 
 
