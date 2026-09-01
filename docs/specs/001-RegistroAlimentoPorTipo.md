@@ -90,15 +90,27 @@ Como administrador, quiero corregir o anular una recepción bajo reglas controla
 
 ### Key Entities 
 
-- **Recepción de alimento**: Registro de una entrega con sus datos de lote, tipo, cantidad, costo y fechas.
-- **Tipo de alimento**: Clasificación del alimento que identifica la etapa para la cual está destinado.
-- **Bodega central**: Inventario en el que se incorpora cada recepción registrada.
+- **Alimento**: Representa el alimento registrado en el inventario.
+  - **Atributos posibles**: lote, marca, cantidad de bultos, peso nominal, costos, impuesto, fechas, kilogramos totales y saldo.
+  - **Relaciones**: pertenece a un tipo de alimento, se almacena en la bodega central y se vincula con movimientos y registros de auditoría.
+- **Tipo de alimento**: Representa la clasificación del alimento según la etapa productiva.
+  - **Atributos posibles**: nombre, descripción y estado.
+  - **Relaciones**: clasifica uno o varios alimentos registrados.
+- **Bodega central**: Representa el inventario principal.
+  - **Atributos posibles**: nombre, ubicación y estado.
+  - **Relaciones**: almacena los alimentos registrados y consolida los movimientos que afectan sus existencias.
+- **Movimiento de inventario**: Representa un cambio en las existencias.
+  - **Atributos posibles**: tipo, cantidad, unidad, fecha, motivo y saldo resultante.
+  - **Relaciones**: corresponde a un alimento, afecta la bodega central y puede generar un registro de auditoría.
+- **Registro de auditoría**: Representa el historial de cambios sobre un registro.
+  - **Atributos posibles**: acción, fecha y hora, motivo, valores anteriores y valores nuevos.
+  - **Relaciones**: identifica al usuario responsable y al alimento o movimiento afectado.
 
 ## Success Criteria 
 
 ### Measurable Outcomes
 
-- **SC-001**: El 100 % de las recepciones confirmadas contiene todos los campos obligatorios y queda asociado a un tipo de alimento.
-- **SC-002**: En el 100 % de las recepciones, los kilogramos nominales totales y el precio neto por kilogramo coinciden con los valores calculados a partir de la cantidad y presentación registradas.
-- **SC-003**: El 100 % de las nuevas entregas crea una recepción independiente, incluso cuando el código de lote ya existe.
-- **SC-004**: El 100 % de los intentos de registrar una recepción por usuarios sin rol de administrador se rechaza sin modificar el inventario.
+- **SC-001**: Al menos el 90 % de los administradores puede completar un registro de alimento válido en menos de 3 minutos.
+- **SC-002**: El 95 % de los registros confirmados muestra los cálculos y la actualización del inventario en un máximo de 2 segundos.
+- **SC-003**: Al menos el 90 % de los usuarios completa correctamente el registro de alimento en el primer intento durante pruebas de usabilidad.
+- **SC-004**: Al menos el 85 % de los administradores califica la experiencia de registro con 4 o más puntos sobre 5.
