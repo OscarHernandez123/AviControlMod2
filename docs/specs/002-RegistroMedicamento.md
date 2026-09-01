@@ -88,20 +88,6 @@ Como administrador, quiero corregir o anular una recepción bajo reglas controla
 
 ### Edge Cases
 
-- El código de lote, nombre del medicamento, principio activo, marca y presentación son obligatorios.
-- La presentación debe seleccionarse de un catálogo estandarizado; no se admite su registro como texto libre dentro de la recepción.
-- La cantidad de unidades recibidas, el contenido neto por unidad física y el costo neto por unidad física deben ser mayores que cero.
-- La cantidad de unidades recibidas debe ser un número entero y representa el número de envases o empaques físicos adquiridos.
-- La unidad base debe limitarse a `gr`, `ml` o `unidad`.
-- Las tabletas, dosis y ampollas deben contabilizarse mediante la unidad base `unidad`.
-- Una concentración expresada en miligramos debe convertirse previamente a gramos antes de registrar la presentación en el catálogo.
-- La fecha de ingreso debe coincidir con la fecha actual del sistema.
-- La fecha de vencimiento no puede ser anterior a la fecha de ingreso y no se admite el ingreso de medicamentos que ya estén vencidos.
-- Una nueva compra con un código de lote existente debe crear una recepción independiente; sus cantidades, fechas, costos, impuestos, vencimiento y saldo no deben fusionarse con registros anteriores.
-- El saldo inicial de la recepción debe expresarse en la unidad base y ser igual al contenido neto total calculado.
-- El saldo inicial debe conservar su relación con la recepción y el código de lote originales.
-- Una edición, ajuste o anulación no puede producir existencias negativas ni romper la trazabilidad de movimientos anteriores.
-- Ningún cambio puede eliminar silenciosamente una recepción, un movimiento relacionado o un registro de auditoría.
 
 ## Requirements 
 
