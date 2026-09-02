@@ -3,3 +3,5 @@ User Storie 1: escenario 4 Se supone que el trabajador debe consultar el aliment
 
 Por otro lado, corrige como tienes planteado lo de el sistema de almacenamiento de los alimentos que dice el spec. Porque el sistema que plantea Oscar es de Bodega- Sub bodega(galpón).
 En cualquier caso preguntale a Oscar si lo toma como tu lo tienes.
+
+Revisar los edge cases que creo que la mayoria son criterios de aceptacion o reglas de negocio
