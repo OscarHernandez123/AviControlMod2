@@ -41,17 +41,12 @@ Como administrador o usuario, quiero consultar la información actual de un galp
   - ¿Cómo maneja el sistema un lote actualmente alojado cuya fecha de ingreso es posterior a la fecha actual?  
     El sistema debe mostrar los demás datos disponibles, impedir el cálculo de una edad negativa e indicar que no puede calcular la edad porque la fecha de ingreso es inconsistente.
 
-- **Edge case #2 - Más de un lote alojado actualmente en el mismo galpón**
-
-  - ¿Cómo maneja el sistema un galpón que tiene más de un lote registrado como alojado actualmente?  
-    El sistema debe mostrar los datos propios del galpón, informar la inconsistencia y no seleccionar arbitrariamente un lote para mostrar su población o calcular su edad.
-
-- **Edge case #3 - Información incompleta o no disponible desde el módulo 1**
+- **Edge case #2 - Información incompleta o no disponible desde el módulo 1**
 
   - ¿Cómo maneja el sistema una consulta cuando el módulo 1 no proporciona alguno de los datos requeridos?  
     El sistema debe identificar los datos que no están disponibles, no sustituirlos por información inventada ni desactualizada y comunicar que la consulta no pudo completarse.
 
-- **Edge case #4 - Cálculo entre meses, años o durante un año bisiesto**
+- **Edge case #3 - Cálculo entre meses, años o durante un año bisiesto**
 
   - ¿Cómo maneja el sistema una edad cuyo periodo atraviesa meses con diferente cantidad de días, un cambio de año o el 29 de febrero?  
     El sistema debe calcular los días calendario transcurridos desde la fecha de ingreso, incluyendo el día de ingreso como el primer día, sin asumir que todos los meses o años tienen la misma duración.
@@ -61,14 +56,12 @@ Como administrador o usuario, quiero consultar la información actual de un galp
 ### Functional Requirements
 
 - **FR-001**: El sistema DEBE permitir la consulta de información de un galpón exclusivamente a personas autenticadas con rol de administrador o de usuario.
-- **FR-002**: El sistema DEBE permitir al administrador o usuario seleccionar el galpón que desea consultar.
-- **FR-003**: El sistema DEBE mostrar el nombre, aforo máximo, estado, población actual y edad del lote correspondiente al galpón seleccionado.
-- **FR-004**: El sistema DEBE obtener el nombre, aforo máximo y estado desde la entidad Galpón proporcionada por el módulo 1.
-- **FR-005**: El sistema DEBE identificar el único lote alojado actualmente en el galpón y obtener su población actual desde la entidad Lote proporcionada por el módulo 1.
-- **FR-006**: El sistema DEBE calcular la edad del lote utilizando su fecha de ingreso, proporcionada como atributo de la entidad Lote por el módulo 1, y la fecha actual del sistema.
-- **FR-007**: El cálculo de la edad DEBE incluir la fecha de ingreso como el primer día y mostrarse en semanas completas, días restantes y días totales, con un formato equivalente a `2 semanas y 3 días (17 días)` y singular o plural según corresponda.
-- **FR-008**: Cuando el galpón no tenga un lote alojado actualmente, el sistema DEBE mostrar los datos disponibles de la entidad Galpón e indicar que la población actual y la edad del lote no están disponibles.
-- **FR-009**: La consulta DEBE utilizar la información vigente proporcionada por el módulo 1 y NO DEBE modificar las entidades Galpón o Lote.
+- **FR-002**: El sistema DEBE mostrar el nombre, aforo máximo, estado, población actual y edad del lote correspondiente al galpón seleccionado.
+- **FR-003**: El sistema DEBE obtener el nombre, aforo máximo y estado desde la entidad Galpón proporcionada por el módulo 1.
+- **FR-004**: El sistema DEBE identificar el único lote alojado actualmente en el galpón y obtener su población actual desde la entidad Lote proporcionada por el módulo 1.
+- **FR-005**: El sistema DEBE calcular la edad del lote utilizando su fecha de ingreso, proporcionada como atributo de la entidad Lote por el módulo 1, y la fecha actual del sistema.
+- **FR-006**: Cuando el galpón no tenga un lote alojado actualmente, el sistema DEBE mostrar los datos disponibles de la entidad Galpón e indicar que la población actual y la edad del lote no están disponibles.
+- **FR-007**: La consulta DEBE utilizar la información vigente proporcionada por el módulo 1 y NO DEBE modificar las entidades Galpón o Lote.
 
 ### Key Entities
 
