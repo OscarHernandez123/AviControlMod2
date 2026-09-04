@@ -1,8 +1,8 @@
 # Feature Specification: Certificar Galpón (CU-VET-003)
 
-**Created**: 2026-09-03  
+**Created**: 2026-09-03
 
-## User Scenarios & Testing *(mandatory)*
+## User Scenarios & Testing _(mandatory)_
 
 ### User Story 1 - Emisión del Dictamen Formal de Certificación Sanitaria (Priority: P1)
 
@@ -91,7 +91,7 @@ Como Responsable de Seguridad del Sistema, quiero asegurar que solo médicos vet
 - **Intentos de certificación simultánea:** Si dos veterinarios intentan certificar el mismo aislamiento concurrentemente, el mecanismo de Optimistic Locking (`version`) permite persistir al primero y rechaza al segundo con HTTP 409 Conflict (`VET-014: CONCURRENCIA_DETECTADA`)[cite: 1].
 - **Aislamiento ya certificado:** Si se intenta volver a certificar un aislamiento en estado `CERTIFICADO`, el sistema rechaza la operación por estado inválido (`VET-010: TRANSICION_ESTADO_INVALIDA`)[cite: 1].
 
-## Requirements *(mandatory)*
+## Requirements _(mandatory)_
 
 ### Functional Requirements
 
@@ -108,12 +108,12 @@ Como Responsable de Seguridad del Sistema, quiero asegurar que solo médicos vet
 
 ### Key Entities
 
-- **CertificacionSanitaria** *(Entidad Interna del Agregado Aislamiento)*: Aval técnico-sanitario emitido. Atributos: `id` (UUID), `aislamientoId` (UUID), `veterinarioId` (UUID), `tarjetaProfesional` (String), `dictamenClinico` (Text), `fechaCertificacion` (Timestamp UTC), `validoHasta` (Timestamp UTC) y `reintegroEjecutado` (Boolean)[cite: 1].
-- **Aislamiento** *(Aggregate Root)*: Entidad raíz transaccional que muta su estado a `CERTIFICADO` al consolidarse la certificación médica[cite: 1].
-- **Tratamiento** *(Referencia de Dominio)*: Entidad consultada para verificar la inexistencia de tratamientos activos y el cumplimiento de tiempos de retiro[cite: 1].
+- **CertificacionSanitaria** _(Entidad Interna del Agregado Aislamiento)_: Aval técnico-sanitario emitido. Atributos: `id` (UUID), `aislamientoId` (UUID), `veterinarioId` (UUID), `tarjetaProfesional` (String), `dictamenClinico` (Text), `fechaCertificacion` (Timestamp UTC), `validoHasta` (Timestamp UTC) y `reintegroEjecutado` (Boolean)[cite: 1].
+- **Aislamiento** _(Aggregate Root)_: Entidad raíz transaccional que muta su estado a `CERTIFICADO` al consolidarse la certificación médica[cite: 1].
+- **Tratamiento** _(Referencia de Dominio)_: Entidad consultada para verificar la inexistencia de tratamientos activos y el cumplimiento de tiempos de retiro[cite: 1].
 - **Auditoria (`san_auditoria`)**: Registro inmutable de la emisión de la certificación con snapshot de datos médicos[cite: 1].
 
-## Success Criteria *(mandatory)*
+## Success Criteria _(mandatory)_
 
 ### Measurable Outcomes
 
