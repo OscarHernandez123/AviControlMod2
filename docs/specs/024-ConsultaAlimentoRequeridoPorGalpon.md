@@ -4,100 +4,70 @@
 
 ## User Scenarios & Testing *(mandatory)*
 
-### User Story 1 - Consultar el alimento requerido por etapa en el galpón (Priority: P1)
+### User Story 1 - Consultar el alimento requerido por etapa en el galpón para Módulo 3 (Finanzas) (Priority: P1)
 
-Como nutricionista o administrador (o sistema de gestión de abastecimiento en Módulo 3), quiero consultar la cantidad total de alimento en kilogramos requerido por un galpón para una etapa de alimentación determinada, calculada a partir de la población inicial de aves, la cuota diaria por ave y la duración de la etapa, para planificar y garantizar el suministro nutricional oportuno.
+Como sistema de Finanzas (Módulo 3) o administrador, quiero consultar la proyección del alimento requerido en kilogramos para un galpón en la etapa por la que esté pasando o el consolidado de etapas al finalizar el lote de pollos en el galpón, manteniendo los requerimientos separados por etapa e incluyendo el costo unitario por kilogramo de cada tipo de alimento, para efectuar la liquidación final y el control presupuestario sin sumar kilogramos globales de alimentos diferentes.
 
-**Why this priority**: Es la funcionalidad esencial del caso de uso. Sin el cálculo exacto de la demanda de alimento por etapa en función de la población y cuota nutricional, no es posible abastecer adecuadamente el galpón ni proyectar los insumos necesarios para la cría.
+**Why this priority**: Representa la conexión oficial y directa entre el Módulo 2 y el Módulo 3 (Finanzas) modelada en el diagrama de casos de uso (`Modulo2_v4.drawio`). Permite a Finanzas disponer de los requerimientos físicos de alimento en kilogramos y sus costos unitarios correspondientes por etapa, facilitando la liquidación contable exacta sin mezclar insumos de diferente composición nutricional y precio.
 
-**Independent Test**: Se puede probar seleccionando un galpón con un lote activo en una etapa de alimentación (por ejemplo, etapa de Pre-inicio de 7 días, con 10.000 aves iniciales y una cuota de 0.035 kg/ave/día) y comprobando que el sistema entregue exactamente 2.450 kg de alimento requerido, el tipo de alimento correspondiente a la etapa y el desglose de parámetros empleados.
+**Independent Test**: Se puede probar sobre un galpón cuyo lote finalizó su ciclo completo (Pre-inicio de 7 días con 10.000 aves, cuota de 0.035 kg y costo de $1.800/kg; Inicio de 14 días con 9.750 aves, cuota de 0.045 kg y costo de $1.650/kg; y Engorde de 21 días con 9.600 aves, cuota de 0.070 kg y costo de $1.500/kg), verificando que la consulta entregue cada etapa discriminada de forma separada con sus respectivos kilogramos (2.450 kg, 6.142,50 kg y 14.112 kg) y costos unitarios, sin generar una sumatoria global de kilogramos entre etapas.
 
 **Acceptance Scenarios**:
 
-1. **Scenario**: Cálculo estándar de requerimiento para una etapa predeterminada
-   - **Given** que un galpón tiene un lote activo en etapa "Pre-inicio" con duración predeterminada de 7 días (días 1 a 7), una población inicial de 10.000 aves y una cuota establecida por el nutricionista de 0.035 kg/ave/día
-   - **When** se consulta el alimento requerido para dicho galpón y etapa
-   - **Then** el sistema calcula y entrega 2.450 kg de alimento de tipo pre-inicio, indicando la duración en días (7), la población inicial base (10.000) y la cuota diaria aplicada
+1. **Scenario**: Consulta de requerimiento para la etapa activa que está pasando el galpón
+   - **Given** un galpón con lote activo en etapa "Inicio" con duración de 14 días, una población viva al inicio de la etapa de 9.750 aves, cuota nutricional de 0.045 kg/ave/día y alimento con costo de $1.650/kg
+   - **When** el Módulo 3 (Finanzas) consulta el alimento requerido para dicho galpón y etapa
+   - **Then** el sistema entrega los datos de la etapa "Inicio" con 6.142,50 kg de alimento Iniciador y un costo unitario de $1.650/kg, detallando la duración en días (14), la población viva al corte (9.750 aves) y la cuota diaria aplicada.
 
-2. **Scenario**: Cálculo para etapas con duración modificada por el nutricionista
-   - **Given** que el nutricionista modificó los rangos de la etapa "Inicio" para un galpón específico estableciendo una duración de 16 días (en lugar de los 14 días predeterminados)
-   - **When** se consulta el requerimiento de alimento para dicha etapa
-   - **Then** el sistema calcula la cantidad total requerida multiplicando la población inicial por la cuota de inicio por los 16 días ajustados
+2. **Scenario**: Consulta del consolidado discriminado por etapas al finalizar la última etapa del lote
+   - **Given** un galpón cuyo lote de pollos finalizó su última etapa productiva ("Engorde/Broiler") habiendo transitado por Pre-inicio, Inicio y Engorde
+   - **When** el Módulo 3 (Finanzas) consulta el alimento requerido del lote al cierre del ciclo
+   - **Then** el sistema retorna el consolidado con el estado "Finalizado", entregando el registro individual y separado de cada etapa con su tipo de alimento, población al inicio, cuota aplicada, días, kilogramos proyectados y costo unitario por kilogramo de cada alimento
+   - **And** no incluye una sumatoria total de kilogramos entre las diferentes etapas.
 
-3. **Scenario**: Consulta de requerimiento realizada por el Módulo 3 (Integración)
-   - **Given** que el servicio de integración del Módulo 3 solicita el alimento requerido para un galpón con lote activo
-   - **When** envía el identificador del galpón
-   - **Then** el sistema retorna los kilogramos totales de alimento requerido, el tipo de alimento según la etapa y las fechas estimadas de inicio y fin de la etapa
+3. **Scenario**: Consulta de requerimiento con etapa prorrogada por cuarentena o ajuste
+   - **Given** un galpón en etapa "Inicio" con duración base de 14 días, una prórroga vigente de 4 días adicionales (por cuarentena sanitaria o bajo peso) y costo unitario de alimento de $1.650/kg
+   - **When** el Módulo 3 consulta el requerimiento de alimento de dicha etapa
+   - **Then** el sistema entrega la proyección calculada sobre los 18 días efectivos totales (14 base + 4 prórroga), entregando los kilogramos ajustados y el costo unitario por kilo de dicho alimento.
 
-4. **Scenario**: Intento de consulta en un galpón sin lote activo o sin cuota configurada
-   - **Given** que se consulta el requerimiento para un galpón vacío o cuya etapa no tiene una cuota diaria configurada
-   - **When** se procesa la solicitud de consulta
-   - **Then** el sistema rechaza la operación e informa de manera clara la causa (galpón inactivo o falta de cuota nutricional), sin entregar valores calculados erróneos
+4. **Scenario**: Entrega de requerimientos separados por etapa con costo unitario para liquidación
+   - **Given** una solicitud de consulta realizada desde el Módulo 3 para fines de liquidación
+   - **When** se procesa y emite la respuesta
+   - **Then** el sistema entrega los kilogramos requeridos de forma estrictamente separada por etapa junto con el costo unitario por kilogramo (`costoUnitarioKg`) de cada tipo de alimento, omitiendo sumatorias agregadas de kilogramos heterogéneos.
 
 ---
 
-### User Story 2 - Adición de requerimiento por extensión de etapa o cuarentena (Priority: P2)
+### User Story 2 - Adición automática de la proyección de alimento al cambiar de etapa (Priority: P2)
 
-Como nutricionista o administrador, quiero que el sistema adicione automáticamente los días y kilogramos de alimento requeridos cuando un galpón presente un aislamiento sanitario o cuarentena que prolongue la permanencia en una etapa de alimentación, para evitar el desabastecimiento nutricional durante la contingencia.
+Como sistema de gestión nutricional y productiva del galpón, quiero que al registrarse el cambio de etapa en un galpón se calcule y agregue automáticamente la proyección de alimento requerido en kilogramos para ese galpón en esa nueva etapa con la población viva de ese momento y su costo unitario vigente, para mantener el historial acumulado disponible y actualizado para la consulta del Módulo 3 (Finanzas).
 
-**Why this priority**: Los eventos sanitarios imponen restricciones de movimiento y aislamiento que extienden los días de permanencia de las aves en una etapa antes de permitir la transición a la siguiente o al sacrificio. El requerimiento de alimento debe adaptarse dinámicamente a dicha contingencia.
+**Why this priority**: Asegura que el historial de proyecciones se alimente de manera automática en cada transición de etapa, garantizando que cada fase calcule sus kilogramos con la población viva real al momento de su inicio y asocie el costo unitario correspondiente antes de que Finanzas consulte el cierre del lote.
 
-**Independent Test**: Se puede probar configurando una orden de aislamiento sanitario de 4 días adicionales para un galpón en etapa de inicio, verificando que la consulta de requerimiento sume los 4 días a la duración base de la etapa y calcule los kilogramos adicionales según la cuota y población inicial.
-
-**Acceptance Scenarios**:
-
-1. **Scenario**: Cálculo de requerimiento con días adicionales por cuarentena activa
-   - **Given** que un galpón en etapa "Inicio" tiene una duración base de 14 días y un registro de aislamiento sanitario activo que añade 4 días a la etapa actual
-   - **When** se consulta el alimento requerido para dicho galpón
-   - **Then** el sistema calcula el requerimiento total sobre 18 días (14 base + 4 cuarentena), presentando el desglose de los kilogramos base y los kilogramos adicionales por cuarentena
-
-2. **Scenario**: Actualización de requerimiento tras levantamiento anticipado de aislamiento
-   - **Given** que el veterinario certifica el galpón y levanta el aislamiento antes de los días inicialmente proyectados
-   - **When** se actualiza la condición sanitaria y se consulta nuevamente el requerimiento
-   - **Then** el sistema recalcula los kilogramos requeridos considerando únicamente los días efectivamente aplicados de aislamiento
-
-3. **Scenario**: Registro de aislamiento con cantidad de días inválida
-   - **Given** un registro de aislamiento o ajuste con días adicionales menores o iguales a cero
-   - **When** se procesa el cálculo de requerimiento
-   - **Then** el sistema no incrementa la duración de la etapa y genera una advertencia sobre la inconsistencia del registro sanitario
-
----
-
-### User Story 3 - Trazabilidad histórica y preservación del gasto del lote (Priority: P3)
-
-Como administrador, quiero consultar el historial consolidado de todo el alimento que se requirió durante la vida del lote en el galpón, garantizando que el gasto imputado al lote se mantenga íntegro aun si al final de una etapa se envía alimento sobrante a la bodega central por disminución de población (mortalidad).
-
-**Why this priority**: Asegura la consistencia contable y de costos del lote. El presupuesto y gasto asignado al lote se basa en la proyección inicial; el sobrante físico derivado de la merma de aves debe reintegrarse físicamente sin alterar retroactivamente el registro histórico del gasto incurrido.
-
-**Independent Test**: Se puede probar finalizando una etapa de alimentación en un lote donde hubo mortalidad registrada; se verifica que el histórico del lote conserve el 100% de los kilogramos y costos proyectados originalmente, registrando la devolución física como evento de inventario sin descontar el valor del historial de gastos del lote.
+**Independent Test**: Se puede probar registrando el cambio de etapa de un galpón de "Pre-inicio" a "Inicio" con 9.750 aves vivas registradas al corte, verificando que se agregue de inmediato el nuevo registro de proyección para la etapa "Inicio" (con sus kg y costo unitario) sin modificar el registro previo de "Pre-inicio".
 
 **Acceptance Scenarios**:
 
-1. **Scenario**: Consulta del historial acumulado de requerimientos del lote
-   - **Given** que un lote de pollos ha transitado por una o más etapas de alimentación
-   - **When** el administrador consulta el consolidado histórico de requerimientos del lote
-   - **Then** el sistema detalla los kilogramos requeridos por cada etapa, las cuotas diarias aplicadas, los días de duración (incluyendo extensiones por cuarentena) y el costo total imputado al lote
+1. **Scenario**: Registro de la proyección inicial al arrancar la primera etapa (Pre-inicio)
+   - **Given** la recepción de un nuevo lote de 10.000 pollos en un galpón iniciando la etapa "Pre-inicio" (7 días con cuota de 0.035 kg/ave/día y alimento Pre-iniciador a $1.800/kg)
+   - **When** se activa el lote en el galpón
+   - **Then** el sistema calcula y almacena la proyección de la etapa "Pre-inicio" por 2.450 kg calculada con la población de recepción y registra su costo unitario de $1.800/kg.
 
-2. **Scenario**: Preservación del gasto histórico frente al retorno de sobrante a bodega central
-   - **Given** que al final de una etapa se identifica un sobrante de alimento físico en la sub-bodega del galpón debido a la mortalidad de aves, y este sobrante se remite a la bodega central
-   - **When** se consulta el balance y el historial de gastos del lote
-   - **Then** el sistema conserva íntegro el gasto total calculado originalmente sobre la población inicial, sin descontar el valor monetario ni las cantidades históricas imputadas al lote
+2. **Scenario**: Adición automática de nueva proyección al cambiar a una etapa posterior
+   - **Given** un galpón que concluye la etapa "Pre-inicio" y cuenta con 9.750 aves vivas registradas al corte
+   - **When** se registra la transición a la etapa "Inicio" (14 días con cuota de 0.045 kg/ave/día y alimento Iniciador a $1.650/kg)
+   - **Then** el sistema calcula la proyección de la nueva etapa con las 9.750 aves vivas (6.142,50 kg) asociando el costo unitario de $1.650/kg
+   - **And** agrega este registro al historial del galpón manteniendo inalterada la proyección previa de "Pre-inicio".
 
 ---
 
 ### Edge Cases
 
-- **Transición de etapa bloqueada por aislamiento sanitario**:
-  Si las aves alcanzan la edad límite de una etapa pero el galpón continúa en aislamiento sanitario o cuarentena obligatoria, el sistema debe mantener el suministro de la etapa y tipo de alimento actual durante los días de cuarentena, impidiendo el cambio de etapa hasta que exista certificación veterinaria de reintegro.
-
-- **Cuota nutricional no configurada o configurada en cero**:
-  Si para una etapa no se ha configurado la cuota de kg/ave/día o se introduce un valor menor o igual a cero, el sistema debe bloquear el cálculo, rechazar la confirmación de la cuota y notificar al usuario que la cuota debe ser un número positivo mayor que cero.
-
-- **Galpón con población inicial inconsistente o nula**:
-  Si el lote asociado al galpón registra una población inicial de cero aves o presenta inconsistencias en los datos del lote, el sistema debe rechazar la consulta indicando que no hay población base válida para el cálculo.
-
-- **Manejo de redondeo y precisión numérica en kilogramos**:
-  Al multiplicar cuotas unitarias pequeñas (ej. 0.0355 kg/ave/día) por poblaciones elevadas, el sistema debe mantener una precisión de cálculo de al menos dos decimales y aplicar redondeo estándar uniforme (*half-up*) para evitar discrepancias entre los totales entregados a la bodega central y al galpón.
+- **Galpón o lote inexistente en la base de datos**: Si la petición de consulta del Módulo 3 envía un identificador de galpón o lote que no existe, el sistema retorna un código de respuesta estructurado de recurso no encontrado (HTTP 404) con mensaje descriptivo sin generar fallas internas.
+- **Petición con parámetros vacíos o tipos de datos inválidos**: Si la solicitud carece de identificadores obligatorios o incluye formatos de datos incompatibles (ej. caracteres alfanuméricos en identificadores numéricos), el sistema rechaza la petición mediante código HTTP 400 (Bad Request).
+- **Lote con población en cero por contingencia extrema**: Si por anomalía o contingencia extrema la población viva al corte del cambio de etapa es de cero aves, el sistema procesa el registro asignando 0.00 kg a la proyección sin incurrir en excepciones de división o desbordamiento numérico.
+- **Alimento sin costo unitario configurado o nulo en inventario**: Si al momento de la consulta un tipo de alimento carece de costo unitario registrado en catálogo, el sistema retorna el valor del costo como nulo o no asignado acompañado de una advertencia informativa de metadatos, sin interrumpir la entrega de los kilogramos calculados para la etapa.
+- **Interrupción o timeout en la integración API con Módulo 3**: Si ocurre una interrupción de red durante la invocación del servicio desde el Módulo 3, la consulta opera de forma idempotente de solo lectura, permitiendo reintentos seguros sin efectos secundarios ni duplicidades.
+- **Redondeo y precisión matemática en la serialización**: Al serializar los valores en kilogramos y costos unitarios, el sistema aplica redondeo numérico estándar (*half-up*) a dos decimales para evitar discrepancias de redondeo en el transporte de datos.
 
 ---
 
@@ -105,32 +75,25 @@ Como administrador, quiero consultar el historial consolidado de todo el aliment
 
 ### Functional Requirements
 
-- **FR-001**: El sistema DEBE calcular el requerimiento de alimento en kilogramos para un galpón específico en función de la etapa de alimentación correspondiente.
-- **FR-002**: Las etapas de alimentación predeterminadas DEBEN ser:
-  - **Pre-inicio**: desde el día 0 hasta el día 7 de edad.
-  - **Inicio**: desde el día 8 hasta el día 21 de edad.
-  - **Broiler (Finalización)**: desde el día 22 de edad hasta el sacrificio.
-- **FR-003**: El sistema DEBE permitir que un usuario con rol de Nutricionista modifique los rangos de días de duración de cualquiera de las etapas de alimentación para un galpón o lote específico.
-- **FR-004**: El sistema DEBE permitir que el Nutricionista defina una cuota diaria de alimento por ave en kilogramos (`kg/ave/día`) para cada etapa de alimentación.
-- **FR-005**: El sistema DEBE calcular la cantidad total en kilogramos requerida para una etapa mediante la fórmula:  
-  `Kilogramos Requeridos = Población Inicial del Lote * Cuota Diaria (kg/ave/día) * Días de la Etapa`.
-- **FR-006**: Si el galpón presenta un aislamiento sanitario o cuarentena activo que incremente los días de alimentación en la etapa, el sistema DEBE adicionar dichos días a la duración de la etapa para el cálculo del alimento requerido.
-- **FR-007**: La respuesta a la consulta de alimento requerido DEBE incluir: identificador del galpón, código del lote, etapa de alimentación, tipo de alimento, días base de la etapa, días adicionales por cuarentena, cuota diaria aplicada y kilogramos totales requeridos.
-- **FR-008**: El sistema DEBE permitir la consulta del requerimiento de alimento tanto a usuarios internos autorizados (Nutricionista y Administrador) como al sistema externo Módulo 3 mediante integración de consulta.
-- **FR-009**: El sistema DEBE registrar y conservar el histórico de todos los requerimientos de alimento calculados para el lote a lo largo de su ciclo de vida en el galpón.
-- **FR-010**: En caso de que se identifique un sobrante de alimento físico al final de una etapa debido a la disminución de población (mortalidad) y dicho sobrante se envíe de vuelta a la bodega central, el sistema NO DEBE descontar dicho sobrante del historial de gastos ni del total de insumos calculados e imputados al lote.
-- **FR-011**: El sistema DEBE validar que la población inicial, la cuota diaria por ave y la cantidad de días de la etapa sean valores numéricos estrictamente mayores que cero.
-- **FR-012**: El sistema DEBE rechazar la consulta de requerimiento con un mensaje explicativo si el galpón no tiene un lote activo asignado o si la etapa no tiene configurada su cuota nutricional.
+- **FR-001**: El sistema DEBE exponer un servicio de consulta exclusivo para que el Módulo 3 (Finanzas) y usuarios autorizados consulten la proyección del alimento requerido por galpón, correspondiendo formalmente al caso de uso `"Consultar alimento requerido por galpón"` del sistema.
+- **FR-002**: Al registrarse un cambio de etapa en un galpón, el sistema DEBE calcular y agregar automáticamente la proyección de alimento requerido para ese galpón en esa nueva etapa al registro del lote.
+- **FR-003**: El cálculo de la proyección de alimento de cada etapa DEBE regirse estrictamente por la fórmula:  
+  `Kilogramos Requeridos = Población Viva al Iniciar la Etapa * Cuota Diaria (kg/ave/día) * Días Efectivos de la Etapa`.
+- **FR-004**: Para la primera etapa (`Pre-inicio`), la población viva base DEBE ser la población inicial de recepción; para cada etapa subsiguiente (`Inicio`, `Broiler/Engorde`), la población viva base DEBE corresponder a la población de aves vivas existente en el galpón al momento de registrar el cambio de etapa.
+- **FR-005**: Si una etapa en el galpón contó con una prórroga o ajuste temporal (ej. por cuarentena sanitaria o bajo peso), la proyección de dicha etapa DEBE considerar los días totales efectivos (días base más días de prórroga).
+- **FR-006**: La respuesta a la consulta para el Módulo 3 DEBE entregar los requerimientos de alimento estrictamente separados e individualizados por cada etapa, absteniéndose de sumar o consolidar un total global de kilogramos entre distintas etapas.
+- **FR-007**: Por cada etapa incluida en la consulta, el sistema DEBE proporcionar el costo unitario vigente por kilogramo (`costoUnitarioKg`) correspondiente al tipo de alimento asignado a dicha etapa para posibilitar la liquidación en el Módulo 3.
+- **FR-008**: La respuesta a la consulta del Módulo 3 DEBE detallar: identificador del galpón, código del lote, estado del ciclo (En progreso o Finalizado), fecha de consulta, y una lista discriminada por etapa conteniendo: nombre de la etapa, tipo de alimento asociado, población viva al inicio de etapa, cuota diaria aplicada, días efectivos de duración, total de kilogramos requeridos de esa etapa y costo unitario por kilogramo.
+- **FR-009**: Las proyecciones de alimento agregadas por etapa DEBEN ser inmutables una vez persistidas para garantizar la integridad en auditorías y conciliaciones de liquidación del Módulo 3.
 
 ### Key Entities
 
-- **Galpón**: Espacio físico productivo que alberga un lote de aves y que opera operativamente con un stock o requerimiento asignado desde la bodega central.
-- **Lote de Pollos**: Agrupación de aves alojadas en el galpón, caracterizado por su población inicial, edad en días, estado sanitario y registro de trazabilidad.
-- **Etapa de Alimentación**: Fase nutricional del ciclo productivo (Pre-inicio, Inicio, Broiler) asociada a un tipo de alimento específico y a un rango de días base o modificado.
-- **Cuota Nutricional**: Cantidad fija de alimento en kilogramos por ave al día (`kg/ave/día`) determinada por el nutricionista para una etapa específica.
-- **Requerimiento de Alimento por Galpón**: Registro del cálculo en kilogramos de alimento proyectado para cubrir las necesidades del galpón durante una etapa (incluyendo extensiones sanitarias).
-- **Aislamiento Sanitario / Cuarentena**: Medida veterinaria que suspende la salida o transición del galpón y puede extender la duración de la etapa de alimentación en un número determinado de días.
-- **Historial de Gasto del Lote**: Registro acumulado e inmutable de los requerimientos y costos de alimento asignados al lote durante toda su permanencia en el galpón.
+- **ProyeccionAlimentoEtapa**: Registro persistido e inmutable de la proyección calculada para una etapa específica del galpón.
+  - *Atributos*: ID, galponId, loteId, nombreEtapa (Pre-inicio, Inicio, Engorde), tipoAlimento, poblacionInicioEtapa, cuotaKgAveDia, diasEtapa, proyeccionKg, costoUnitarioKg, fechaRegistro.
+- **ConsolidadoRequerimientoGalpon**: Estructura de transferencia de datos (DTO) entregada en la respuesta al Módulo 3.
+  - *Atributos*: galponId, loteId, estadoCiclo (FINALIZADO, EN_PROGRESO), listaEtapasProyectadas (cada elemento con nombreEtapa, tipoAlimento, proyeccionKg, costoUnitarioKg, diasEtapa, poblacionInicioEtapa), fechaConsulta.
+- **Galpón**: Espacio físico que alberga el lote y registra la etapa activa y condiciones del ciclo.
+- **LotePollos**: Agrupación de aves que mantiene el historial de población viva al inicio de cada fase.
 
 ---
 
@@ -138,17 +101,18 @@ Como administrador, quiero consultar el historial consolidado de todo el aliment
 
 ### Measurable Outcomes
 
-- **SC-001**: El 100 % de las consultas de requerimiento de alimento entrega el total exacto en kilogramos aplicando estrictamente la fórmula basada en población inicial, cuota diaria y días totales de la etapa.
-- **SC-002**: El 100 % de los cambios en los rangos de días realizados por el nutricionista o adiciones por cuarentena sanitaria se reflejan inmediatamente en el cálculo de kilogramos requeridos.
-- **SC-003**: El sistema entrega los resultados de la consulta de requerimiento en menos de 1 segundo para consultas tanto de usuarios internos como del Módulo 3.
-- **SC-004**: En el 100 % de los lotes evaluados, el historial de gastos acumulados por concepto de alimento permanece inalterable y no sufre reducciones cuando se retornan sobrantes físicos a la bodega central por efectos de mortalidad.
-- **SC-005**: El 100 % de los intentos de calcular requerimientos con cuotas o poblaciones menores o iguales a cero, o sobre galpones sin lote activo, es rechazado con mensajes claros de validación.
+- **SC-001**: El 100 % de las consultas de requerimiento para el Módulo 3 entregan los cálculos exactos en kilogramos basados en la población viva al iniciar cada etapa y la duración efectiva.
+- **SC-002**: El 100 % de las transiciones de etapa generan y persisten automáticamente su proyección de alimento en kilogramos y su costo unitario asociado en menos de 2 segundos desde la confirmación del cambio de etapa.
+- **SC-003**: El tiempo de respuesta de la consulta para el Módulo 3 es inferior a 1 segundo por petición.
+- **SC-004**: El 100 % de las respuestas entregadas al Módulo 3 mantienen los requerimientos de alimento separados por etapa e incluyen el costo unitario por kilogramo de cada insumo, con 0 % de sumatorias globales de kilogramos heterogéneos.
+- **SC-005**: 0 % de registros de proyecciones previas son sobreescritos, eliminados o alterados cuando se agrega una nueva etapa al historial del galpón.
 
 ---
 
 ## Out of Scope *(Fuera de alcance de esta especificación)*
 
-- Los movimientos físicos de inventario en la sub-bodega del galpón (recepción de despachos, control de stock físico diario y registros de consumo por parte del trabajador).
-- El proceso operativo de transporte, pesaje físico y recepción de devoluciones dentro de la bodega central (cubierto en la gestión de movimientos de bodega).
-- La formulación bromatológica, composición química o mezcla de materias primas para la elaboración del alimento.
-- La gestión y registro veterinario del diagnóstico de enfermedades o emisión de órdenes de cuarentena (cubiertos en las especificaciones de sanidad y aislamiento).
+- **Cálculo contable final de liquidación del lote**: La multiplicación final de los kilogramos por costo unitario, la determinación del costo total del lote, balances económicos e impuestos corresponden a los procesos internos del Módulo 3 (Finanzas).
+- **Definición y ajuste de cuotas nutricionales**: La configuración de la ración diaria por ave (`kg/ave/día`) y su asociación por etapa corresponde al [Spec 022](file:///C:/Users/ESTUDIANTE/IdeaProjects/practicaweb/AviControlMod2/docs/specs/022-AjustePlanNutricionalPorEtapa.md).
+- **Personalización de calendarios y días de etapas**: La duración estándar de etapas y desplazamientos en cascada corresponde al [Spec 022](file:///C:/Users/ESTUDIANTE/IdeaProjects/practicaweb/AviControlMod2/docs/specs/022-AjustePlanNutricionalPorEtapa.md).
+- **Gestión operativa veterinaria y cuarentenas**: La emisión, registro y diagnóstico de órdenes sanitarias corresponden al módulo de Sanidad.
+- **Despachos y movimientos físicos de almacén**: El traslado físico de bultos y control de inventarios en bodegas corresponde a los Módulos 1 y 3 de Logística.
