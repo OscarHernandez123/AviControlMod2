@@ -59,17 +59,18 @@ Como veterinario, quiero registrar la cantidad de medicamento realmente aplicada
 - **FR-004**: El sistema DEBE identificar el medicamento a partir de la medicación conservada por el diagnóstico y NO DEBE permitir que el veterinario lo sustituya por otro medicamento durante el registro del consumo.
 - **FR-005**: Cada consumo DEBE registrar cantidad ingresada, unidad ingresada, cantidad normalizada, unidad base y fecha de aplicación.
 - **FR-006**: El sistema DEBE utilizar primero las existencias disponibles con fecha de vencimiento más próxima y DEBE poder distribuir un consumo entre varias recepciones del mismo medicamento cuando sea necesario.
-
+- **FR-007**: Al confirmar el consumo, el sistema DEBE registrar y dejar disponibles para el módulo 3 el identificador del lote de aves, el identificador del galpón, la fecha de aplicación, el medicamento, la cantidad consumida en unidad base y el desglose de cada detalle de consumo con su precio neto histórico de compra por unidad base.
+- **FR-008**: La información suministrada DEBE permitir al módulo 3 calcular el costo de los medicamentos del lote mediante la suma de `cantidad descontada de cada recepción en unidad base × precio neto histórico de compra por unidad base`.
 
 ### Key Entities
 
 - **Consumo de medicamento**: Representa la cantidad de medicamento realmente aplicada como parte del tratamiento de un lote.
   - **Atributos**: cantidad ingresada, unidad ingresada, cantidad total normalizada, unidad base, fecha de aplicación y fecha y hora de registro.
-  - **Relaciones**: pertenece a un único diagnóstico y contiene uno o varios detalles de consumo.
+  - **Relaciones**: pertenece a un único diagnóstico, contiene uno o varios detalles de consumo y provee los datos de consumo de medicamento al módulo 3.
   - **Datos accesibles mediante sus relaciones**: obtiene del diagnóstico el lote, el galpón y la medicación; obtiene de la medicación conservada por el diagnóstico el medicamento aplicado.
 - **Detalle de consumo**: Representa la parte de un consumo descontada de una recepción específica del inventario.
   - **Atributos**: cantidad descontada en unidad base, precio neto histórico de compra por unidad base y moneda.
-  - **Relaciones**: pertenece a un único consumo y referencia una única recepción de medicamento.
+  - **Relaciones**: pertenece a un único consumo, referencia una única recepción de medicamento y proporciona sus precios históricos al módulo 3 para la liquidación de costos.
 - **Diagnóstico del galpón**: Representa el diagnóstico que origina el tratamiento al cual corresponde el consumo.
   - **Relaciones**: corresponde a un único lote y a un único galpón, conserva una única medicación y puede tener cero o varios consumos de medicamento.
 - **Medicación**: Representa el tratamiento seleccionado en el diagnóstico.
@@ -78,7 +79,7 @@ Como veterinario, quiero registrar la cantidad de medicamento realmente aplicada
   - **Atributos utilizados**: nombre y unidad base definida por su presentación.
   - **Relaciones**: puede tener múltiples recepciones y puede aparecer en diferentes consumos mediante las medicaciones de los diagnósticos.
 - **Lote**: Representa el grupo de aves que recibió el medicamento.
-  - **Relaciones**: queda identificado por el diagnóstico y puede acumular consumos provenientes de uno o varios diagnósticos durante su vida productiva.
+  - **Relaciones**: queda identificado por el diagnóstico y puede acumular consumos provenientes de uno o varios diagnósticos durante su vida productiva para su costeo final en el módulo 3.
 - **Galpón**: Representa el espacio en el que se encuentra el lote tratado.
   - **Relaciones**: queda identificado por el diagnóstico y permite atribuir los consumos al galpón sin mezclar los diferentes lotes que puede alojar a lo largo del tiempo.
 
@@ -86,4 +87,7 @@ Como veterinario, quiero registrar la cantidad de medicamento realmente aplicada
 
 ### Measurable Outcomes
 
-- **SC-001**: Al menos el 90 % de los veterinarios puede registrar un consumo válido en menos de 5 minuto.
+- **SC-001**: Al menos el 90 % de los veterinarios puede registrar un consumo válido en menos de 3 minutos.
+- **SC-002**: El 95 % de los consumos confirmados descuenta el inventario y deja sus datos y precios históricos disponibles para el módulo 3 en un máximo de 2 segundos.
+- **SC-003**: El 100 % de los consumos abastecidos por recepciones con precios diferentes conserva el desglose exacto por lote de recepción sin promediar precios ni perder trazabilidad para el módulo 3.
+- **SC-004**: El 100 % de los intentos de registro realizados por usuarios sin rol de veterinario es rechazado sin alterar el inventario ni generar consumos.

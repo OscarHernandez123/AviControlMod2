@@ -112,7 +112,7 @@ Como sistema de gestión nutricional y productiva del galpón, quiero que al reg
 ## Out of Scope *(Fuera de alcance de esta especificación)*
 
 - **Cálculo contable final de liquidación del lote**: La multiplicación final de los kilogramos por costo unitario, la determinación del costo total del lote, balances económicos e impuestos corresponden a los procesos internos del Módulo 3 (Finanzas).
-- **Definición y ajuste de cuotas nutricionales**: La configuración de la ración diaria por ave (`kg/ave/día`) y su asociación por etapa corresponde al [Spec 022](file:///C:/Users/ESTUDIANTE/IdeaProjects/practicaweb/AviControlMod2/docs/specs/022-AjustePlanNutricionalPorEtapa.md).
-- **Personalización de calendarios y días de etapas**: La duración estándar de etapas y desplazamientos en cascada corresponde al [Spec 022](file:///C:/Users/ESTUDIANTE/IdeaProjects/practicaweb/AviControlMod2/docs/specs/022-AjustePlanNutricionalPorEtapa.md).
+- **Definición y ajuste de cuotas nutricionales**: La configuración de la ración diaria por ave (`kg/ave/día`) y su asociación por etapa corresponde al [Spec 020](file:///C:/Users/ESTUDIANTE/IdeaProjects/practicaweb/AviControlMod2/docs/specs/020-AjustePlanNutricionalPorEtapa.md).
+- **Personalización de calendarios y días de etapas**: La duración estándar de etapas y desplazamientos en cascada corresponde al [Spec 020](file:///C:/Users/ESTUDIANTE/IdeaProjects/practicaweb/AviControlMod2/docs/specs/020-AjustePlanNutricionalPorEtapa.md).
 - **Gestión operativa veterinaria y cuarentenas**: La emisión, registro y diagnóstico de órdenes sanitarias corresponden al módulo de Sanidad.
 - **Despachos y movimientos físicos de almacén**: El traslado físico de bultos y control de inventarios en bodegas corresponde a los Módulos 1 y 3 de Logística.
