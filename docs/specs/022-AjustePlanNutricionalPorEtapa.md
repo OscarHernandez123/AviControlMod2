@@ -19,42 +19,14 @@ Como nutricionista de la granja, quiero ingresar y ajustar la cantidad de alimen
    - **When** ingresa una ración de `0.045` kg/pollo/día para la etapa "Inicio" asociada al tipo de alimento "Alimento Iniciador" (con peso estándar de 40 kg/bulto)
    - **Then** el sistema valida que el valor sea positivo, guarda la configuración del plan nutricional y confirma la actualización para dicha etapa.
 
-2. **Scenario**: Ajuste o actualización de la ración por cambio en el valor nutricional del inventario
-   - **Given** que existe una ración previa de `0.090` kg/pollo/día para la etapa "Crecimiento"
-   - **When** el nutricionista ajusta la ración a `0.085` kg/pollo/día tras evaluar la densidad nutricional del lote de alimento en stock
-   - **Then** el sistema actualiza el registro de la ración para la etapa "Crecimiento" y recalcula automáticamente las proyecciones de consumo para los galpones en dicha etapa.
-
-3. **Scenario**: Rechazo de ración no válida (cero o negativa)
+2. **Scenario**: Rechazo de ración no válida (cero o negativa)
    - **Given** el formulario de configuración de ración por etapa
    - **When** el nutricionista ingresa un valor menor o igual a cero (ej. `0.0` o `-0.05` kg)
    - **Then** el sistema rechaza la operación y muestra un mensaje de error indicando que la ración diaria por ave debe ser un número estrictamente positivo.
 
 ---
 
-### User Story 2 - Cálculo Automático de Demanda Diaria y Conversión a Bultos por Galpón (Priority: P2)
-
-Como encargado de producción o nutricionista, quiero que el sistema calcule automáticamente el requerimiento total diario de alimento en kilogramos y su equivalente en bultos de inventario para cada galpón en base a su población actual de aves y la etapa en que se encuentra, para planificar y facilitar el despacho exacto de alimento desde el almacén.
-
-**Why this priority**: Conecta la definición teórica del nutricionista (kg/pollo/día) con la operación real del inventario en almacén (bultos disponibles).
-
-**Independent Test**: Teniendo un galpón con 10,000 pollos en etapa "Inicio" y una ración de 0.045 kg/pollo/día con bultos de 40 kg, verificar que el sistema proyecte una demanda diaria de 450 kg y 11.25 bultos (o 12 bultos con criterio de redondeo/sugerencia de despacho).
-
-**Acceptance Scenarios**:
-
-1. **Scenario**: Cálculo exacto de demanda diaria en kg y bultos
-   - **Given** un galpón en etapa "Inicio" con una población activa de 8,000 aves
-   - **And** una ración configurada de `0.040` kg/pollo/día con tipo de alimento de `40` kg por bulto
-   - **When** se consulta la necesidad diaria del galpón
-   - **Then** el sistema calcula y muestra una demanda diaria de `320.0 kg` y `8.0 bultos`.
-
-2. **Scenario**: Actualización de la demanda al registrar mortalidad o cambio de población
-   - **Given** un galpón que tenía 10,000 aves con consumo proyectado de 500 kg/día
-   - **When** se actualiza la población a 9,800 aves activas
-   - **Then** el sistema recalcula inmediatamente la demanda diaria a `490.0 kg` ajustándose a la población real.
-
----
-
-### User Story 3 - Proyección de Cobertura de Inventario y Alertas de Disponibilidad (Priority: P3)
+### User Story 2 - Proyección de Cobertura de Inventario y Alertas de Disponibilidad (Priority: P3)
 
 Como nutricionista o administrador, quiero visualizar los días de cobertura de alimento restantes en el inventario para cada galpón en función de la ración diaria y el stock actual de bultos, para anticipar compras y evitar el desabastecimiento.
 
