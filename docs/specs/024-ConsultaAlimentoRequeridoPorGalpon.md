@@ -4,7 +4,7 @@
 
 ## User Scenarios & Testing *(mandatory)*
 
-### User Story 1 - Consultar y calcular el alimento requerido por etapa en el galpón (Priority: P1)
+### User Story 1 - Consultar el alimento requerido por etapa en el galpón (Priority: P1)
 
 Como nutricionista o administrador (o sistema de gestión de abastecimiento en Módulo 3), quiero consultar la cantidad total de alimento en kilogramos requerido por un galpón para una etapa de alimentación determinada, calculada a partir de la población inicial de aves, la cuota diaria por ave y la duración de la etapa, para planificar y garantizar el suministro nutricional oportuno.
 
@@ -15,7 +15,7 @@ Como nutricionista o administrador (o sistema de gestión de abastecimiento en M
 **Acceptance Scenarios**:
 
 1. **Scenario**: Cálculo estándar de requerimiento para una etapa predeterminada
-   - **Given** que un galpón tiene un lote activo en etapa "Pre-inicio" con duración predeterminada de 7 días (días 0 a 7), una población inicial de 10.000 aves y una cuota establecida por el nutricionista de 0.035 kg/ave/día
+   - **Given** que un galpón tiene un lote activo en etapa "Pre-inicio" con duración predeterminada de 7 días (días 1 a 7), una población inicial de 10.000 aves y una cuota establecida por el nutricionista de 0.035 kg/ave/día
    - **When** se consulta el alimento requerido para dicho galpón y etapa
    - **Then** el sistema calcula y entrega 2.450 kg de alimento de tipo pre-inicio, indicando la duración en días (7), la población inicial base (10.000) y la cuota diaria aplicada
 
