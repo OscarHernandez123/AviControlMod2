@@ -44,6 +44,33 @@ Como veterinario, quiero registrar una medicación indicando la enfermedad, el m
    - **When** solicita confirmar el registro
    - **Then** el sistema rechaza la operación y no crea la medicación
 
+---
+
+### User Story 2 - Editar una medicación (Priority: P2)
+
+Como veterinario, quiero editar una medicación existente para corregir o actualizar su enfermedad, medicamento, dosis, número total de días o descripción, de manera que los nuevos datos se utilicen únicamente en diagnósticos futuros.
+
+**Why this priority**: La edición permite mantener actualizada la medicación sin cambiar los tratamientos, enfermedades o fechas de reintegro que quedaron registrados en diagnósticos anteriores.
+
+**Independent Test**: Se puede probar utilizando una medicación de 5 días que ya fue seleccionada en un diagnóstico y editar su duración a 7 días. El diagnóstico existente debe conservar la duración y la fecha de reintegro calculadas originalmente, mientras que un diagnóstico posterior debe utilizar la duración actualizada de 7 días.
+
+**Acceptance Scenarios**:
+
+1. **Scenario**: Edición correcta de una medicación
+   - **Given** que existe una medicación registrada
+   - **When** el veterinario modifica la enfermedad, el medicamento, la dosis, el número total de días o la descripción con datos válidos
+   - **Then** el sistema guarda los cambios y deja la medicación actualizada disponible para diagnósticos futuros
+
+2. **Scenario**: Edición de una medicación utilizada en diagnósticos existentes
+   - **Given** que una medicación ya fue seleccionada en uno o varios diagnósticos
+   - **When** el veterinario edita sus datos
+   - **Then** el sistema aplica los cambios únicamente a diagnósticos futuros y conserva sin cambios los datos y cálculos de los diagnósticos existentes
+
+3. **Scenario**: Edición por un usuario no autorizado
+   - **Given** que un usuario sin rol de veterinario intenta editar una medicación
+   - **When** solicita confirmar los cambios
+   - **Then** el sistema rechaza la operación y conserva la medicación sin cambios
+
 ### Edge Cases
 
 - **Edge case #1 - Enfermedad o medicamento no disponible al confirmar**
@@ -69,18 +96,19 @@ Como veterinario, quiero registrar una medicación indicando la enfermedad, el m
 - **FR-002**: Cada medicación DEBE registrar enfermedad, medicamento, dosis, número total de días y descripción.
 - **FR-003**: La enfermedad utilizada en la medicación DEBE existir y estar disponible.
 - **FR-004**: El medicamento utilizado en la medicación DEBE provenir del inventario de medicamentos.
-- **FR-005**: La dosis y la descripción DEBEN contener información, y el número total de días DEBE ser un número entero mayor que cero.
-- **FR-006**: El sistema DEBE identificar los datos incompletos o inconsistentes, rechazar el registro e informar lo que el veterinario debe corregir.
-- **FR-007**: Cuando los datos sean válidos, el sistema DEBE crear la medicación y dejarla disponible para su selección en el registro posterior de un diagnóstico de galpón.
-- **FR-008**: Registrar una medicación NO DEBE requerir un diagnóstico existente ni crear o modificar un diagnóstico de galpón.
-- **FR-009**: Registrar una medicación NO DEBE representar la administración del medicamento ni descontar existencias del inventario.
-- **FR-010**: Cuando el registro sea rechazado o interrumpido, el sistema NO DEBE crear una medicación incompleta ni guardar parcialmente sus relaciones.
+- **FR-005**: Cuando los datos sean válidos, el sistema DEBE crear la medicación y dejarla disponible para su selección en el registro posterior de un diagnóstico de galpón.
+- **FR-006**: Registrar una medicación NO DEBE requerir un diagnóstico existente ni crear o modificar un diagnóstico de galpón.
+- **FR-007**: Registrar una medicación NO DEBE representar la administración del medicamento ni descontar existencias del inventario.
+- **FR-008**: Cuando el registro sea rechazado o interrumpido, el sistema NO DEBE crear una medicación incompleta ni guardar parcialmente sus relaciones.
+- **FR-009**: El sistema DEBE permitir la edición de medicaciones exclusivamente a usuarios con rol de veterinario.
+- **FR-010**: La edición de una medicación NO DEBE modificar diagnósticos existentes ni recalcular sus fechas de reintegro.
 
 ### Key Entities
 
 - **Medicación**: Representa el tratamiento registrado por el veterinario y disponible para su selección posterior en un diagnóstico.
   - **Atributos**: enfermedad, medicamento, dosis, número total de días y descripción.
   - **Relaciones**: referencia una enfermedad y un medicamento proveniente del inventario; posteriormente puede ser referenciada por los diagnósticos de galpón que la seleccionen.
+  - **Comportamiento ante ediciones**: los datos actualizados se utilizan en diagnósticos futuros, mientras que los diagnósticos existentes conservan los valores utilizados al momento de su registro.
 - **Enfermedad**: Representa la enfermedad para la cual se registra la medicación.
   - **Relaciones**: puede tener una o varias medicaciones registradas; cada medicación referencia una enfermedad.
 - **Medicamento**: Representa el medicamento utilizado por la medicación y proviene del inventario.
@@ -95,3 +123,5 @@ Como veterinario, quiero registrar una medicación indicando la enfermedad, el m
 - **SC-003**: El 100 % de las medicaciones creadas conserva correctamente la referencia a su enfermedad y al medicamento del inventario.
 - **SC-004**: El 100 % de los intentos realizados por roles distintos al veterinario es rechazado sin crear una medicación.
 - **SC-005**: El 100 % de los registros de medicación conserva las existencias del inventario sin cambios.
+- **SC-006**: El 100 % de las ediciones realizadas por el veterinario conserva sin cambios los diagnósticos y las fechas de reintegro existentes.
+- **SC-007**: El 95 % de las ediciones válidas queda disponible para diagnósticos futuros en un máximo de 1 segundo después de su confirmación.
