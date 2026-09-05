@@ -62,7 +62,12 @@ Como veterinario, quiero registrar una enfermedad con su nombre, nivel de riesgo
 
 - **Enfermedad**: Representa una enfermedad registrada por el veterinario.
   - **Atributos**: nombre, nivel de riesgo, tipo de enfermedad y descripción clínica.
-  - **Relaciones**: puede ser utilizada posteriormente por los procesos veterinarios que requieran identificar una enfermedad.
+  - **Relación con Medicación**: una enfermedad puede tener varias medicaciones registradas y cada medicación referencia la enfermedad para la cual fue definida.
+  - **Relación con Diagnóstico del galpón**: se relaciona indirectamente con el diagnóstico mediante la medicación seleccionada. Cada diagnóstico referencia una única medicación y obtiene de ella la enfermedad correspondiente sin duplicar sus datos.
+- **Medicación**: Representa el tratamiento registrado para una enfermedad.
+  - **Relaciones**: referencia una enfermedad y posteriormente puede ser seleccionada por uno o varios diagnósticos de galpón.
+- **Diagnóstico del galpón**: Representa el resultado de la evaluación de la condición sanitaria de un galpón.
+  - **Relaciones**: corresponde a un galpón, referencia una única medicación y obtiene la enfermedad por medio de esa medicación.
 
 ## Success Criteria
 

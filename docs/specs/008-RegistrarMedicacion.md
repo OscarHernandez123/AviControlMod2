@@ -1,124 +1,97 @@
-# Feature Specification: Certificar Galpón (CU-VET-003)
+# Feature Specification: Registrar medicación
 
-**Created**: 2026-09-03
+**Created**: 2026-09-04  
 
-## User Scenarios & Testing _(mandatory)_
+## User Scenarios & Testing
 
-### User Story 1 - Emisión del Dictamen Formal de Certificación Sanitaria (Priority: P1)
+### User Story 1 - Registrar una medicación (Priority: P1)
 
-Como Médico Veterinario autorizado en la granja, quiero evaluar un galpón con aislamiento cumplido y emitir formalmente la Certificación Sanitaria vinculando mi matrícula profesional y dictamen clínico favorable[cite: 1], para hacer constar la recuperación del lote, el vencimiento de los tiempos de retiro y habilitar el reintegro operativo del galpón[cite: 1].
+Como veterinario, quiero registrar una medicación indicando la enfermedad, el medicamento, la dosis, el número total de días y la descripción, para que pueda ser seleccionada posteriormente al diagnosticar un galpón.
 
-**Why this priority**: Es el acto legal y técnico indispensable para liberar un galpón; sin esta certificación, el sistema bloquea de manera definitiva cualquier intento de reintegro o despacho comercial del lote hacia faena[cite: 1].
+**Why this priority**: El registro permite definir una medicación completa para una enfermedad utilizando un medicamento proveniente del inventario y garantiza que esta tarea sea realizada exclusivamente por el veterinario.
 
-**Independent Test**: Se valida ejecutando el comando de certificación sobre un galpón aislado cuya fecha mínima de liberación ya se haya cumplido y no registre tratamientos en curso[cite: 1]. Se verifica que el aislamiento transicione a `CERTIFICADO`, se guarde la entidad inmutable `CertificacionSanitaria`, se emita `GalponCertificado` y se registre la auditoría correspondiente[cite: 1].
-
-**Acceptance Scenarios**:
-
-1. **Scenario**: Certificación exitosa de galpón con retiro cumplido
-   - **Given** un Galpón "G-01" en Granja "GR-001" con aislamiento en estado "PENDIENTE_CERTIFICACION"
-   - **And** la fecha mínima de liberación calculada es anterior o igual a la fecha actual[cite: 1]
-   - **And** el lote no tiene tratamientos farmacológicos activos en curso[cite: 1]
-   - **When** el Veterinario emite la certificación con dictamen favorable "Lote asintomático, parámetros biológicos normalizados y carencia cumplida", matrícula profesional "MP-VET-88492-CO" y vigencia de 48 horas[cite: 1]
-   - **Then** el estado del aislamiento cambia a "CERTIFICADO"[cite: 1]
-   - **And** se almacena la entidad inmutable "CertificacionSanitaria" con vigencia hasta la fecha calculada
-   - **And** se despacha el evento de dominio "GalponCertificado"[cite: 1]
-   - **And** se registra una entrada inmutable en "san_auditoria"[cite: 1]
-   - **And** el sistema responde con código HTTP 201 Created
-
-2. **Scenario**: Rechazo de certificación por tiempo de retiro activo
-   - **Given** un Galpón "G-02" con aislamiento y tratamientos farmacológicos administrados[cite: 1]
-   - **And** la fecha mínima de liberación calculada vence en 24 horas (retiro aún activo)[cite: 1]
-   - **When** el Veterinario intenta emitir la certificación sanitaria[cite: 1]
-   - **Then** el sistema aborta la transacción
-   - **And** retorna el código de error "VET-005: TIEMPO_RETIRO_ACTIVO" con código HTTP 422
-   - **And** no altera el estado del aislamiento ni emite certificaciones[cite: 1]
-
----
-
-### User Story 2 - Control de Caducidad y Re-evaluación Clínica (Priority: P2)
-
-Como Sistema y Auditor Sanitario, quiero que las certificaciones sanitarias tengan una vigencia temporal limitada de 48 horas y expiren automáticamente si no se ejecuta el reintegro en esa ventana, para evitar que se reintegren o faenen aves cuya condición clínica haya cambiado tras una evaluación obsoleta[cite: 1].
-
-**Why this priority**: Protege la inocuidad alimentaria garantizando que el aval médico corresponda al estado biológico inmediato de las aves antes de su procesamiento comercial[cite: 1].
-
-**Independent Test**: Se emite una certificación y se simula el transcurso de más de 48 horas sin reintegro[cite: 1]. Se verifica que el estado de validez caduque, que el sistema bloquee el reintegro por certificación vencida y exija una nueva inspección médica[cite: 1].
+**Independent Test**: Se puede probar seleccionando una enfermedad disponible y un medicamento del inventario, e ingresando la dosis, el número total de días y la descripción. El sistema debe crear la medicación y dejarla disponible para su selección posterior en un diagnóstico de galpón, sin exigir un diagnóstico existente ni modificar el inventario.
 
 **Acceptance Scenarios**:
 
-1. **Scenario**: Expiración automática de certificación no utilizada
-   - **Given** una certificación sanitaria emitida hace más de 48 horas sin que se haya ejecutado el comando de reintegro[cite: 1]
-   - **When** se intenta procesar el reintegro operativo del galpón
-   - **Then** el sistema rechaza la operación informando "VET-012: CERTIFICACION_EXPIRADA" (HTTP 422)
-   - **And** transiciona el aislamiento nuevamente a "PENDIENTE_CERTIFICACION" para exigir una nueva inspección veterinaria[cite: 1]
+1. **Scenario**: Registro correcto de una medicación
+   - **Given** que la enfermedad está disponible y el medicamento seleccionado se encuentra en el inventario
+   - **When** el veterinario registra la dosis, el número total de días y la descripción
+   - **Then** el sistema crea la medicación con todos sus datos y la deja disponible para ser seleccionada posteriormente en un diagnóstico de galpón
 
-2. **Scenario**: Evaluación clínica desfavorable durante la inspección de certificación
-   - **Given** un Galpón "G-03" con tiempo de retiro cumplido pero con presencia de signología clínica residual
-   - **When** el Veterinario registra un dictamen desfavorable por recaída infecciosa
-   - **Then** el sistema no emite certificación
-   - **And** el aislamiento retorna al estado "ACTIVO" con prórroga del periodo de observación
-   - **And** se registra la novedad en el expediente clínico del lote
+2. **Scenario**: Intento de registro con datos incompletos
+   - **Given** que el veterinario está registrando una medicación
+   - **When** omite la enfermedad, el medicamento, la dosis, el número total de días o la descripción
+   - **Then** el sistema rechaza el registro, identifica los datos que debe completar y no crea la medicación
 
----
+3. **Scenario**: Número total de días no válido
+   - **Given** que el veterinario está registrando una medicación
+   - **When** ingresa un número total de días igual a cero, negativo o no entero
+   - **Then** el sistema rechaza el registro, indica que la duración debe ser un número entero de días mayor que cero y no crea la medicación
 
-### User Story 3 - Integridad Transaccional, RBAC y Aislamiento Multi-Tenant (Priority: P3)
+4. **Scenario**: Enfermedad no registrada
+   - **Given** que el veterinario está registrando una medicación
+   - **When** selecciona una enfermedad que no existe o no está disponible
+   - **Then** el sistema rechaza el registro, informa que la enfermedad no está disponible y no crea la medicación
 
-Como Responsable de Seguridad del Sistema, quiero asegurar que solo médicos veterinarios colegiados puedan certificar instalaciones y que la operación esté blindada contra accesos entre granjas y duplicidad concurrente[cite: 1].
+5. **Scenario**: Medicamento no registrado en el inventario
+   - **Given** que el veterinario está registrando una medicación
+   - **When** selecciona un medicamento que no se encuentra en el inventario
+   - **Then** el sistema rechaza el registro, informa que el medicamento no está disponible y no crea la medicación
 
-**Why this priority**: La certificación es un documento técnico-legal con implicaciones sanitarias y de exportación; requiere absoluta certeza de identidad y tenant[cite: 1].
-
-**Independent Test**: Se intenta certificar con roles no autorizados (Administrador o Trabajador), tokens JWT de otra granja o solicitudes concurrentes sobre el mismo aislamiento[cite: 1].
-
-**Acceptance Scenarios**:
-
-1. **Scenario**: Rechazo de certificación por rol no autorizado
-   - **Given** un usuario autenticado con rol "ADMINISTRADOR" o "TRABAJADOR"[cite: 1]
-   - **When** intenta invocar el endpoint de certificación sanitaria[cite: 1]
-   - **Then** el sistema deniega la acción respondiendo HTTP 403 Forbidden
-   - **And** retorna el error "VET-008: USUARIO_NO_AUTORIZADO"
-
-2. **Scenario**: Rechazo por violación multi-tenant
-   - **Given** un aislamiento perteneciente a la Granja "GR-002"[cite: 1]
-   - **When** un Veterinario autenticado en Granja "GR-001" intenta certificarlo[cite: 1]
-   - **Then** el sistema deniega el acceso con HTTP 403 Forbidden
-   - **And** retorna el error "VET-009: GRANJA_NO_AUTORIZADA"[cite: 1]
-
----
+6. **Scenario**: Registro por un usuario no autorizado
+   - **Given** que un usuario sin rol de veterinario intenta registrar una medicación
+   - **When** solicita confirmar el registro
+   - **Then** el sistema rechaza la operación y no crea la medicación
 
 ### Edge Cases
 
-- **Tratamiento farmacológico en curso al momento de certificar:** Si existe al menos un tratamiento que no haya sido marcado como finalizado o suspendido, el sistema bloquea la certificación con error `VET-007: TRATAMIENTO_ACTIVO` sin importar la fecha clínica[cite: 1].
-- **Mortalidad total ocurrida previo a certificar:** Si la población viva del lote es 0 aves, el sistema impide certificar emitiendo `VET-013: POBLACION_CERO_NO_OPERABLE`[cite: 1].
-- **Intentos de certificación simultánea:** Si dos veterinarios intentan certificar el mismo aislamiento concurrentemente, el mecanismo de Optimistic Locking (`version`) permite persistir al primero y rechaza al segundo con HTTP 409 Conflict (`VET-014: CONCURRENCIA_DETECTADA`)[cite: 1].
-- **Aislamiento ya certificado:** Si se intenta volver a certificar un aislamiento en estado `CERTIFICADO`, el sistema rechaza la operación por estado inválido (`VET-010: TRANSICION_ESTADO_INVALIDA`)[cite: 1].
+- **Edge case #1 - Enfermedad o medicamento no disponible al confirmar**
 
-## Requirements _(mandatory)_
+  - ¿Cómo maneja el sistema una enfermedad o un medicamento que estaba disponible al ser seleccionado, pero deja de estarlo antes de confirmar la medicación?  
+    El sistema debe comprobar nuevamente que la enfermedad esté disponible y que el medicamento pertenezca al inventario. Si no puede verificar alguno, debe rechazar el registro.
+
+- **Edge case #2 - Datos de texto compuestos únicamente por espacios**
+
+  - ¿Cómo maneja el sistema una dosis o descripción compuesta únicamente por espacios en blanco?  
+    El sistema debe considerar el dato como vacío, indicar que debe corregirse y no crear la medicación.
+
+- **Edge case #3 - Interrupción durante el registro**
+
+  - ¿Cómo maneja el sistema una interrupción mientras guarda la medicación?  
+    El sistema debe evitar registros parciales: la medicación debe guardarse con todos sus datos y relaciones o no debe crearse.
+
+## Requirements
 
 ### Functional Requirements
 
-- **FR-001**: El sistema debe exigir que el usuario autenticado posea rol `VETERINARIO`, matrícula profesional válida y pertenezca a la `granjaId` del galpón a certificar[cite: 1].
-- **FR-002**: El sistema debe verificar que el aislamiento esté en estado `PENDIENTE_CERTIFICACION` o `ACTIVO` con cuarentena cumplida[cite: 1].
-- **FR-003**: El sistema debe comprobar que $\text{FechaActual} \ge \text{FechaMinimaLiberacion}$ consultando el servicio de dominio de retiro antes de permitir la emisión de la certificación[cite: 1].
-- **FR-004**: El sistema debe verificar que no existan tratamientos farmacológicos en estado `EN_CURSO` asociados al lote[cite: 1].
-- **FR-005**: El sistema debe exigir el registro obligatorio de dictamen clínico estructurado (mínimo 10 caracteres) y número de tarjeta/matrícula profesional[cite: 1].
-- **FR-006**: El sistema debe calcular y fijar la vigencia del certificado: $\text{validoHasta} = \text{fechaCertificacion} + 48\text{ horas}$[cite: 1].
-- **FR-007**: Al certificar exitosamente, el sistema debe mutar el estado del aislamiento a `CERTIFICADO` y emitir el evento de dominio `GalponCertificado`[cite: 1].
-- **FR-008**: El sistema debe registrar una entrada inmutable append-only en `san_auditoria` con el contenido del aval médico y el `correlationId`[cite: 1].
-- **FR-009**: El sistema debe prohibir la eliminación física (`DELETE` relacional) de los certificados sanitarios emitidos[cite: 1].
-- **FR-010**: El sistema debe invalidar la certificación sanitaria para el reintegro si la fecha actual supera el valor de `validoHasta` (RN-VET-007)[cite: 1].
+- **FR-001**: El sistema DEBE permitir el registro de medicaciones exclusivamente a usuarios con rol de veterinario.
+- **FR-002**: Cada medicación DEBE registrar enfermedad, medicamento, dosis, número total de días y descripción.
+- **FR-003**: La enfermedad utilizada en la medicación DEBE existir y estar disponible.
+- **FR-004**: El medicamento utilizado en la medicación DEBE provenir del inventario de medicamentos.
+- **FR-005**: La dosis y la descripción DEBEN contener información, y el número total de días DEBE ser un número entero mayor que cero.
+- **FR-006**: El sistema DEBE identificar los datos incompletos o inconsistentes, rechazar el registro e informar lo que el veterinario debe corregir.
+- **FR-007**: Cuando los datos sean válidos, el sistema DEBE crear la medicación y dejarla disponible para su selección en el registro posterior de un diagnóstico de galpón.
+- **FR-008**: Registrar una medicación NO DEBE requerir un diagnóstico existente ni crear o modificar un diagnóstico de galpón.
+- **FR-009**: Registrar una medicación NO DEBE representar la administración del medicamento ni descontar existencias del inventario.
+- **FR-010**: Cuando el registro sea rechazado o interrumpido, el sistema NO DEBE crear una medicación incompleta ni guardar parcialmente sus relaciones.
 
 ### Key Entities
 
-- **CertificacionSanitaria** _(Entidad Interna del Agregado Aislamiento)_: Aval técnico-sanitario emitido. Atributos: `id` (UUID), `aislamientoId` (UUID), `veterinarioId` (UUID), `tarjetaProfesional` (String), `dictamenClinico` (Text), `fechaCertificacion` (Timestamp UTC), `validoHasta` (Timestamp UTC) y `reintegroEjecutado` (Boolean)[cite: 1].
-- **Aislamiento** _(Aggregate Root)_: Entidad raíz transaccional que muta su estado a `CERTIFICADO` al consolidarse la certificación médica[cite: 1].
-- **Tratamiento** _(Referencia de Dominio)_: Entidad consultada para verificar la inexistencia de tratamientos activos y el cumplimiento de tiempos de retiro[cite: 1].
-- **Auditoria (`san_auditoria`)**: Registro inmutable de la emisión de la certificación con snapshot de datos médicos[cite: 1].
+- **Medicación**: Representa el tratamiento registrado por el veterinario y disponible para su selección posterior en un diagnóstico.
+  - **Atributos**: enfermedad, medicamento, dosis, número total de días y descripción.
+  - **Relaciones**: referencia una enfermedad y un medicamento proveniente del inventario; posteriormente puede ser referenciada por los diagnósticos de galpón que la seleccionen.
+- **Enfermedad**: Representa la enfermedad para la cual se registra la medicación.
+  - **Relaciones**: puede tener una o varias medicaciones registradas; cada medicación referencia una enfermedad.
+- **Medicamento**: Representa el medicamento utilizado por la medicación y proviene del inventario.
+  - **Relaciones**: puede ser utilizado en varias medicaciones sin que el registro modifique sus existencias.
 
-## Success Criteria _(mandatory)_
+## Success Criteria
 
 ### Measurable Outcomes
 
-- **SC-001**: Cero por ciento (0%) de galpones certificados antes de cumplirse el tiempo de retiro farmacológico calculado ($\text{FechaActual} < \text{FechaMinimaLiberacion}$)[cite: 1].
-- **SC-002**: El 100% de las certificaciones sanitarias emitidas habilitan de manera inmediata el comando de reintegro en el sistema para el lote evaluado[cite: 1].
-- **SC-003**: Cero por ciento (0%) de reintegros ejecutados con certificaciones sanitarias que hayan superado su ventana de vigencia de 48 horas[cite: 1].
-- **SC-004**: El tiempo de procesamiento de la emisión de certificación es inferior a 350 milisegundos en al menos el 95% de las solicitudes atendidas bajo carga normal.
-- **SC-005**: El 100% de las certificaciones emitidas persisten de forma inmutable la matrícula profesional del veterinario y su justificación técnica en `san_auditoria`[cite: 1].
+- **SC-001**: Al menos el 90 % de los veterinarios puede registrar una medicación válida en menos de 2 minutos.
+- **SC-002**: El 95 % de las medicaciones válidas queda disponible para su selección en un máximo de 1 segundo después de la confirmación.
+- **SC-003**: El 100 % de las medicaciones creadas conserva correctamente la referencia a su enfermedad y al medicamento del inventario.
+- **SC-004**: El 100 % de los intentos realizados por roles distintos al veterinario es rechazado sin crear una medicación.
+- **SC-005**: El 100 % de los registros de medicación conserva las existencias del inventario sin cambios.
