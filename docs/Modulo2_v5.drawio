@@ -1,11 +1,11 @@
 <mxfile host="app.diagrams.net">
   <diagram name="Página-1" id="ZIVCWzGhc6vEyw_4F_MB">
-    <mxGraphModel dx="4120" dy="3437" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+    <mxGraphModel dx="2060" dy="2303" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
         <mxCell id="Md207ohNc05aCPQySUxJ-4" parent="1" style="shape=ext;double=1;rounded=0;whiteSpace=wrap;html=1;strokeColor=default;" value="" vertex="1">
-          <mxGeometry height="2100" width="1370" x="260" y="-230" as="geometry" />
+          <mxGeometry height="2100" width="1370" x="235" y="-180" as="geometry" />
         </mxCell>
         <mxCell id="JoSkmkO36fO-ldXqqLBo-1" parent="1" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;" value="Nutricionista" vertex="1">
           <mxGeometry height="120" width="70" x="110" y="-50" as="geometry" />
@@ -13,14 +13,14 @@
         <mxCell id="nnhDIF7C8JNo5H3nlqic-2" parent="1" style="ellipse;whiteSpace=wrap;html=1;shapeInside=1;strokeColor=#0008FF;fontSize=15;" value="Cambiar alimento de galpón" vertex="1">
           <mxGeometry height="100" width="140" x="430" y="30" as="geometry" />
         </mxCell>
-        <mxCell id="nnhDIF7C8JNo5H3nlqic-3" parent="1" style="ellipse;whiteSpace=wrap;html=1;shapeInside=1;strokeColor=#0008FF;fontSize=15;" value="Consultar alimento alimento por galpón por día&amp;nbsp;" vertex="1">
+        <mxCell id="nnhDIF7C8JNo5H3nlqic-3" parent="1" style="ellipse;whiteSpace=wrap;html=1;shapeInside=1;strokeColor=#0008FF;fontSize=15;" value="Consultar alimento por galpón por día&amp;nbsp;" vertex="1">
           <mxGeometry height="100" width="140" x="390" y="190" as="geometry" />
         </mxCell>
         <mxCell id="nnhDIF7C8JNo5H3nlqic-10" parent="1" style="ellipse;whiteSpace=wrap;html=1;shapeInside=1;strokeColor=#0008FF;fontSize=15;" value="Registrar mortalidad por galpón" vertex="1">
           <mxGeometry height="100" width="140" x="380" y="320" as="geometry" />
         </mxCell>
         <mxCell id="nnhDIF7C8JNo5H3nlqic-12" parent="1" style="ellipse;whiteSpace=wrap;html=1;shapeInside=1;strokeColor=#0008FF;fontSize=15;" value="Solicitar validación para aislar galpón" vertex="1">
-          <mxGeometry height="100" width="140" x="370" y="625" as="geometry" />
+          <mxGeometry height="100" width="140" x="400" y="545" as="geometry" />
         </mxCell>
         <mxCell id="nnhDIF7C8JNo5H3nlqic-13" parent="1" style="ellipse;whiteSpace=wrap;html=1;shapeInside=1;strokeColor=#0008FF;fontSize=15;" value="Actualizar inventario vivo por galpón" vertex="1">
           <mxGeometry height="100" width="140" x="775" y="460" as="geometry" />
@@ -46,7 +46,7 @@
         <mxCell id="nnhDIF7C8JNo5H3nlqic-21" parent="1" style="ellipse;whiteSpace=wrap;html=1;shapeInside=1;strokeColor=#0008FF;fontSize=15;" value="Validar aislamiento" vertex="1">
           <mxGeometry height="100" width="140" x="330" y="1470" as="geometry" />
         </mxCell>
-        <mxCell id="nnhDIF7C8JNo5H3nlqic-22" parent="1" style="ellipse;whiteSpace=wrap;html=1;shapeInside=1;strokeColor=#0008FF;fontSize=15;" value="Certificar galpón" vertex="1">
+        <mxCell id="nnhDIF7C8JNo5H3nlqic-22" parent="1" style="ellipse;whiteSpace=wrap;html=1;shapeInside=1;strokeColor=#0008FF;fontSize=15;" value="Diagnosticar galpón" vertex="1">
           <mxGeometry height="100" width="140" x="670" y="1460" as="geometry" />
         </mxCell>
         <mxCell id="nnhDIF7C8JNo5H3nlqic-25" parent="1" style="ellipse;whiteSpace=wrap;html=1;shapeInside=1;strokeColor=#0008FF;fontSize=15;" value="Registrar enfermedad" vertex="1">
@@ -118,8 +118,10 @@
         <mxCell id="nnhDIF7C8JNo5H3nlqic-63" parent="1" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;" value="Administrador" vertex="1">
           <mxGeometry height="120" width="70" x="50" y="1150" as="geometry" />
         </mxCell>
-        <mxCell id="V4SkfCFjQEYGBifwKw32-1" edge="1" parent="1" source="nnhDIF7C8JNo5H3nlqic-64" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="nnhDIF7C8JNo5H3nlqic-25" value="">
-          <mxGeometry relative="1" as="geometry" />
+        <mxCell id="V4SkfCFjQEYGBifwKw32-1" edge="1" parent="1" source="nnhDIF7C8JNo5H3nlqic-64" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=0.5;exitDx=0;exitDy=0;exitPerimeter=0;" target="nnhDIF7C8JNo5H3nlqic-25" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="230" y="1630" as="sourcePoint" />
+          </mxGeometry>
         </mxCell>
         <mxCell id="nnhDIF7C8JNo5H3nlqic-64" parent="1" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;" value="Veterinario" vertex="1">
           <mxGeometry height="120" width="70" x="160" y="1570" as="geometry" />
@@ -149,7 +151,7 @@
             <mxPoint x="414" y="853" as="targetPoint" />
           </mxGeometry>
         </mxCell>
-        <mxCell id="nnhDIF7C8JNo5H3nlqic-74" edge="1" parent="1" style="curved=1;endArrow=classic;html=1;rounded=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="nnhDIF7C8JNo5H3nlqic-21" value="">
+        <mxCell id="nnhDIF7C8JNo5H3nlqic-74" edge="1" parent="1" source="nnhDIF7C8JNo5H3nlqic-64" style="curved=1;endArrow=classic;html=1;rounded=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;exitX=1;exitY=0.3333333333333333;exitDx=0;exitDy=0;exitPerimeter=0;" target="nnhDIF7C8JNo5H3nlqic-21" value="">
           <mxGeometry height="50" relative="1" width="50" as="geometry">
             <Array as="points">
               <mxPoint x="240" y="1540" />
@@ -159,7 +161,7 @@
             <mxPoint x="564" y="1450" as="targetPoint" />
           </mxGeometry>
         </mxCell>
-        <mxCell id="nnhDIF7C8JNo5H3nlqic-76" edge="1" parent="1" style="curved=1;endArrow=classic;html=1;rounded=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="nnhDIF7C8JNo5H3nlqic-26" value="">
+        <mxCell id="nnhDIF7C8JNo5H3nlqic-76" edge="1" parent="1" source="nnhDIF7C8JNo5H3nlqic-64" style="curved=1;endArrow=classic;html=1;rounded=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;exitX=1;exitY=1;exitDx=0;exitDy=0;exitPerimeter=0;" target="nnhDIF7C8JNo5H3nlqic-26" value="">
           <mxGeometry height="50" relative="1" width="50" as="geometry">
             <Array as="points">
               <mxPoint x="290" y="1810" />
@@ -180,22 +182,10 @@
             <mxPoint x="680" y="990" as="targetPoint" />
           </mxGeometry>
         </mxCell>
-        <mxCell id="nnhDIF7C8JNo5H3nlqic-82" edge="1" parent="1" source="nnhDIF7C8JNo5H3nlqic-22" style="endArrow=none;html=1;rounded=0;exitX=0.5;exitY=1;exitDx=0;exitDy=0;strokeWidth=2;dashed=1;dashPattern=1 2;entryX=0.1;entryY=0.26;entryDx=0;entryDy=0;entryPerimeter=0;startArrow=classic;startFill=1;endFill=0;" target="nnhDIF7C8JNo5H3nlqic-27" value="">
+        <mxCell id="nnhDIF7C8JNo5H3nlqic-82" edge="1" parent="1" style="endArrow=none;html=1;rounded=0;exitX=0.5;exitY=1;exitDx=0;exitDy=0;strokeWidth=2;dashed=1;dashPattern=1 2;entryX=0.1;entryY=0.26;entryDx=0;entryDy=0;entryPerimeter=0;startArrow=classic;startFill=1;endFill=0;" value="">
           <mxGeometry height="50" relative="1" width="50" as="geometry">
-            <mxPoint x="570" y="1690" as="sourcePoint" />
-            <mxPoint x="640" y="1660" as="targetPoint" />
-          </mxGeometry>
-        </mxCell>
-        <mxCell id="nnhDIF7C8JNo5H3nlqic-84" edge="1" parent="1" style="curved=1;endArrow=classic;html=1;rounded=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" value="">
-          <mxGeometry height="50" relative="1" width="50" as="geometry">
-            <Array as="points">
-              <mxPoint x="210" y="1430" />
-              <mxPoint x="820" y="1330" />
-              <mxPoint x="1290" y="1350" />
-              <mxPoint x="1350" y="1170" />
-            </Array>
-            <mxPoint x="200" y="1530" as="sourcePoint" />
-            <mxPoint x="1360" y="940" as="targetPoint" />
+            <mxPoint x="758" y="1550" as="sourcePoint" />
+            <mxPoint x="862" y="1670" as="targetPoint" />
           </mxGeometry>
         </mxCell>
         <mxCell id="nnhDIF7C8JNo5H3nlqic-85" parent="1" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;rounded=0;rotation=0;" value="&amp;lt;&amp;lt;extend&amp;gt;&amp;gt;" vertex="1">
@@ -214,18 +204,6 @@
             </Array>
             <mxPoint x="190" y="10" as="sourcePoint" />
             <mxPoint x="499" y="113" as="targetPoint" />
-          </mxGeometry>
-        </mxCell>
-        <mxCell id="YGzZZzIDkPVam_qdZIP6-4" parent="1" style="ellipse;whiteSpace=wrap;html=1;shapeInside=1;strokeColor=#0008FF;fontSize=15;" value="Reitengrar galpón" vertex="1">
-          <mxGeometry height="100" width="140" x="414" y="500" as="geometry" />
-        </mxCell>
-        <mxCell id="YGzZZzIDkPVam_qdZIP6-5" edge="1" parent="1" style="curved=1;endArrow=classic;html=1;rounded=0;" target="YGzZZzIDkPVam_qdZIP6-4" value="">
-          <mxGeometry height="50" relative="1" width="50" as="geometry">
-            <Array as="points">
-              <mxPoint x="400" y="550" />
-            </Array>
-            <mxPoint x="200" y="490" as="sourcePoint" />
-            <mxPoint x="450" y="880" as="targetPoint" />
           </mxGeometry>
         </mxCell>
         <mxCell id="YGzZZzIDkPVam_qdZIP6-7" parent="1" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;rounded=0;rotation=20;" value="&amp;lt;&amp;lt;include&amp;gt;&amp;gt;" vertex="1">
@@ -297,8 +275,8 @@
             <mxPoint x="600" y="-10" as="targetPoint" />
           </mxGeometry>
         </mxCell>
-        <mxCell id="YGzZZzIDkPVam_qdZIP6-26" parent="1" style="ellipse;whiteSpace=wrap;html=1;shapeInside=1;strokeColor=#0008FF;fontSize=15;" value="Consultar medicación por galpón" vertex="1">
-          <mxGeometry height="100" width="140" x="610" y="535" as="geometry" />
+        <mxCell id="YGzZZzIDkPVam_qdZIP6-26" parent="1" style="ellipse;whiteSpace=wrap;html=1;shapeInside=1;strokeColor=#0008FF;fontSize=15;" value="Consultar medicación por galpón por dia" vertex="1">
+          <mxGeometry height="100" width="140" x="540" y="485" as="geometry" />
         </mxCell>
         <mxCell id="YGzZZzIDkPVam_qdZIP6-27" edge="1" parent="1" style="curved=1;endArrow=classic;html=1;rounded=0;entryX=0.201;entryY=0.076;entryDx=0;entryDy=0;entryPerimeter=0;" target="YGzZZzIDkPVam_qdZIP6-26" value="">
           <mxGeometry height="50" relative="1" width="50" as="geometry">
@@ -317,6 +295,12 @@
         </mxCell>
         <mxCell id="Md207ohNc05aCPQySUxJ-5" parent="1" style="ellipse;whiteSpace=wrap;html=1;shapeInside=1;strokeColor=#0008FF;" value="Consultar alimento requerido por galpón" vertex="1">
           <mxGeometry height="80" width="120" x="1450" y="1210" as="geometry" />
+        </mxCell>
+        <mxCell id="qHrIBOrqMGtllx3hd9Rm-5" edge="1" parent="1" source="qHrIBOrqMGtllx3hd9Rm-4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="YGzZZzIDkPVam_qdZIP6-9" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="qHrIBOrqMGtllx3hd9Rm-4" parent="1" style="ellipse;whiteSpace=wrap;html=1;shapeInside=1;strokeColor=#0008FF;" value="consultar medicina requerida por galpón" vertex="1">
+          <mxGeometry height="80" width="120" x="1410" y="1060" as="geometry" />
         </mxCell>
       </root>
     </mxGraphModel>
