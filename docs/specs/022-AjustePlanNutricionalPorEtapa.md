@@ -26,28 +26,6 @@ Como nutricionista de la granja, quiero ingresar y ajustar la cantidad de alimen
 
 ---
 
-### User Story 2 - Proyección de Cobertura de Inventario y Alertas de Disponibilidad (Priority: P3)
-
-Como nutricionista o administrador, quiero visualizar los días de cobertura de alimento restantes en el inventario para cada galpón en función de la ración diaria y el stock actual de bultos, para anticipar compras y evitar el desabastecimiento.
-
-**Why this priority**: Brinda valor preventivo y optimización de compras, asegurando que el plan nutricional sea sostenible con el stock existente.
-
-**Independent Test**: Con un stock de 80 bultos y una demanda diaria calculada de 8 bultos/día para un galpón, verificar que el sistema indique exactamente 10 días de autonomía de alimento.
-
-**Acceptance Scenarios**:
-
-1. **Scenario**: Cálculo correcto de días de autonomía
-   - **Given** que un galpón requiere `10 bultos/día` del tipo de alimento "Alimento Finalizador"
-   - **And** el inventario disponible en almacén para ese tipo de alimento es de `50 bultos`
-   - **Then** el sistema reporta `5 días` de cobertura estimada de alimento.
-
-2. **Scenario**: Alerta por inventario insuficiente según el plan nutricional
-   - **Given** que un galpón requiere `10 bultos/día`
-   - **And** el inventario disponible es inferior a la demanda de los próximos 3 días (ej. 15 bultos disponibles)
-   - **Then** el sistema genera una advertencia visual de inventario crítico para la etapa activa.
-
----
-
 ### Edge Cases
 
 - **Galpón con población cero**: Si un galpón no tiene aves activas asignadas (vacío o en descanso sanitario), la demanda calculada en kg y bultos debe ser `0.0` sin generar errores de división por cero.
