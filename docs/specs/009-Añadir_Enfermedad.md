@@ -1,6 +1,7 @@
 # Feature Specification: Añadir Enfermedad (CU-VET-002)
 
 **Created**: 2026-09-03  
+**Updated**: 2026-09-03 (Alineación Multi-Tenant Híbrida Post-Diagnóstico)  
 **Status**: Baseline Aprobado  
 **Bounded Context**: `SanitaryManagementContext`  
 **Actor Principal**: Médico Veterinario (Secundario: Administrador)  
@@ -17,21 +18,27 @@ Como Médico Veterinario (o Administrador del sistema), quiero registrar una nue
 
 **Acceptance Scenarios**:
 
-1. **Scenario**: Registro exitoso de una nueva enfermedad
+1. **Scenario**: Registro exitoso de una nueva enfermedad local de granja
    - **Given** un usuario autenticado con rol `VETERINARIO` o `ADMINISTRADOR` en la granja "GR-001"
-   - **And** el código nosológico "ENF-BRONQ-01" no existe previamente en el catálogo
+   - **And** el código nosológico "ENF-BRONQ-01" no existe previamente en la granja "GR-001" ni en el catálogo corporativo global
    - **When** envía la solicitud con código "ENF-BRONQ-01", nombre "Bronquitis Infecciosa Aviar", nivel de riesgo "CRITICO" y descripción clínica correspondiente
-   - **Then** el sistema persiste la patología con estado "ACTIVA"
+   - **Then** el sistema persiste la patología con estado "ACTIVA" vinculada a la granja "GR-001"
    - **And** emite el evento de dominio "EnfermedadRegistrada"
    - **And** registra una entrada inmutable en "san_auditoria"
    - **And** responde con código HTTP 201 Created con el recurso persistido
 
-2. **Scenario**: Rechazo por intento de duplicidad de código
+2. **Scenario**: Rechazo por intento de duplicidad de código en el mismo tenant
    - **Given** que ya existe registrada una enfermedad con código "ENF-BRONQ-01" en la granja "GR-001"
-   - **When** el usuario intenta registrar otra patología utilizando el mismo código "ENF-BRONQ-01"
+   - **When** el usuario intenta registrar otra patología utilizando el mismo código "ENF-BRONQ-01" en la misma granja
    - **Then** el sistema aborta la transacción
    - **And** retorna el código de error "VET-011: CODIGO_ENFERMEDAD_DUPLICADO" con código HTTP 409 Conflict
    - **And** no altera el catálogo existente
+
+3. **Scenario**: Rechazo por intento de duplicar localmente un código corporativo global
+   - **Given** que existe registrada una patología corporativa global con código "ENF-NEWC-01" (`granja_id IS NULL`)
+   - **When** un usuario en la granja "GR-001" intenta registrar una patología local usando el mismo código "ENF-NEWC-01"
+   - **Then** el sistema detecta la colisión de código con el catálogo maestro global
+   - **And** rechaza la operación con código de error "VET-011: CODIGO_ENFERMEDAD_DUPLICADO" (HTTP 409 Conflict)
 
 ---
 
@@ -55,7 +62,7 @@ Como Médico Veterinario, quiero inactivar patologías en desuso o erróneas sin
 2. **Scenario**: Bloqueo de uso de enfermedad inactiva en nuevas validaciones
    - **Given** una enfermedad "ENF-NEWC-02" en estado "INACTIVA"
    - **When** el Veterinario intenta seleccionarla para confirmar un nuevo aislamiento en CU-VET-001
-   - **Then** el sistema rechaza la operación con código de error "VET-006: ENFERMEDAD_INACTIVA" (HTTP 422)
+   - **Then** el sistema rechaza la operación con código de error "VET-006: ENFERMEDAD_INACTIVA" (HTTP 422 Unprocessable Entity)
    - **And** exige seleccionar una patología vigente
 
 ---
@@ -88,8 +95,10 @@ Como Responsable de Seguridad del Sistema, quiero asegurar que las definiciones 
 ### Edge Cases
 
 - **Normalización de código con espacios o minúsculas:** Si el usuario ingresa `" enf-bronq-01 "`, el sistema aplica limpieza de espacios y conversión a mayúsculas automática (`"ENF-BRONQ-01"`) antes de evaluar unicidad y persistencia.
+- **Error sintáctico o esquema inválido en payload:** Si el request contiene nombres vacíos, códigos nulos o formatos no válidos, el sistema responde HTTP 400 Bad Request con estructura RFC 7807 sin procesar la lógica de negocio.
 - **Modificación de severidad con aislamientos activos:** Si se actualiza la severidad por defecto en el catálogo, los aislamientos que ya están en curso mantienen la severidad que les fue asignada al momento de su confirmación; el cambio solo aplica a registros futuros.
 - **Reactivación de patología previamente inactivada:** Si una enfermedad inactiva necesita volver a utilizarse, el sistema admite un comando explícito de reactivación que valida nuevamente consistencia y emite `EnfermedadReactivada`.
+- **Intento de modificación local sobre catálogo corporativo global:** Los usuarios con permisos limitados a una granja no pueden modificar ni inactivar patologías globales (`granja_id IS NULL`); cualquier mutación sobre registros globales requiere permisos de nivel `ADMINISTRADOR_SISTEMA`.
 
 ## Requirements *(mandatory)*
 
@@ -97,14 +106,15 @@ Como Responsable de Seguridad del Sistema, quiero asegurar que las definiciones 
 
 - **FR-001**: El sistema debe permitir registrar patologías avícolas exigiendo código único, nombre oficial, nivel de riesgo y descripción clínica.
 - **FR-002**: El sistema debe exigir autenticación con rol `VETERINARIO` o `ADMINISTRADOR`, validando estrictamente el `granjaId` del token para aislamiento multi-tenant.
-- **FR-003**: El sistema debe asegurar que el código de la enfermedad sea único dentro del contexto de la granja (o catálogo corporativo asignado).
-- **FR-004**: El sistema debe asignar por defecto el estado `ACTIVA` a toda nueva patología registrada.
-- **FR-005**: El sistema debe permitir transicionar el estado de una enfermedad entre `ACTIVA` e `INACTIVA` mediante comandos explícitos de dominio.
-- **FR-006**: El sistema debe prohibir la selección de enfermedades en estado `INACTIVA` en cualquier flujo de validación de aislamiento o prescripción médica.
-- **FR-007**: El sistema debe publicar el evento de dominio `EnfermedadRegistrada` inmediatamente después de completar la persistencia transaccional.
-- **FR-008**: El sistema debe registrar una traza inmutable append-only en `san_auditoria` con cada alta, inactivación o reactivación de catálogo.
-- **FR-009**: El sistema debe prohibir el borrado físico (`DELETE` relacional) sobre los registros de patologías del catálogo.
-- **FR-010**: El sistema debe rechazar solicitudes duplicadas de creación mediante validación de índice único y cabecera `X-Idempotency-Key`.
+- **FR-003**: El sistema debe asegurar que el código de la enfermedad sea único dentro del contexto visible de la granja, evaluando la restricción: `(granja_id = :tenantId OR granja_id IS NULL) AND codigo = :codigo` para evitar colisiones entre catálogos locales y corporativos.
+- **FR-004**: El sistema debe hacer visible para consulta y selección en `CU-VET-001` tanto las patologías asignadas a la granja del usuario (`granja_id = :tenantId`) como las patologías del catálogo corporativo global (`granja_id IS NULL`).
+- **FR-005**: El sistema debe asignar por defecto el estado `ACTIVA` a toda nueva patología registrada.
+- **FR-006**: El sistema debe permitir transicionar el estado de una enfermedad entre `ACTIVA` e `INACTIVA` mediante comandos explícitos de dominio.
+- **FR-007**: El sistema debe prohibir la selección de enfermedades en estado `INACTIVA` en cualquier flujo de validación de aislamiento o prescripción médica.
+- **FR-008**: El sistema debe publicar el evento de dominio `EnfermedadRegistrada` inmediatamente después de completar la persistencia transaccional.
+- **FR-009**: El sistema debe registrar una traza inmutable append-only en `san_auditoria` con cada alta, inactivación o reactivación de catálogo.
+- **FR-010**: El sistema debe prohibir el borrado físico (`DELETE` relacional) sobre los registros de patologías del catálogo.
+- **FR-011**: El sistema debe rechazar solicitudes duplicadas de creación mediante validación de índice único y cabecera `X-Idempotency-Key`, retornando HTTP 200 OK con la cabecera `Idempotent-Replayed: true` si la solicitud ya fue procesada.
 
 ### Key Entities
 
@@ -116,8 +126,8 @@ Como Responsable de Seguridad del Sistema, quiero asegurar que las definiciones 
 
 ### Measurable Outcomes
 
-- **SC-001**: Cero por ciento (0%) de duplicidad de códigos nosológicos en la base de datos gracias a la restricción única relacional `(granja_id, codigo)`.
-- **SC-002**: El 100% de las patologías creadas en estado `ACTIVA` quedan inmediatamente disponibles para ser consumidas por CU-VET-001.
+- **SC-001**: Cero por ciento (0%) de duplicidad de códigos nosológicos en la base de datos gracias a la restricción única relacional `(granja_id, codigo)` y al bloqueo de colisiones con registros globales.
+- **SC-002**: El 100% de las patologías creadas en estado `ACTIVA` (tanto locales como globales) quedan inmediatamente disponibles para ser consumidas por CU-VET-001 sin producir errores 404 por filtrado de tenant.
 - **SC-003**: El tiempo de respuesta para el registro y consulta de patologías es inferior a 250 milisegundos en al menos el 95% de las solicitudes atendidas bajo condiciones normales de operación.
 - **SC-004**: El 100% de las modificaciones de estado en el catálogo quedan asentadas en `san_auditoria` con identificación del usuario responsable y `correlationId`.
 - **SC-005**: Cero incidencias de pérdida de integridad referencial histórica tras la inactivación de enfermedades con antecedentes clínicos.

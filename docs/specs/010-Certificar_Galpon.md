@@ -1,8 +1,9 @@
 # Feature Specification: Certificar Galpón (CU-VET-003)
 
-**Created**: 2026-09-03
+**Created**: 2026-09-03  
+**Updated**: 2026-09-03 (Regla de Revocación e Invalidación Post-Diagnóstico)  
 
-## User Scenarios & Testing _(mandatory)_
+## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Emisión del Dictamen Formal de Certificación Sanitaria (Priority: P1)
 
@@ -30,7 +31,7 @@ Como Médico Veterinario autorizado en la granja, quiero evaluar un galpón con 
    - **And** la fecha mínima de liberación calculada vence en 24 horas (retiro aún activo)[cite: 1]
    - **When** el Veterinario intenta emitir la certificación sanitaria[cite: 1]
    - **Then** el sistema aborta la transacción
-   - **And** retorna el código de error "VET-005: TIEMPO_RETIRO_ACTIVO" con código HTTP 422
+   - **And** retorna el código de error "VET-005: TIEMPO_RETIRO_ACTIVO" con código HTTP 422 Unprocessable Entity
    - **And** no altera el estado del aislamiento ni emite certificaciones[cite: 1]
 
 ---
@@ -48,15 +49,18 @@ Como Sistema y Auditor Sanitario, quiero que las certificaciones sanitarias teng
 1. **Scenario**: Expiración automática de certificación no utilizada
    - **Given** una certificación sanitaria emitida hace más de 48 horas sin que se haya ejecutado el comando de reintegro[cite: 1]
    - **When** se intenta procesar el reintegro operativo del galpón
-   - **Then** el sistema rechaza la operación informando "VET-012: CERTIFICACION_EXPIRADA" (HTTP 422)
+   - **Then** el sistema rechaza la operación informando "VET-012: CERTIFICACION_EXPIRADA" (HTTP 422 Unprocessable Entity)
    - **And** transiciona el aislamiento nuevamente a "PENDIENTE_CERTIFICACION" para exigir una nueva inspección veterinaria[cite: 1]
 
-2. **Scenario**: Evaluación clínica desfavorable durante la inspección de certificación
-   - **Given** un Galpón "G-03" con tiempo de retiro cumplido pero con presencia de signología clínica residual
-   - **When** el Veterinario registra un dictamen desfavorable por recaída infecciosa
-   - **Then** el sistema no emite certificación
-   - **And** el aislamiento retorna al estado "ACTIVO" con prórroga del periodo de observación
-   - **And** se registra la novedad en el expediente clínico del lote
+2. **Scenario**: Evaluación clínica desfavorable durante la inspección de certificación y revocación formal
+   - **Given** un Galpón "G-03" con tiempo de retiro cumplido pero con presencia de signología clínica residual o recaída infecciosa
+   - **And** puede existir una certificación previa emitida pero no reintegrada
+   - **When** el Veterinario registra formalmente un dictamen desfavorable justificando el hallazgo clínico
+   - **Then** el sistema no emite nueva certificación
+   - **And** invalida y revoca formalmente cualquier certificación previa no reintegrada marcando su estado como "REVOCADA"
+   - **And** transiciona el aislamiento al estado "ACTIVO" con prórroga del período de observación
+   - **And** emite el evento de dominio "CertificacionSanitariaRevocada"
+   - **And** registra la novedad y justificación técnica en "san_auditoria"
 
 ---
 
@@ -89,9 +93,9 @@ Como Responsable de Seguridad del Sistema, quiero asegurar que solo médicos vet
 - **Tratamiento farmacológico en curso al momento de certificar:** Si existe al menos un tratamiento que no haya sido marcado como finalizado o suspendido, el sistema bloquea la certificación con error `VET-007: TRATAMIENTO_ACTIVO` sin importar la fecha clínica[cite: 1].
 - **Mortalidad total ocurrida previo a certificar:** Si la población viva del lote es 0 aves, el sistema impide certificar emitiendo `VET-013: POBLACION_CERO_NO_OPERABLE`[cite: 1].
 - **Intentos de certificación simultánea:** Si dos veterinarios intentan certificar el mismo aislamiento concurrentemente, el mecanismo de Optimistic Locking (`version`) permite persistir al primero y rechaza al segundo con HTTP 409 Conflict (`VET-014: CONCURRENCIA_DETECTADA`)[cite: 1].
-- **Aislamiento ya certificado:** Si se intenta volver a certificar un aislamiento en estado `CERTIFICADO`, el sistema rechaza la operación por estado inválido (`VET-010: TRANSICION_ESTADO_INVALIDA`)[cite: 1].
+- **Aislamiento ya certificado:** Si se intenta volver a certificar un aislamiento en estado `CERTIFICADO` sin previa revocación o expiración, el sistema rechaza la operación por estado inválido (`VET-010: TRANSICION_ESTADO_INVALIDA`)[cite: 1].
 
-## Requirements _(mandatory)_
+## Requirements *(mandatory)*
 
 ### Functional Requirements
 
@@ -105,20 +109,21 @@ Como Responsable de Seguridad del Sistema, quiero asegurar que solo médicos vet
 - **FR-008**: El sistema debe registrar una entrada inmutable append-only en `san_auditoria` con el contenido del aval médico y el `correlationId`[cite: 1].
 - **FR-009**: El sistema debe prohibir la eliminación física (`DELETE` relacional) de los certificados sanitarios emitidos[cite: 1].
 - **FR-010**: El sistema debe invalidar la certificación sanitaria para el reintegro si la fecha actual supera el valor de `validoHasta` (RN-VET-007)[cite: 1].
+- **FR-011**: Si el Veterinario emite un dictamen desfavorable durante una inspección en un galpón en estado `PENDIENTE_CERTIFICACION` o `CERTIFICADO` (sin reintegro ejecutado), el aislamiento debe mutar inmediatamente al estado `ACTIVO`, cualquier certificación previa no reintegrada debe marcarse formalmente como `REVOCADA` y debe emitirse el evento `CertificacionSanitariaRevocada`.
 
 ### Key Entities
 
-- **CertificacionSanitaria** _(Entidad Interna del Agregado Aislamiento)_: Aval técnico-sanitario emitido. Atributos: `id` (UUID), `aislamientoId` (UUID), `veterinarioId` (UUID), `tarjetaProfesional` (String), `dictamenClinico` (Text), `fechaCertificacion` (Timestamp UTC), `validoHasta` (Timestamp UTC) y `reintegroEjecutado` (Boolean)[cite: 1].
-- **Aislamiento** _(Aggregate Root)_: Entidad raíz transaccional que muta su estado a `CERTIFICADO` al consolidarse la certificación médica[cite: 1].
-- **Tratamiento** _(Referencia de Dominio)_: Entidad consultada para verificar la inexistencia de tratamientos activos y el cumplimiento de tiempos de retiro[cite: 1].
-- **Auditoria (`san_auditoria`)**: Registro inmutable de la emisión de la certificación con snapshot de datos médicos[cite: 1].
+- **CertificacionSanitaria** *(Entidad Interna del Agregado Aislamiento)*: Aval técnico-sanitario emitido. Atributos: `id` (UUID), `aislamientoId` (UUID), `veterinarioId` (UUID), `tarjetaProfesional` (String), `dictamenClinico` (Text), `fechaCertificacion` (Timestamp UTC), `validoHasta` (Timestamp UTC), `estado` (`VIGENTE`, `EXPIRADA`, `REVOCADA`) y `reintegroEjecutado` (Boolean)[cite: 1].
+- **Aislamiento** *(Aggregate Root)*: Entidad raíz transaccional que muta su estado a `CERTIFICADO` al consolidarse la certificación médica, o regresa a `ACTIVO` ante dictamen desfavorable[cite: 1].
+- **Tratamiento** *(Referencia de Dominio)*: Entidad consultada para verificar la inexistencia de tratamientos activos y el cumplimiento de tiempos de retiro[cite: 1].
+- **Auditoria (`san_auditoria`)**: Registro inmutable de la emisión, expiración o revocación de la certificación con snapshot de datos médicos[cite: 1].
 
-## Success Criteria _(mandatory)_
+## Success Criteria *(mandatory)*
 
 ### Measurable Outcomes
 
 - **SC-001**: Cero por ciento (0%) de galpones certificados antes de cumplirse el tiempo de retiro farmacológico calculado ($\text{FechaActual} < \text{FechaMinimaLiberacion}$)[cite: 1].
-- **SC-002**: El 100% de las certificaciones sanitarias emitidas habilitan de manera inmediata el comando de reintegro en el sistema para el lote evaluado[cite: 1].
-- **SC-003**: Cero por ciento (0%) de reintegros ejecutados con certificaciones sanitarias que hayan superado su ventana de vigencia de 48 horas[cite: 1].
-- **SC-004**: El tiempo de procesamiento de la emisión de certificación es inferior a 350 milisegundos en al menos el 95% de las solicitudes atendidas bajo carga normal.
-- **SC-005**: El 100% de las certificaciones emitidas persisten de forma inmutable la matrícula profesional del veterinario y su justificación técnica en `san_auditoria`[cite: 1].
+- **SC-002**: El 100% de las certificaciones sanitarias emitidas en estado `VIGENTE` habilitan de manera inmediata el comando de reintegro en el sistema para el lote evaluado[cite: 1].
+- **SC-003**: Cero por ciento (0%) de reintegros ejecutados con certificaciones sanitarias que hayan superado su ventana de vigencia de 48 horas o figuren como `REVOCADA`[cite: 1].
+- **SC-004**: El tiempo de procesamiento de la emisión o revocación de certificación es inferior a 350 milisegundos en al menos el 95% de las solicitudes atendidas bajo condiciones normales de operación.
+- **SC-005**: El 100% de las certificaciones emitidas o revocadas persisten de forma inmutable la matrícula profesional del veterinario y su justificación técnica en `san_auditoria`[cite: 1].
