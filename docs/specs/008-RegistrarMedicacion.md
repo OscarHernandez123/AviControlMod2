@@ -1,127 +1,143 @@
-# Feature Specification: Registrar medicación
+# Feature Specification: Registrar Medicación
 
-**Created**: 2026-09-04  
+**Created**: 2026-09-04
 
-## User Scenarios & Testing
+## User Scenarios & Testing _(mandatory)_
 
-### User Story 1 - Registrar una medicación (Priority: P1)
+### User Story 1 - Alta de Tratamiento Médico para Diagnóstico (Priority: P1)
 
-Como veterinario, quiero registrar una medicación indicando la enfermedad, el medicamento, la dosis, el número total de días y la descripción, para que pueda ser seleccionada posteriormente al diagnosticar un galpón.
+Como Veterinario de la granja, quiero registrar una pauta de medicación vinculando una enfermedad activa, un medicamento disponible en inventario, la dosis recomendada, los días totales de duración y una descripción clara de aplicación, para que quede lista y pueda ser seleccionada cuando se diagnostique un galpón o se requiera medicar un lote.
 
-**Why this priority**: El registro permite definir una medicación completa para una enfermedad utilizando un medicamento proveniente del inventario y garantiza que esta tarea sea realizada exclusivamente por el veterinario.
+**Why this priority**: Es el catálogo de tratamientos de la granja. Sin este registro previo, el veterinario no puede elegir un tratamiento oficial al diagnosticar galpones enfermos ni estandarizar cómo y durante cuántos días se debe aplicar un medicamento.
 
-**Independent Test**: Se puede probar seleccionando una enfermedad disponible y un medicamento del inventario, e ingresando la dosis, el número total de días y la descripción. El sistema debe crear la medicación y dejarla disponible para su selección posterior en un diagnóstico de galpón, sin exigir un diagnóstico existente ni modificar el inventario.
+**Independent Test**: Se prueba ingresando una medicación con una enfermedad activa del catálogo y un medicamento con existencia en inventario, colocando dosis, días enteros mayores a cero y la descripción. El sistema debe guardar el tratamiento, dejarlo disponible para futuros diagnósticos y no debe descontar unidades del inventario ni modificar ningún galpón.
 
 **Acceptance Scenarios**:
 
-1. **Scenario**: Registro correcto de una medicación
-   - **Given** que la enfermedad está disponible y el medicamento seleccionado se encuentra en el inventario
-   - **When** el veterinario registra la dosis, el número total de días y la descripción
-   - **Then** el sistema crea la medicación con todos sus datos y la deja disponible para ser seleccionada posteriormente en un diagnóstico de galpón
+1. **Scenario**: Registro exitoso de una medicación
+   - **Given** que la enfermedad "Bronquitis Infecciosa Aviar" está activa en el catálogo
+   - **And** el medicamento "Tilosina 50%" existe en el inventario
+   - **When** el Veterinario ingresa dosis "0.5 g por litro de agua", duración de 5 días y la descripción "Suministrar en agua de bebida por las mañanas"
+   - **Then** el sistema guarda la medicación
+   - **And** la deja disponible para ser seleccionada en futuros diagnósticos de galpón
+   - **And** mantiene intactas las existencias del medicamento en inventario
 
-2. **Scenario**: Intento de registro con datos incompletos
-   - **Given** que el veterinario está registrando una medicación
-   - **When** omite la enfermedad, el medicamento, la dosis, el número total de días o la descripción
-   - **Then** el sistema rechaza el registro, identifica los datos que debe completar y no crea la medicación
+2. **Scenario**: Intento de registro con campos obligatorios vacíos o incompletos
+   - **Given** que el Veterinario abre la pantalla de registrar medicación
+   - **When** intenta guardar sin indicar la dosis o dejando la descripción vacía (o solo con espacios en blanco)
+   - **Then** el sistema detiene el guardado, resalta los campos faltantes y no crea la medicación
 
-3. **Scenario**: Número total de días no válido
-   - **Given** que el veterinario está registrando una medicación
-   - **When** ingresa un número total de días igual a cero, negativo o no entero
-   - **Then** el sistema rechaza el registro, indica que la duración debe ser un número entero de días mayor que cero y no crea la medicación
+3. **Scenario**: Duración en días no válida
+   - **Given** que el Veterinario ingresa los datos de una medicación
+   - **When** escribe 0 días, un número negativo o un decimal (ejemplo: 3.5 días)
+   - **Then** el sistema rechaza el valor indicando que la duración debe ser un número entero de días mayor a cero
+   - **And** no crea el registro
 
-4. **Scenario**: Enfermedad no registrada
-   - **Given** que el veterinario está registrando una medicación
-   - **When** selecciona una enfermedad que no existe o no está disponible
-   - **Then** el sistema rechaza el registro, informa que la enfermedad no está disponible y no crea la medicación
+4. **Scenario**: Enfermedad no vigente en el catálogo
+   - **Given** una enfermedad registrada en estado "INACTIVA" o inexistente
+   - **When** el Veterinario intenta seleccionarla para crear la medicación
+   - **Then** el sistema no permite la selección e informa que la enfermedad no está disponible
 
-5. **Scenario**: Medicamento no registrado en el inventario
-   - **Given** que el veterinario está registrando una medicación
-   - **When** selecciona un medicamento que no se encuentra en el inventario
-   - **Then** el sistema rechaza el registro, informa que el medicamento no está disponible y no crea la medicación
+5. **Scenario**: Medicamento no disponible en inventario
+   - **Given** un medicamento agotado, dado de baja o que no existe en el catálogo de insumos
+   - **When** el Veterinario intenta asignarlo a la medicación
+   - **Then** el sistema bloquea el registro informando que el medicamento no se encuentra disponible
 
-6. **Scenario**: Registro por un usuario no autorizado
-   - **Given** que un usuario sin rol de veterinario intenta registrar una medicación
-   - **When** solicita confirmar el registro
-   - **Then** el sistema rechaza la operación y no crea la medicación
+6. **Scenario**: Intento de registro por personal no facultado
+   - **Given** un usuario autenticado con rol distinto a "VETERINARIO" (ejemplo: "TRABAJADOR")
+   - **When** intenta crear una medicación
+   - **Then** el sistema deniega el acceso por falta de permisos médicos y no guarda nada
 
 ---
 
-### User Story 2 - Editar una medicación (Priority: P2)
+### User Story 2 - Actualización de una Medicación sin Afectar Históricos (Priority: P2)
 
-Como veterinario, quiero editar una medicación existente para corregir o actualizar su enfermedad, medicamento, dosis, número total de días o descripción, de manera que los nuevos datos se utilicen únicamente en diagnósticos futuros.
+Como Veterinario de la granja, quiero editar una medicación existente para ajustar la dosis, los días de duración o las instrucciones de uso, garantizando que estos cambios apliquen únicamente a los diagnósticos nuevos y no alteren los tratamientos ni las fechas de retiro que ya se aplicaron en el pasado.
 
-**Why this priority**: La edición permite mantener actualizada la medicación sin cambiar los tratamientos, enfermedades o fechas de reintegro que quedaron registrados en diagnósticos anteriores.
+**Why this priority**: La medicina avícola exige ajustar dosis y tiempos según la respuesta clínica, pero nunca se deben sobreescribir los tratamientos viejos porque se adulteraría el historial de inocuidad y retiro farmacológico de lotes anteriores.
 
-**Independent Test**: Se puede probar utilizando una medicación de 5 días que ya fue seleccionada en un diagnóstico y editar su duración a 7 días. El diagnóstico existente debe conservar la duración y la fecha de reintegro calculadas originalmente, mientras que un diagnóstico posterior debe utilizar la duración actualizada de 7 días.
+**Independent Test**: Se toma una medicación configurada en 5 días que ya fue aplicada a un galpón en una fecha previa y se actualiza a 7 días. El sistema debe comprobar que el galpón histórico conserve sus 5 días y su fecha de retiro original, mientras que un galpón nuevo diagnosticado hoy reciba los 7 días actualizados.
 
 **Acceptance Scenarios**:
 
-1. **Scenario**: Edición correcta de una medicación
-   - **Given** que existe una medicación registrada
-   - **When** el veterinario modifica la enfermedad, el medicamento, la dosis, el número total de días o la descripción con datos válidos
-   - **Then** el sistema guarda los cambios y deja la medicación actualizada disponible para diagnósticos futuros
+1. **Scenario**: Edición exitosa de pauta de medicación
+   - **Given** una medicación registrada con duración de 5 días
+   - **When** el Veterinario actualiza la duración a 7 días y complementa las instrucciones de dosificación
+   - **Then** el sistema guarda la nueva versión del tratamiento
+   - **And** queda disponible con 7 días para diagnósticos futuros
 
-2. **Scenario**: Edición de una medicación utilizada en diagnósticos existentes
-   - **Given** que una medicación ya fue seleccionada en uno o varios diagnósticos
-   - **When** el veterinario edita sus datos
-   - **Then** el sistema aplica los cambios únicamente a diagnósticos futuros y conserva sin cambios los datos y cálculos de los diagnósticos existentes
+2. **Scenario**: Protección inmutable de tratamientos ya aplicados
+   - **Given** un galpón que recibió tratamiento con la medicación cuando duraba 5 días
+   - **When** el Veterinario modifica esa medicación en el sistema para que dure 7 días
+   - **Then** el galpón previamente diagnosticado mantiene inalterados sus 5 días y su fecha de retiro calculada
+   - **And** el cambio rige exclusivamente para los diagnósticos que se registren a partir de este momento
 
-3. **Scenario**: Edición por un usuario no autorizado
-   - **Given** que un usuario sin rol de veterinario intenta editar una medicación
-   - **When** solicita confirmar los cambios
-   - **Then** el sistema rechaza la operación y conserva la medicación sin cambios
+3. **Scenario**: Intento de modificación no autorizado
+   - **Given** un usuario sin rol de Veterinario
+   - **When** intenta modificar los parámetros de una medicación
+   - **Then** el sistema bloquea la acción y conserva la medicación sin cambios
+
+---
+
+### User Story 3 - Inmutabilidad y Blindaje contra Borrado (Priority: P3)
+
+Como auditor de bioseguridad y responsable de sanidad de la granja, quiero que las medicaciones registradas no puedan ser eliminadas físicamente de la base de datos y que se eviten registros duplicados por fallas de conexión, para respaldar legalmente las decisiones farmacológicas de la empresa.
+
+**Why this priority**: Si se borrara físicamente un registro de medicación, las órdenes médicas de campo quedarían sin sustento técnico y la granja no podría justificar ante inspectores oficiales por qué se aplicó ese producto.
+
+**Independent Test**: Se intenta ejecutar una orden de borrado directo (`DELETE`) en base de datos sobre una medicación y se simulan reenvíos de red duplicados con la misma clave de operación.
+
+**Acceptance Scenarios**:
+
+1. **Scenario**: Prohibición de eliminación física
+   - **Given** una medicación guardada en el sistema
+   - **When** se intenta borrar físicamente el registro
+   - **Then** el sistema bloquea y prohíbe la eliminación
+   - **And** mantiene la información intacta en la base de datos
+
+2. **Scenario**: Evitar registros dobles por problemas de red (Idempotencia)
+   - **Given** una medicación enviada y guardada correctamente
+   - **When** el dispositivo o navegador reenvía la misma petición de guardado por un corte momentáneo de red
+   - **Then** el sistema detecta que ya fue creada y no genera un registro duplicado
+
+---
 
 ### Edge Cases
 
-- **Edge case #1 - Enfermedad o medicamento no disponible al confirmar**
+- **Medicamento que se agota o desactiva durante la selección**: Si un medicamento es dado de baja del inventario mientras el veterinario redacta la medicación, el sistema valida el estado justo antes de guardar y rechaza el registro indicando que el producto ya no está habilitado.
+- **Campos de texto con solo espacios**: Si la dosis o la descripción contienen únicamente espacios en blanco, el sistema los considera campos vacíos y exige escribir texto válido.
+- **Acción aislada sin consumo ni movimiento de galpón**: Registrar una medicación no descuenta botellas ni kilos del almacén, no requiere que haya un galpón enfermo en ese instante ni cambia el estado de ningún lote. El consumo real se procesa cuando las aves reciben el medicamento en campo.
 
-  - ¿Cómo maneja el sistema una enfermedad o un medicamento que estaba disponible al ser seleccionado, pero deja de estarlo antes de confirmar la medicación?  
-    El sistema debe comprobar nuevamente que la enfermedad esté disponible y que el medicamento pertenezca al inventario. Si no puede verificar alguno, debe rechazar el registro.
-
-- **Edge case #2 - Datos de texto compuestos únicamente por espacios**
-
-  - ¿Cómo maneja el sistema una dosis o descripción compuesta únicamente por espacios en blanco?  
-    El sistema debe considerar el dato como vacío, indicar que debe corregirse y no crear la medicación.
-
-- **Edge case #3 - Interrupción durante el registro**
-
-  - ¿Cómo maneja el sistema una interrupción mientras guarda la medicación?  
-    El sistema debe evitar registros parciales: la medicación debe guardarse con todos sus datos y relaciones o no debe crearse.
-
-## Requirements
+## Requirements _(mandatory)_
 
 ### Functional Requirements
 
-- **FR-001**: El sistema DEBE permitir el registro de medicaciones exclusivamente a usuarios con rol de veterinario.
-- **FR-002**: Cada medicación DEBE registrar enfermedad, medicamento, dosis, número total de días y descripción.
-- **FR-003**: La enfermedad utilizada en la medicación DEBE existir y estar disponible.
-- **FR-004**: El medicamento utilizado en la medicación DEBE provenir del inventario de medicamentos.
-- **FR-005**: Cuando los datos sean válidos, el sistema DEBE crear la medicación y dejarla disponible para su selección en el registro posterior de un diagnóstico de galpón.
-- **FR-006**: Registrar una medicación NO DEBE requerir un diagnóstico existente ni crear o modificar un diagnóstico de galpón.
-- **FR-007**: Registrar una medicación NO DEBE representar la administración del medicamento ni descontar existencias del inventario.
-- **FR-008**: Cuando el registro sea rechazado o interrumpido, el sistema NO DEBE crear una medicación incompleta ni guardar parcialmente sus relaciones.
-- **FR-009**: El sistema DEBE permitir la edición de medicaciones exclusivamente a usuarios con rol de veterinario.
-- **FR-010**: La edición de una medicación NO DEBE modificar diagnósticos existentes ni recalcular sus fechas de reintegro.
+- **FR-001**: El registro y edición de medicaciones DEBE ser una función exclusiva de usuarios con rol `VETERINARIO`.
+- **FR-002**: Cada registro de medicación DEBE incluir obligatoriamente: enfermedad, medicamento, dosis, número total de días y descripción de aplicación.
+- **FR-003**: La enfermedad seleccionada DEBE existir en el catálogo nosológico y encontrarse en estado `ACTIVA` (CU-VET-002).
+- **FR-004**: El medicamento seleccionado DEBE provenir del inventario de insumos y estar habilitado para su uso.
+- **FR-005**: La duración del tratamiento DEBE ser un número entero estrictamente mayor a cero ($\text{dias} > 0$).
+- **FR-006**: El registro de una medicación NO DEBE requerir un diagnóstico previo, no debe alterar el estado de ningún galpón y NO DEBE descontar existencias del inventario de medicamentos.
+- **FR-007**: Toda edición de una medicación DEBE aplicar únicamente hacia diagnósticos futuros, manteniendo inmutables los tratamientos, dosis y fechas de retiro fijadas en galpones ya diagnosticados.
+- **FR-008**: Al guardar una medicación válida, el sistema DEBE publicarla como disponible para el flujo de diagnóstico de galpones y emitir el evento `MedicacionRegistrada`.
+- **FR-009**: Cada creación o edición DEBE guardar un asiento histórico e inmutable en `san_auditoria` con usuario, fecha, hora y detalle de la acción.
+- **FR-010**: Queda ESTRICTAMENTE PROHIBIDO el borrado físico (`DELETE` en base de datos) de cualquier medicación registrada.
+- **FR-011**: El sistema DEBE aplicar control de concurrencia optimista (`version`) y mecanismos de idempotencia técnica para evitar registros duplicados ante reintentos de red.
 
 ### Key Entities
 
-- **Medicación**: Representa el tratamiento registrado por el veterinario y disponible para su selección posterior en un diagnóstico.
-  - **Atributos**: enfermedad, medicamento, dosis, número total de días y descripción.
-  - **Relaciones**: referencia una enfermedad y un medicamento proveniente del inventario; posteriormente puede ser referenciada por los diagnósticos de galpón que la seleccionen.
-  - **Comportamiento ante ediciones**: los datos actualizados se utilizan en diagnósticos futuros, mientras que los diagnósticos existentes conservan los valores utilizados al momento de su registro.
-- **Enfermedad**: Representa la enfermedad para la cual se registra la medicación.
-  - **Relaciones**: puede tener una o varias medicaciones registradas; cada medicación referencia una enfermedad.
-- **Medicamento**: Representa el medicamento utilizado por la medicación y proviene del inventario.
-  - **Relaciones**: puede ser utilizado en varias medicaciones sin que el registro modifique sus existencias.
+- **Medicación**: Aggregate Root que define la pauta médica estándar de tratamiento. Atributos: `id` (UUID), `enfermedadId` (UUID), `medicamentoId` (UUID), `dosis` (Texto descriptivo con unidad), `diasTratamiento` (Entero positivo), `descripcion` (Texto explicativo), `activa` (Booleano), `version` (Control concurrente) y marcas de tiempo de creación y actualización.
+- **Enfermedad**: Entidad del catálogo nosológico de la granja que representa la patología a combatir con este tratamiento.
+- **Medicamento**: Insumo provisto por el inventario que aporta el compuesto terapéutico a administrar.
+- **Auditoría Sanitaria (`san_auditoria`)**: Registro inmutable donde queda asentada la firma y responsabilidad del veterinario sobre el tratamiento creado.
 
-## Success Criteria
+## Success Criteria _(mandatory)_
 
 ### Measurable Outcomes
 
-- **SC-001**: Al menos el 90 % de los veterinarios puede registrar una medicación válida en menos de 2 minutos.
-- **SC-002**: El 95 % de las medicaciones válidas queda disponible para su selección en un máximo de 1 segundo después de la confirmación.
-- **SC-003**: El 100 % de las medicaciones creadas conserva correctamente la referencia a su enfermedad y al medicamento del inventario.
-- **SC-004**: El 100 % de los intentos realizados por roles distintos al veterinario es rechazado sin crear una medicación.
-- **SC-005**: El 100 % de los registros de medicación conserva las existencias del inventario sin cambios.
-- **SC-006**: El 100 % de las ediciones realizadas por el veterinario conserva sin cambios los diagnósticos y las fechas de reintegro existentes.
-- **SC-007**: El 95 % de las ediciones válidas queda disponible para diagnósticos futuros en un máximo de 1 segundo después de su confirmación.
+- **SC-001**: El 100% de las medicaciones guardadas quedan disponibles de inmediato para ser seleccionadas en el flujo de diagnóstico de galpón.
+- **SC-002**: 0% de impacto o descuento en las cantidades del inventario de medicamentos durante la creación o edición de medicaciones.
+- **SC-003**: 0% de alteraciones en los tratamientos pasados y fechas de retiro de galpones previamente diagnosticados tras editar una medicación.
+- **SC-004**: El tiempo de guardado y validación de una medicación es menor a 300 milisegundos en condiciones normales.
+- **SC-005**: El 100% de los intentos de registro por parte de usuarios con roles diferentes a `VETERINARIO` son bloqueados por el sistema.
+- **SC-006**: Cero incidentes (0%) de registros de medicación borrados físicamente de la base de datos durante toda la vida útil del sistema.
