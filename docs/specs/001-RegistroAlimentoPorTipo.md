@@ -15,8 +15,8 @@ Como administrador, quiero registrar cada recepción de alimento que ingresa a l
 **Acceptance Scenarios**:
 
 1. **Scenario**: Registro correcto de una recepción
-   - **Given** que un administrador autenticado dispone de los datos completos de una entrega de alimento
-   - **When** registra el código de lote, tipo de alimento, cantidad de bultos, peso nominal por bulto, marca, precio neto de compra por bulto, impuesto, fecha de ingreso y fecha de vencimiento
+   - **Given** que un administrador autenticado dispone de los datos completos de una entrega y selecciona un alimento activo del catálogo
+   - **When** registra el código de lote, cantidad de bultos, peso nominal por bulto, precio neto de compra por bulto, impuesto, fecha de ingreso y fecha de vencimiento
    - **Then** el sistema crea una recepción en la bodega central, calcula sus kilogramos nominales totales y el precio neto de compra por kilogramo, actualiza el inventario y conserva los precios históricos (precio de compra registrado cuando ingresó una recepción específica al inventario) asociados a la recepción para el módulo 3
 
 2. **Scenario**: Registro de una entrega con un código de lote existente
@@ -36,35 +36,35 @@ Como administrador, quiero registrar cada recepción de alimento que ingresa a l
 
 ---
 
-### User Story 2 - Corregir o anular una recepción (Priority: P2)
+### User Story 2 - Editar una recepción (Priority: P2)
 
-Como administrador, quiero corregir o anular una recepción bajo reglas controladas para solucionar errores sin perder la trazabilidad ni alterar silenciosamente los saldos y precios históricos de compra.
+Como administrador, quiero editar una recepción que todavía no tenga movimientos de salida para corregir errores de registro sin perder la trazabilidad ni alterar consumos o costos históricos.
 
-**Why this priority**: Permite corregir errores operativos mientras protege la integridad de las existencias y de los movimientos que dependan de la recepción.
+**Why this priority**: Permite corregir errores operativos antes de que la recepción sea utilizada, mientras protege la integridad de las existencias y de los movimientos que dependan de ella.
 
-**Independent Test**: Se puede probar editando una recepción sin salidas y solicitando después la modificación de otra recepción con movimientos, para verificar las restricciones y el registro de auditoría.
+**Independent Test**: Se puede probar editando una recepción sin movimientos de salida y solicitando después la edición de otra que sí los tenga, para verificar los recálculos, el bloqueo y el registro de auditoría.
 
 **Acceptance Scenarios**:
 
-1. **Scenario**: Edición directa de una recepción sin movimientos de salida
+1. **Scenario**: Edición de una recepción sin movimientos de salida
    - **Given** que una recepción no registra ninguna salida ni despacho
-   - **When** el administrador corrige sus datos y proporciona una justificación por escrito
+   - **When** el administrador corrige sus datos y proporciona una observación que justifica el cambio
    - **Then** el sistema actualiza la recepción, recalcula los valores afectados y registra la modificación en el historial de auditoría
 
-2. **Scenario**: Intento de edición directa de una recepción con movimientos
+2. **Scenario**: Intento de edición de una recepción con movimientos de salida
    - **Given** que una recepción ya registra al menos una salida o despacho
-   - **When** el administrador intenta editarla o eliminarla directamente
-   - **Then** el sistema bloquea la operación y exige realizar un ajuste o una anulación formal
+   - **When** el administrador intenta editarla
+   - **Then** el sistema bloquea la operación, informa que la recepción ya fue utilizada y conserva sus datos sin cambios
 
-3. **Scenario**: Ajuste o anulación formal de una recepción con movimientos
-   - **Given** que una recepción registra movimientos y requiere una corrección
-   - **When** el administrador registra un ajuste o una anulación formal con una justificación por escrito
-   - **Then** el sistema conserva la recepción y sus movimientos históricos, aplica el cambio permitido y registra automáticamente la auditoría completa
-
-4. **Scenario**: Modificación sin justificación
-   - **Given** que el administrador solicita editar, ajustar o anular una recepción
-   - **When** no proporciona una justificación por escrito
+3. **Scenario**: Edición sin observaciones
+   - **Given** que el administrador solicita editar una recepción sin movimientos de salida
+   - **When** no proporciona una observación que justifique el cambio
    - **Then** el sistema rechaza la operación y conserva los datos sin cambios
+
+4. **Scenario**: Intento de edición por un usuario no autorizado
+   - **Given** que un usuario sin rol de administrador intenta editar una recepción
+   - **When** solicita guardar los cambios
+   - **Then** el sistema rechaza la operación y conserva la recepción y el inventario sin cambios
 
 ### Edge Cases
 
@@ -83,28 +83,42 @@ Como administrador, quiero corregir o anular una recepción bajo reglas controla
 ### Functional Requirements
 
 - **FR-001**: El sistema DEBE permitir el registro de recepciones de alimento exclusivamente a usuarios con rol de administrador.
-- **FR-002**: Cada recepción DEBE registrar código de lote, tipo de alimento, cantidad de bultos, peso nominal por bulto, marca, precio neto de compra por bulto, impuesto, fecha de ingreso y fecha de vencimiento.
+- **FR-002**: Cada recepción DEBE referenciar un alimento activo del catálogo y registrar código de lote, cantidad de bultos, peso nominal por bulto, precio neto de compra por bulto, impuesto, fecha de ingreso y fecha de vencimiento.
 - **FR-003**: El sistema DEBE validar los datos obligatorios y rechazar el registro cuando estén incompletos, sean inválidos o los valores calculados excedan los límites admitidos.
 - **FR-004**: El sistema DEBE calcular los kilogramos nominales totales y el precio neto de compra por kilogramo a partir de la cantidad, el peso nominal y el precio neto de compra por bulto, aplicando una regla uniforme de precisión y redondeo.
 - **FR-005**: Cada entrega DEBE crear una recepción independiente, incluso si comparte código de lote con otra, conservando sus propios datos, precios de compra, fechas y saldo.
-- **FR-006**: Al confirmar el registro, el sistema DEBE conservar y dejar disponibles para el módulo 3 el identificador de la recepción, el tipo de alimento, el código de lote del alimento, el precio neto de compra por bulto, el precio neto de compra por kilogramo y el impuesto.
+- **FR-006**: Al confirmar el registro, el sistema DEBE conservar y dejar disponibles para el módulo 3 el identificador de la recepción, el alimento, el tipo de alimento, el código de lote, el precio neto de compra por bulto, el precio neto de compra por kilogramo y el impuesto.
 - **FR-007**: La modificación posterior del precio de otra recepción o del precio vigente de un tipo de alimento NO DEBE alterar el precio histórico asociado a un consumo ya registrado.
 - **FR-008**: La información suministrada DEBE permitir al módulo 3 calcular el costo del alimento mediante la suma de `kilogramos consumidos de cada recepción × precio neto histórico de compra por kilogramo`. El valor total de una recepción NO DEBE tratarse como costo de un lote de aves.
+- **FR-009**: Los cambios posteriores realizados sobre el alimento o su tipo en el catálogo NO DEBEN modificar los datos históricos de una recepción confirmada. La recepción DEBE conservar los datos comerciales necesarios como valores históricos de referencia.
+- **FR-010**: El código de lote NO DEBE utilizarse como identificador único de la recepción. Cada recepción DEBE tener un identificador propio y puede compartir el código de lote con otras recepciones.
+- **FR-011**: El sistema DEBE calcular automáticamente la existencia disponible de cada alimento consolidando los movimientos confirmados asociados con sus recepciones y dejar este resultado disponible para las consultas de inventario.
+- **FR-012**: El sistema DEBE permitir editar una recepción exclusivamente a usuarios con rol de administrador y únicamente cuando no tenga movimientos de salida, despacho o consumo asociados.
+- **FR-013**: Durante la edición, el administrador DEBE poder corregir el alimento, el código de lote, la cantidad de bultos, el peso nominal por bulto, el precio neto de compra por bulto, el impuesto, la fecha de ingreso y la fecha de vencimiento.
+- **FR-014**: Para guardar una edición, el administrador DEBE proporcionar una observación que justifique el cambio.
+- **FR-015**: Al guardar una edición válida, el sistema DEBE recalcular los kilogramos nominales totales y el precio neto de compra por kilogramo, actualizar las existencias afectadas y registrar en la auditoría los valores anteriores, los valores nuevos, la observación, el usuario y la fecha y hora.
+- **FR-016**: Los valores calculados de la recepción NO DEBEN ser editables directamente por el usuario.
 
 ### Key Entities 
 
-- **Alimento**: Representa el alimento registrado en el inventario.
-  - **Atributos posibles**: lote, marca, cantidad de bultos, peso nominal, precios de compra, impuesto, fechas y kilogramos totales.
-  - **Relaciones**: pertenece a un tipo de alimento, se almacena en la bodega central, se vincula con movimientos y registros de auditoría, y proporciona sus precios históricos de compra al módulo 3.
+- **Alimento**: Representa un producto o referencia comercial del catálogo de alimentos, independientemente de sus compras y existencias.
+  - **Atributos posibles**: nombre comercial, marca, descripción y estado.
+  - **Relaciones**: pertenece a un tipo de alimento y puede estar asociado con cero o varias recepciones de alimento.
+- **Recepción de alimento**: Representa una entrega concreta de un alimento que ingresa a la bodega central.
+  - **Atributos posibles**: identificador, código de lote, cantidad de bultos, peso nominal por bulto, kilogramos nominales totales, precio neto de compra por bulto, precio neto de compra por kilogramo, impuesto, fecha de ingreso, fecha de vencimiento, cantidad inicial.
+  - **Relaciones**: referencia un único alimento y una única bodega central, origina el movimiento de entrada, puede tener movimientos posteriores de salida o ajuste y se vincula con registros de auditoría. Conserva los precios y datos comerciales históricos requeridos por el módulo 3.
 - **Tipo de alimento**: Representa la clasificación del alimento según la etapa productiva.
   - **Atributos posibles**: nombre, descripción y estado.
   - **Relaciones**: clasifica uno o varios alimentos registrados.
 - **Bodega central**: Representa el inventario principal.
   - **Atributos posibles**: nombre, ubicación y estado.
-  - **Relaciones**: almacena los alimentos registrados y consolida los movimientos que afectan sus existencias.
+  - **Relaciones**: recibe las recepciones de alimento y consolida los movimientos que afectan sus existencias.
+- **Movimiento de inventario de alimento**: Representa una entrada, salida, consumo o ajuste que afecta las existencias de una recepción.
+  - **Atributos posibles**: tipo de movimiento, cantidad en kilogramos, fecha y hora.
+  - **Relaciones**: pertenece a una recepción de alimento, identifica al usuario responsable y permite obtener el saldo disponible sin modificar el registro histórico de la recepción.
 - **Registro de auditoría**: Representa el historial de cambios sobre un registro.
   - **Atributos posibles**: acción, fecha y hora, motivo, valores anteriores y valores nuevos.
-  - **Relaciones**: identifica al usuario responsable y al alimento o movimiento afectado.
+  - **Relaciones**: identifica al usuario responsable y a la recepción o movimiento afectado.
 
 ## Success Criteria 
 
