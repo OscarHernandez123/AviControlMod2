@@ -22,7 +22,7 @@ Como trabajador u operario de granja, quiero registrar y enviar una solicitud de
    - **And** conserva el estado del galpón como "En cosecha" hasta que el veterinario resuelva la validación
 
 2. **Scenario**: Intento de solicitud en un galpón con estado diferente a "En cosecha"
-   - **Given** que el galpón asignado se encuentra en estado "productivo", "disponible" o "vaciado sanitario"
+   - **Given** que el galpón asignado se encuentra en estado `productiva`, `disponible` o `vaciado sanitario`
    - **When** el trabajador intenta registrar una solicitud de validación de aislamiento
    - **Then** el sistema rechaza la solicitud, informa que el galpón debe encontrarse en estado "En cosecha" y no crea el registro
 

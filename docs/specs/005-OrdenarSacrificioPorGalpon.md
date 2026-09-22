@@ -49,6 +49,33 @@ Como administrador, quiero programar la fecha y hora del sacrificio de un lote a
    - **When** solicita confirmar la operación
    - **Then** el sistema la rechaza y no modifica la orden, el galpón ni el lote
 
+---
+
+### User Story 2 - Consultar resumen de órdenes de sacrificio (Priority: P2)
+
+Como administrador, quiero visualizar en la pantalla de inicio la cantidad total de órdenes de sacrificio y cuántas están pendientes de ejecución para conocer rápidamente la carga operativa del proceso de sacrificio.
+
+**Why this priority**: El indicador permite identificar órdenes que requieren seguimiento sin reemplazar la consulta ni la gestión detallada de cada orden.
+
+**Independent Test**: Se puede probar utilizando seis órdenes registradas, dos de ellas programadas y pendientes de ejecución, y verificando que la pantalla de inicio muestre un total de seis órdenes y dos pendientes.
+
+**Acceptance Scenarios**:
+
+1. **Scenario**: Visualización correcta del resumen de órdenes
+   - **Given** que existen órdenes de sacrificio registradas con diferentes estados
+   - **When** el administrador ingresa a la pantalla de inicio
+   - **Then** el sistema muestra la cantidad total de órdenes y la cantidad de órdenes programadas pendientes de ejecución
+
+2. **Scenario**: Resumen sin órdenes registradas
+   - **Given** que no existen órdenes de sacrificio registradas
+   - **When** el administrador ingresa a la pantalla de inicio
+   - **Then** el sistema muestra cero órdenes totales y cero pendientes
+
+3. **Scenario**: Resumen de solo lectura
+   - **Given** que el administrador visualiza o actualiza el resumen de órdenes
+   - **When** el sistema recalcula los conteos
+   - **Then** no crea, reprograma, cancela ni ejecuta ninguna orden y no modifica galpones ni lotes
+
 ### Edge Cases
 
 - **Edge case #1 - Cambio del lote o del estado del galpón antes de confirmar la orden**
@@ -71,6 +98,11 @@ Como administrador, quiero programar la fecha y hora del sacrificio de un lote a
   - ¿Cómo maneja el sistema una programación cuando el módulo 1 no está disponible o no permite verificar el galpón y su lote actualmente alojado?
     El sistema debe rechazar la programación, informar que no pudo verificar las condiciones y no crear ni modificar la orden.
 
+- **Edge case #5 - Cambio de estado de una orden durante la consulta**
+
+  - ¿Cómo presenta el sistema una orden que se ejecuta o cancela mientras se calcula el resumen?
+    El sistema debe obtener ambos conteos desde una misma vista consistente. Una orden no debe aparecer simultáneamente como pendiente y ejecutada o cancelada dentro de la misma respuesta.
+
 ## Requirements
 
 ### Functional Requirements
@@ -83,6 +115,9 @@ Como administrador, quiero programar la fecha y hora del sacrificio de un lote a
 - **FR-006**: La entidad Galpón proporcionada por el módulo 1 DEBE permanecer en estado `En cosecha` mientras la orden esté programada o sea reprogramada, y la cancelación NO DEBE modificar el galpón ni el alojamiento del lote.
 - **FR-007**: Al llegar la fecha y hora programadas, el sistema DEBE marcar la orden como ejecutada, cambiar a `vaciado sanitario` el estado de la entidad Galpón proporcionada por el módulo 1 y finalizar la relación de alojamiento del lote.
 - **FR-008**: Antes de crear o reprogramar una orden, el sistema DEBE utilizar la información vigente de las entidades Galpón y Lote proporcionadas por el módulo 1 y rechazar la operación si no puede verificarla completamente.
+- **FR-009**: El sistema DEBE permitir que el administrador consulte en la pantalla de inicio la cantidad total de órdenes de sacrificio registradas y la cantidad de órdenes pendientes de ejecución.
+- **FR-010**: Para el resumen, una orden DEBE considerarse pendiente únicamente cuando esté programada o reprogramada, no haya sido cancelada y todavía no haya sido ejecutada.
+- **FR-011**: Los conteos total y pendiente DEBEN calcularse desde una misma vista consistente y la consulta NO DEBE modificar órdenes, galpones ni lotes.
 
 ### Key Entities
 
@@ -95,6 +130,9 @@ Como administrador, quiero programar la fecha y hora del sacrificio de un lote a
 - **Lote de aves**: Representa el grupo de aves cuyo sacrificio se programa y es proporcionado por el módulo 1.
   - **Atributos relevantes**: fecha de ingreso, población actual y estado.
   - **Relaciones**: se encuentra alojado en el galpón y está asociado con la orden de sacrificio.
+- **Resumen de órdenes de sacrificio**: Representa el indicador agregado presentado en la pantalla de inicio del administrador.
+  - **Datos mostrados**: cantidad total de órdenes registradas y cantidad de órdenes programadas pendientes de ejecución.
+  - **Origen**: se calcula a partir del estado vigente de las órdenes sin modificar su ciclo de vida.
 
 ## Success Criteria
 
@@ -104,3 +142,6 @@ Como administrador, quiero programar la fecha y hora del sacrificio de un lote a
 - **SC-002**: El 95 % de las operaciones de programación, reprogramación y cancelación confirma su resultado en un máximo de 1 segundo.
 - **SC-003**: Al menos el 99 % de las órdenes ejecutadas cambia el estado del galpón a `vaciado sanitario` dentro del primer minuto posterior a la fecha y hora programadas.
 - **SC-004**: Al menos el 90 % de los administradores puede reprogramar o cancelar una orden correctamente en el primer intento durante pruebas de usabilidad.
+- **SC-005**: El 100 % de los resúmenes contabiliza correctamente el total de órdenes y las órdenes pendientes según su estado vigente.
+- **SC-006**: El 95 % de los resúmenes de órdenes se presenta en un máximo de 1 segundo.
+- **SC-007**: El 100 % de las consultas del resumen se ejecuta sin modificar órdenes, galpones ni lotes.
