@@ -128,5 +128,5 @@ Como trabajador u operario de granja, quiero que el sistema me informe con clari
 - La prescripción, definición y registro inicial de medicaciones (cubierto en SPEC-008 *Registrar medicación*).
 - La emisión de diagnósticos y asignación de tratamientos por el veterinario (cubierto en SPEC-011 *Diagnosticar galpón*).
 - El registro del consumo real y descuento de existencias en el inventario de medicamentos (cubierto en SPEC-013 *Registrar consumo de medicamento*).
-- El registro de recepciones de medicamentos en bodega central (cubierto en SPEC-002 *Registro de medicamentos en bodega central*).
+- El registro de recepciones de medicamentos en bodega central (cubierto en SPEC-002 *Registro de recepción de medicamento*).
 - La creación o administración de medicamentos maestros, galpones y lotes.

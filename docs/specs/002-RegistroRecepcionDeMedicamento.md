@@ -1,4 +1,4 @@
-# Feature Specification: Registro de medicamentos en bodega central
+# Feature Specification: Registro de recepción de medicamento
 
 **Created**: 2026-08-28  
 
@@ -6,18 +6,18 @@
 
 ### User Story 1 - Registrar una recepción de medicamento (Priority: P1)
 
-Como administrador, quiero registrar cada recepción de medicamentos que ingresa a la bodega central para mantener un inventario exacto, valorizado y trazable por compra, y conservar sus precios históricos de compra para que el módulo 3 pueda calcular el costo de los medicamentos aplicados a cada lote de aves.
+Como administrador, quiero registrar cada recepción de medicamento que ingresa a la bodega central para dejar formalizada y trazable cada compra, generar su movimiento de entrada y conservar sus precios históricos para que el módulo 3 pueda calcular el costo de los medicamentos aplicados a cada lote de aves.
 
-**Why this priority**: El registro de la recepción constituye la entrada oficial del medicamento al inventario. Sin sus cantidades y precios históricos de compra no es posible conocer las existencias ni valorar en el módulo 3 los medicamentos realmente aplicados a cada lote de aves.
+**Why this priority**: El registro de la recepción constituye la entrada oficial del medicamento al inventario. Sin sus cantidades y precios históricos de compra no es posible mantener la trazabilidad de las compras ni valorar en el módulo 3 los medicamentos realmente aplicados a cada lote de aves.
 
-**Independent Test**: Se puede probar registrando una recepción de varios envases con una presentación existente en el catálogo y verificando que el sistema cree una entrada independiente, convierta la cantidad recibida a contenido neto, calcule el precio neto de compra por unidad base, actualice las existencias de la bodega central y conserve ese precio asociado a la recepción para su posterior uso por el módulo 3.
+**Independent Test**: Se puede probar registrando una recepción de varios envases con una presentación existente en el catálogo y verificando que el sistema cree una recepción independiente, convierta la cantidad recibida a contenido neto, calcule el precio neto de compra por unidad base, genere el movimiento de entrada correspondiente y conserve ese precio asociado a la recepción para su posterior uso por el módulo 3.
 
 **Acceptance Scenarios**:
 
 1. **Scenario**: Registro correcto de una recepción
    - **Given** que un administrador autenticado dispone de los datos completos de una recepción y selecciona un medicamento y una presentación activos del catálogo
    - **When** registra el código de lote, cantidad de unidades recibidas, precio neto de compra por unidad física, impuesto, fecha actual como fecha de ingreso y una fecha de vencimiento válida
-   - **Then** el sistema crea una recepción independiente, convierte la cantidad recibida a `gr`, `ml` o `unidad`, calcula el contenido neto total, el precio neto de compra por unidad base y el subtotal neto de la recepción, actualiza el inventario y conserva los precios históricos asociados a la recepción para el módulo 3
+   - **Then** el sistema crea una recepción independiente, convierte la cantidad recibida a `gr`, `ml` o `unidad`, calcula el contenido neto total, el precio neto de compra por unidad base y el subtotal neto de la recepción, genera un movimiento confirmado de entrada y conserva los precios históricos asociados a la recepción para el módulo 3
 
 2. **Scenario**: Registro de una compra con un código de lote existente
    - **Given** que ya existe una recepción con el mismo código de lote
@@ -91,13 +91,13 @@ Como administrador, quiero editar una recepción que todavía no tenga movimient
 - **FR-002**: Cada recepción DEBE referenciar un medicamento y una presentación compatibles y activos del catálogo y registrar código de lote, cantidad recibida, precio neto de compra por unidad física, impuesto, fecha de ingreso y fecha de vencimiento.
 - **FR-003**: El sistema DEBE validar los datos obligatorios y rechazar el registro cuando estén incompletos, sean inválidos o los valores calculados excedan los límites admitidos.
 - **FR-004**: El sistema DEBE calcular el contenido neto total, el precio neto de compra por unidad base y el subtotal neto de la recepción a partir de la presentación, la cantidad recibida y el precio neto de compra por unidad física; la unidad base DEBE ser `gr`, `ml` o `unidad`.
-- **FR-005**: Cada ingreso DEBE crear una recepción independiente, incluso si comparte código de lote con otra, e incorporar su contenido neto al inventario de la bodega central.
+- **FR-005**: Cada ingreso DEBE crear una recepción independiente, incluso si comparte código de lote con otra, conservando sus propios datos, precios de compra y fechas.
 - **FR-006**: Al confirmar el registro, el sistema DEBE conservar y dejar disponibles para el módulo 3 el identificador de la recepción, el medicamento, el código de lote del medicamento, la presentación, el precio neto de compra por unidad física, el precio neto de compra por unidad base, el subtotal neto de la recepción, el impuesto y la moneda.
 - **FR-007**: La modificación posterior del precio de otra recepción o del precio vigente de un medicamento NO DEBE alterar el precio histórico asociado a una aplicación ya registrada.
 - **FR-008**: La información suministrada DEBE permitir al módulo 3 calcular el costo de los medicamentos mediante la suma de `cantidad aplicada de cada recepción × precio neto histórico de compra por unidad base`. El subtotal de una recepción NO DEBE tratarse como costo de un lote de aves.
 - **FR-009**: Los cambios posteriores realizados sobre el medicamento o su presentación en el catálogo NO DEBEN modificar los datos históricos de una recepción confirmada. La recepción DEBE conservar los datos comerciales y de presentación necesarios como valores históricos de referencia.
 - **FR-010**: El código de lote NO DEBE utilizarse como identificador único de la recepción. Cada recepción DEBE tener un identificador propio y puede compartir el código de lote con otras recepciones.
-- **FR-011**: El sistema DEBE calcular automáticamente la existencia disponible de cada medicamento consolidando los movimientos confirmados asociados con sus recepciones y dejar este resultado disponible para las consultas de inventario.
+- **FR-011**: Al confirmar una recepción, el sistema DEBE generar un movimiento de entrada por su contenido neto total, vincularlo con la recepción y dejarlo disponible como fuente para la consulta de inventario definida en el SPEC-023.
 - **FR-012**: El sistema DEBE permitir editar una recepción exclusivamente a usuarios con rol de administrador y únicamente cuando no tenga movimientos de salida, despacho o consumo asociados.
 - **FR-013**: Durante la edición, el administrador DEBE poder corregir el medicamento, la presentación, el código de lote, la cantidad recibida, el precio neto de compra por unidad física, el impuesto, la fecha de ingreso y la fecha de vencimiento.
 - **FR-014**: Para guardar una edición, el administrador DEBE proporcionar una observación que justifique el cambio.
@@ -130,7 +130,13 @@ Como administrador, quiero editar una recepción que todavía no tenga movimient
 ### Measurable Outcomes
 
 - **SC-001**: Al menos el 90 % de los administradores puede completar un registro de medicamento válido en menos de 3 minutos.
-- **SC-002**: El 95 % de los registros confirmados muestra los cálculos, actualiza el inventario y deja sus precios históricos de compra disponibles para el módulo 3 en un máximo de 2 segundos.
+- **SC-002**: El 95 % de los registros confirmados muestra los cálculos, genera el movimiento de entrada y deja sus precios históricos de compra disponibles para el módulo 3 en un máximo de 2 segundos.
 - **SC-003**: Al menos el 90 % de los usuarios completa correctamente el registro de medicamento en el primer intento durante pruebas de usabilidad.
 - **SC-004**: Al menos el 85 % de los administradores califica la experiencia de registro con 4 o más puntos sobre 5.
+
+## Out of Scope
+
+- La consulta consolidada de existencias de alimentos y medicamentos en la bodega central, cubierta por el SPEC-023 *Consultar inventario*.
+- El registro de salidas, despachos, aplicaciones, consumos o ajustes de medicamentos.
+- La creación o administración del catálogo de medicamentos y sus presentaciones.
 
