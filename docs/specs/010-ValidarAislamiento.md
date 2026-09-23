@@ -6,11 +6,19 @@
 
 ### User Story 1 - Evaluar y validar el aislamiento solicitado (Priority: P1)
 
+<<<<<<< Updated upstream
 Como veterinario, quiero recibir la solicitud de revisión enviada por un trabajador y evaluar el galpón proporcionado por el módulo 1, para validar su aislamiento cuando corresponda y cambiar su estado de `productiva` a `aislamiento`.
 
 **Why this priority**: La solicitud del trabajador permite que el veterinario comience la evaluación del galpón, pero la evaluación y la decisión de validar el aislamiento son responsabilidades exclusivas del veterinario.
 
 **Independent Test**: Se puede probar utilizando una solicitud de revisión enviada por un trabajador para un galpón proporcionado por el módulo 1. El sistema debe permitir que únicamente un veterinario inicie la evaluación y valide el aislamiento. Si el galpón continúa en estado `productiva`, la validación debe cambiarlo a `aislamiento`; recibir o enviar la solicitud por sí solo no debe modificar su estado.
+=======
+Como veterinario, quiero recibir la solicitud de revisión enviada por un trabajador y evaluar el galpón proporcionado por el módulo 1, para validar su aislamiento cuando corresponda y cambiar su estado de `En producción` a `aislamiento`.
+
+**Why this priority**: La solicitud del trabajador permite que el veterinario comience la evaluación del galpón, pero la evaluación y la decisión de validar el aislamiento son responsabilidades exclusivas del veterinario.
+
+**Independent Test**: Se puede probar utilizando una solicitud de revisión enviada por un trabajador para un galpón proporcionado por el módulo 1. El sistema debe permitir que únicamente un veterinario inicie la evaluación y valide el aislamiento. Si el galpón continúa en estado `En producción`, la validación debe cambiarlo a `aislamiento`; recibir o enviar la solicitud por sí solo no debe modificar su estado.
+>>>>>>> Stashed changes
 
 **Acceptance Scenarios**:
 
@@ -20,7 +28,11 @@ Como veterinario, quiero recibir la solicitud de revisión enviada por un trabaj
    - **Then** el sistema le permite evaluar el galpón y conserva su estado sin cambios hasta que el veterinario complete la validación
 
 2. **Scenario**: Validación correcta del aislamiento
+<<<<<<< Updated upstream
    - **Given** que el veterinario está evaluando una solicitud enviada por un trabajador y el módulo 1 confirma que el galpón continúa en estado `productiva`
+=======
+   - **Given** que el veterinario está evaluando una solicitud enviada por un trabajador y el módulo 1 confirma que el galpón continúa en estado `En producción`
+>>>>>>> Stashed changes
    - **When** el veterinario valida el aislamiento
    - **Then** el sistema cambia y guarda el estado del galpón como `aislamiento`
 
@@ -34,8 +46,13 @@ Como veterinario, quiero recibir la solicitud de revisión enviada por un trabaj
    - **When** solicita ejecutar la acción
    - **Then** el sistema rechaza la operación y no modifica la solicitud ni el estado del galpón
 
+<<<<<<< Updated upstream
 5. **Scenario**: Galpón que no está en estado productiva
    - **Given** que el veterinario recibió la solicitud, pero el módulo 1 informa que el estado vigente del galpón es diferente de `productiva`
+=======
+5. **Scenario**: Galpón que no está en producción
+   - **Given** que el veterinario recibió la solicitud, pero el módulo 1 informa que el estado vigente del galpón es diferente de `En producción`
+>>>>>>> Stashed changes
    - **When** intenta validar el aislamiento
    - **Then** el sistema rechaza la validación, informa que el galpón no se encuentra en el estado requerido y conserva su estado actual
 
@@ -49,7 +66,11 @@ Como veterinario, quiero recibir la solicitud de revisión enviada por un trabaj
 - **Edge case #1 - Cambio del estado después de recibir la solicitud**
 
   - ¿Cómo maneja el sistema un galpón cuyo estado cambia después de que el veterinario recibe la solicitud y antes de completar la validación?  
+<<<<<<< Updated upstream
     El sistema debe consultar nuevamente en el módulo 1 el estado vigente del galpón. Solo debe completar la validación si el estado continúa siendo `productiva`; en caso contrario, debe rechazarla e informar la inconsistencia.
+=======
+    El sistema debe consultar nuevamente en el módulo 1 el estado vigente del galpón. Solo debe completar la validación si el estado continúa siendo `En producción`; en caso contrario, debe rechazarla e informar la inconsistencia.
+>>>>>>> Stashed changes
 
 - **Edge case #2 - Repetición de una validación completada**
 
@@ -70,9 +91,15 @@ Como veterinario, quiero recibir la solicitud de revisión enviada por un trabaj
 - **FR-003**: El envío de la solicitud únicamente DEBE iniciar el flujo de revisión y NO DEBE permitir que el trabajador evalúe, valide ni cambie el estado del galpón.
 - **FR-004**: La solicitud de revisión DEBE estar asociada con la entidad Galpón correspondiente proporcionada por el módulo 1.
 - **FR-005**: El sistema DEBE obtener del módulo 1 la entidad Galpón asociada con la solicitud y verificar su estado vigente.
+<<<<<<< Updated upstream
 - **FR-006**: El sistema DEBE permitir la validación únicamente cuando la entidad Galpón proporcionada por el módulo 1 se encuentre en estado `productiva`.
 - **FR-007**: Cuando el veterinario complete correctamente la validación, el sistema DEBE cambiar y guardar como `aislamiento` el estado de la entidad Galpón proporcionada por el módulo 1.
 - **FR-008**: Cuando el galpón no se encuentre en estado `productiva`, el sistema DEBE rechazar la validación, informar la razón y conservar su estado actual.
+=======
+- **FR-006**: El sistema DEBE permitir la validación únicamente cuando la entidad Galpón proporcionada por el módulo 1 se encuentre en estado `En producción`.
+- **FR-007**: Cuando el veterinario complete correctamente la validación, el sistema DEBE cambiar y guardar como `aislamiento` el estado de la entidad Galpón proporcionada por el módulo 1.
+- **FR-008**: Cuando el galpón no se encuentre en estado `En producción`, el sistema DEBE rechazar la validación, informar la razón y conservar su estado actual.
+>>>>>>> Stashed changes
 - **FR-009**: Antes de confirmar la validación, el sistema DEBE consultar nuevamente en el módulo 1 el estado vigente del galpón y rechazar la operación si no puede verificarlo.
 - **FR-010**: La validación NO DEBE modificar ningún dato de la entidad Galpón distinto de su estado ni alterar otras entidades proporcionadas por el módulo 1.
 
@@ -84,7 +111,11 @@ Como veterinario, quiero recibir la solicitud de revisión enviada por un trabaj
 - **Galpón**: Representa el espacio cuya necesidad de aislamiento evalúa el veterinario y es proporcionado por el módulo 1.
   - **Atributos utilizados**: estado.
   - **Relaciones**: corresponde a la solicitud de revisión que da inicio a la evaluación.
+<<<<<<< Updated upstream
   - **Transición de estado**: pasa de `productiva` a `aislamiento` únicamente cuando el veterinario completa correctamente la validación.
+=======
+  - **Transición de estado**: pasa de `En producción` a `aislamiento` únicamente cuando el veterinario completa correctamente la validación.
+>>>>>>> Stashed changes
 
 ## Success Criteria
 
