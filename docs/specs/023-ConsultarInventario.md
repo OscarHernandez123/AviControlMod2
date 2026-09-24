@@ -6,46 +6,46 @@
 
 ### User Story 1 - Consultar existencias de alimentos y medicamentos (Priority: P1)
 
-Como administrador, quiero consultar en un mismo lugar las existencias disponibles de alimentos y medicamentos de la bodega central para conocer el inventario vigente y apoyar las decisiones de abastecimiento sin modificar sus movimientos.
+Como administrador o nutricionista, quiero consultar en un mismo lugar las existencias disponibles de alimentos y medicamentos de la bodega central para conocer el inventario vigente y apoyar las decisiones de abastecimiento sin modificar sus movimientos.
 
-**Why this priority**: La consulta consolidada permite al administrador conocer la disponibilidad real de los insumos registrados mediante recepciones y afectados posteriormente por salidas, consumos o ajustes. Esta responsabilidad debe permanecer separada del registro y la edición de recepciones.
+**Why this priority**: La consulta consolidada permite al administrador y al nutricionista conocer la disponibilidad real de los insumos registrados mediante recepciones y afectados posteriormente por salidas, consumos o ajustes. Esta responsabilidad debe permanecer separada del registro y la edición de recepciones.
 
-**Independent Test**: Se puede probar registrando recepciones y movimientos confirmados de alimentos y medicamentos, ingresando como administrador a la consulta y verificando que cada sección muestre los saldos disponibles consolidados en su unidad correspondiente, sin crear ni modificar datos.
+**Independent Test**: Se puede probar registrando recepciones y movimientos confirmados de alimentos y medicamentos, ingresando por separado como administrador y como nutricionista a la consulta y verificando que cada sección muestre los saldos disponibles consolidados en su unidad correspondiente, sin crear ni modificar datos.
 
 **Acceptance Scenarios**:
 
 1. **Scenario**: Consulta conjunta con existencias disponibles
    - **Given** que existen recepciones y movimientos confirmados de alimentos y medicamentos en la bodega central
-   - **When** el administrador consulta el inventario
+   - **When** el administrador o el nutricionista consulta el inventario
    - **Then** el sistema muestra una sección de alimentos y otra de medicamentos con las existencias disponibles calculadas a partir de sus movimientos confirmados
 
 2. **Scenario**: Consulta de existencias de alimentos
    - **Given** que existen alimentos con saldo disponible provenientes de una o varias recepciones
-   - **When** el administrador consulta la sección de alimentos
+   - **When** el administrador o el nutricionista consulta la sección de alimentos
    - **Then** el sistema agrupa las existencias por alimento, tipo de alimento y peso nominal por bulto, y muestra la cantidad disponible en kilogramos y su equivalente en bultos
 
 3. **Scenario**: Consulta de existencias de medicamentos
    - **Given** que existen medicamentos con saldo disponible provenientes de una o varias recepciones
-   - **When** el administrador consulta la sección de medicamentos
+   - **When** el administrador o el nutricionista consulta la sección de medicamentos
    - **Then** el sistema agrupa las existencias por medicamento, presentación y unidad base, y muestra la cantidad física equivalente y el contenido neto total disponible en `gr`, `ml` o `unidad`
 
 4. **Scenario**: Producto registrado sin existencias disponibles
    - **Given** que un alimento o medicamento del catálogo no tiene recepciones confirmadas con saldo disponible
-   - **When** el administrador consulta el inventario
+   - **When** el administrador o el nutricionista consulta el inventario
    - **Then** el sistema muestra el producto con existencia disponible igual a cero, sin confundirlo con un error de consulta
 
 5. **Scenario**: Exclusión de recepciones vencidas o anuladas
    - **Given** que existen recepciones vencidas o anuladas con saldo registrado
-   - **When** el administrador consulta el inventario
+   - **When** el administrador o el nutricionista consulta el inventario
    - **Then** el sistema excluye esas cantidades de la existencia disponible y las identifica como no disponibles
 
 6. **Scenario**: Intento de consulta por un usuario no autorizado
-   - **Given** que un usuario sin rol de administrador intenta consultar el inventario
+   - **Given** que un usuario sin rol de administrador ni de nutricionista intenta consultar el inventario
    - **When** solicita acceder a la consulta
    - **Then** el sistema rechaza el acceso y no expone información de existencias
 
 7. **Scenario**: Consulta sin modificar el inventario
-   - **Given** que el administrador visualiza las existencias de alimentos y medicamentos
+   - **Given** que el administrador o el nutricionista visualiza las existencias de alimentos y medicamentos
    - **When** navega entre las secciones o actualiza la consulta
    - **Then** el sistema vuelve a calcular la información vigente sin crear recepciones, movimientos ni ajustes, y sin modificar los saldos existentes
 
@@ -53,7 +53,7 @@ Como administrador, quiero consultar en un mismo lugar las existencias disponibl
 
 ### User Story 2 - Consultar resumen del inventario en la pantalla de inicio (Priority: P2)
 
-Como administrador, quiero visualizar en la pantalla de inicio el porcentaje de ocupación de la bodega central, los productos con inventario crítico y las recepciones de alimento registradas recientemente para conocer rápidamente la situación del inventario y decidir si debo revisar su detalle.
+Como administrador o nutricionista, quiero visualizar en la pantalla de inicio el porcentaje de ocupación de la bodega central, los productos con inventario crítico y las recepciones de alimento registradas recientemente para conocer rápidamente la situación del inventario y decidir si debo revisar su detalle.
 
 **Why this priority**: El resumen permite detectar falta de espacio, agotamientos y niveles bajos sin reemplazar la consulta detallada del inventario ni el registro de recepciones.
 
@@ -63,26 +63,26 @@ Como administrador, quiero visualizar en la pantalla de inicio el porcentaje de 
 
 1. **Scenario**: Cálculo del porcentaje de ocupación
    - **Given** que la bodega central tiene una capacidad máxima de almacenamiento y una ocupación actual expresadas en la misma unidad
-   - **When** el administrador ingresa a la pantalla de inicio
+   - **When** el administrador o el nutricionista ingresa a la pantalla de inicio
    - **Then** el sistema muestra el porcentaje de ocupación calculado como `ocupación actual ÷ capacidad máxima × 100`
 
 2. **Scenario**: Clasificación del estado de disponibilidad de un alimento
    - **Given** que el inventario tiene alimentos con 0 kg, con más de 0 kg y menos de 20 kg, y con 20 kg o más disponibles
-   - **When** el administrador consulta el resumen de inventario crítico
+   - **When** el administrador o el nutricionista consulta el resumen de inventario crítico
    - **Then** el sistema los clasifica respectivamente como `Sin stock`, `Stock bajo` y `Disponible`
 
 3. **Scenario**: Visualización de medicamentos críticos
    - **Given** que cada medicamento o presentación tiene configurado un nivel mínimo de existencia en su unidad base
-   - **When** el administrador consulta el resumen de inventario crítico
+   - **When** el administrador o el nutricionista consulta el resumen de inventario crítico
    - **Then** el sistema muestra `Sin stock` cuando la existencia es cero, `Stock bajo` cuando es mayor que cero pero inferior al mínimo configurado y `Disponible` cuando alcanza o supera ese mínimo
 
 4. **Scenario**: Visualización de recepciones recientes de alimento
    - **Given** que existen más de cinco recepciones de alimento confirmadas
-   - **When** el administrador ingresa a la pantalla de inicio
+   - **When** el administrador o el nutricionista ingresa a la pantalla de inicio
    - **Then** el sistema muestra las cinco recepciones más recientes ordenadas desde la más nueva, indicando código de lote, alimento, cantidad de bultos, precio por bulto, peso por bulto y fecha de ingreso
 
 5. **Scenario**: Resumen sin alterar el inventario
-   - **Given** que el administrador visualiza o actualiza el resumen del inventario
+   - **Given** que el administrador o el nutricionista visualiza o actualiza el resumen del inventario
    - **When** el sistema recalcula sus indicadores
    - **Then** no crea ni modifica la bodega, los productos, las recepciones, los movimientos ni sus existencias
 
@@ -90,7 +90,7 @@ Como administrador, quiero visualizar en la pantalla de inicio el porcentaje de 
 
 - **Edge case #1 - Movimientos concurrentes durante la consulta**
 
-  - ¿Qué sucede si se confirma una entrada, salida, consumo o ajuste mientras el administrador tiene abierta la consulta?
+  - ¿Qué sucede si se confirma una entrada, salida, consumo o ajuste mientras el administrador o el nutricionista tiene abierta la consulta?
     El sistema debe obtener una vista consistente de los movimientos confirmados al momento de ejecutar o actualizar la consulta. No debe combinar saldos calculados en momentos diferentes dentro de una misma respuesta.
 
 - **Edge case #2 - Alimentos con diferentes pesos nominales por bulto**
@@ -122,7 +122,7 @@ Como administrador, quiero visualizar en la pantalla de inicio el porcentaje de 
 
 ### Functional Requirements
 
-- **FR-001**: El sistema DEBE permitir la consulta del inventario exclusivamente a usuarios autenticados con rol de administrador.
+- **FR-001**: El sistema DEBE permitir la consulta del inventario exclusivamente a usuarios autenticados con rol de administrador o de nutricionista.
 - **FR-002**: El sistema DEBE presentar en una misma funcionalidad dos secciones diferenciadas: existencias de alimentos y existencias de medicamentos.
 - **FR-003**: La existencia disponible DEBE calcularse exclusivamente a partir de movimientos confirmados de entrada, salida, consumo y ajuste vinculados con las recepciones de la bodega central.
 - **FR-004**: Para cada grupo de alimentos, el sistema DEBE mostrar el alimento, el tipo de alimento, el peso nominal por bulto, la existencia disponible en kilogramos y la cantidad equivalente en bultos.
@@ -135,9 +135,9 @@ Como administrador, quiero visualizar en la pantalla de inicio el porcentaje de 
 - **FR-011**: Cada ejecución o actualización de la consulta DEBE utilizar una vista consistente y vigente de los movimientos confirmados.
 - **FR-012**: Si la consolidación produce un saldo negativo, el sistema DEBE informar una inconsistencia y NO DEBE presentar dicho valor como existencia disponible ni generar ajustes automáticos.
 - **FR-013**: La consulta DEBE operar estrictamente en modo de solo lectura y NO DEBE crear, editar o eliminar recepciones, movimientos, consumos, despachos ni ajustes.
-- **FR-014**: El sistema DEBE rechazar la consulta de inventario realizada por cualquier usuario que no tenga el rol de administrador.
+- **FR-014**: El sistema DEBE rechazar la consulta de inventario realizada por cualquier usuario que no tenga el rol de administrador ni de nutricionista.
 - **FR-015**: La bodega central DEBE disponer de una capacidad máxima de almacenamiento, una ocupación actual y una unidad de capacidad común que permita comparar ambos valores.
-- **FR-016**: El sistema DEBE calcular el porcentaje de ocupación como `ocupación actual ÷ capacidad máxima × 100` y mostrarlo en la pantalla de inicio del administrador.
+- **FR-016**: El sistema DEBE calcular el porcentaje de ocupación como `ocupación actual ÷ capacidad máxima × 100` y mostrarlo en la pantalla de inicio del administrador y del nutricionista.
 - **FR-017**: Si la capacidad máxima es cero o no está configurada, el sistema DEBE indicar que el porcentaje de ocupación no está disponible y NO DEBE intentar calcularlo.
 - **FR-018**: El estado de disponibilidad de un alimento DEBE calcularse a partir de su existencia vigente: `Sin stock` cuando sea igual a 0 kg, `Stock bajo` cuando sea mayor que 0 kg y menor que 20 kg, y `Disponible` cuando sea igual o superior a 20 kg.
 - **FR-019**: El estado de disponibilidad de un medicamento DEBE calcularse en su unidad base: `Sin stock` cuando su existencia sea cero, `Stock bajo` cuando sea mayor que cero e inferior al mínimo configurado para el medicamento o presentación, y `Disponible` cuando alcance o supere dicho mínimo.
@@ -149,7 +149,7 @@ Como administrador, quiero visualizar en la pantalla de inicio el porcentaje de 
 
 ### Key Entities
 
-- **Bodega central**: Representa el inventario principal cuyas existencias consulta el administrador.
+- **Bodega central**: Representa el inventario principal cuyas existencias consultan el administrador y el nutricionista.
   - **Atributos utilizados**: capacidad máxima de almacenamiento, ocupación actual y unidad de capacidad.
   - **Relaciones**: recibe las recepciones de alimentos y medicamentos y reúne los movimientos que determinan sus saldos disponibles y su ocupación.
 - **Existencia de alimento**: Representa el resultado de consolidar los movimientos confirmados de alimento.
@@ -166,19 +166,19 @@ Como administrador, quiero visualizar en la pantalla de inicio el porcentaje de 
 - **Estado de disponibilidad**: Representa la clasificación calculada de una existencia como `Disponible`, `Stock bajo` o `Sin stock`.
   - **Reglas**: para alimentos utiliza los umbrales en kilogramos; para medicamentos utiliza la existencia y el mínimo configurado en una unidad base compatible.
   - **Comportamiento**: se recalcula con los movimientos vigentes y no se edita manualmente ni se almacena como estado del producto maestro.
-- **Resumen de inventario**: Representa la información agregada mostrada en la pantalla de inicio del administrador.
+- **Resumen de inventario**: Representa la información agregada mostrada en la pantalla de inicio del administrador y del nutricionista.
   - **Datos mostrados**: porcentaje de ocupación, productos con inventario crítico y las cinco recepciones de alimento confirmadas más recientes.
 
 ## Success Criteria
 
 ### Measurable Outcomes
 
-- **SC-001**: Al menos el 90 % de los administradores puede identificar las existencias disponibles de un alimento y un medicamento en menos de 2 minutos.
+- **SC-001**: Al menos el 90 % de los administradores y el 90 % de los nutricionistas pueden identificar las existencias disponibles de un alimento y un medicamento en menos de 2 minutos.
 - **SC-002**: El 100 % de las existencias mostradas coincide con la consolidación de los movimientos confirmados y excluye recepciones vencidas o anuladas.
 - **SC-003**: El 100 % de las consultas separa correctamente alimentos con pesos nominales diferentes y medicamentos con unidades base incompatibles.
 - **SC-004**: El 95 % de las consultas presenta ambas secciones en un máximo de 2 segundos.
 - **SC-005**: El 100 % de las consultas se ejecuta sin modificar recepciones, movimientos ni saldos de inventario.
-- **SC-006**: El 100 % de los intentos de acceso realizados por usuarios sin rol de administrador es rechazado.
+- **SC-006**: El 100 % de los intentos de acceso realizados por usuarios sin rol de administrador ni de nutricionista es rechazado.
 - **SC-007**: El 100 % de los porcentajes de ocupación mostrados coincide con la capacidad máxima y la ocupación vigente de la bodega central.
 - **SC-008**: El 100 % de los alimentos se clasifica correctamente como `Sin stock`, `Stock bajo` o `Disponible` según los umbrales definidos.
 - **SC-009**: El 100 % de los resúmenes muestra como máximo las cinco recepciones de alimento confirmadas más recientes en el orden establecido.
