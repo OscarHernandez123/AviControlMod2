@@ -21,15 +21,10 @@ Como trabajador u operario de granja, quiero registrar y enviar una solicitud de
    - **And** establece el estado de la solicitud como "Pendiente de validación"
    - **And** conserva el estado del galpón como "En producción" hasta que el veterinario resuelva la validación
 
-<<<<<<< Updated upstream
-2. **Scenario**: Intento de solicitud en un galpón con estado diferente a "En cosecha"
-   - **Given** que el galpón asignado se encuentra en estado `productiva`, `disponible` o `vaciado sanitario`
-=======
-2. **Scenario**: Intento de solicitud en un galpón con estado diferente a "En producción"
-   - **Given** que el galpón asignado se encuentra en estado "En cosecha", "disponible" o "vaciado sanitario"
->>>>>>> Stashed changes
+2. **Scenario**: Intento de solicitud en un galpón con estado diferente a "productiva"
+   - **Given** que el galpón asignado se encuentra en estado `en cosecha`, `disponible`, `mantenimiento` o `vaciado sanitario`
    - **When** el trabajador intenta registrar una solicitud de validación de aislamiento
-   - **Then** el sistema rechaza la solicitud, informa que el galpón debe encontrarse en estado "En producción" y no crea el registro
+   - **Then** el sistema rechaza la solicitud, informa que el galpón debe encontrarse en estado `productiva` y no crea el registro
 
 3. **Scenario**: Intento de solicitud con justificación o síntomas vacíos
    - **Given** un galpón asignado en estado "En producción"
