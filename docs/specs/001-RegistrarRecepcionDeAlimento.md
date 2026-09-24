@@ -16,7 +16,7 @@ Como administrador, quiero registrar cada recepción de alimento que ingresa a l
 
 1. **Scenario**: Registro correcto de una recepción
    - **Given** que un administrador autenticado dispone de los datos completos de una entrega y selecciona un alimento activo del catálogo
-   - **When** registra el código de lote, cantidad de bultos, peso nominal por bulto, precio neto de compra por bulto, impuesto, fecha de ingreso y fecha de vencimiento
+   - **When** registra el código de lote, cantidad de bultos, peso nominal por bulto, precio neto de compra por bulto, impuesto, fecha de ingreso y fecha de vencimientogit 
    - **Then** el sistema crea una recepción confirmada en la bodega central, obtiene el tipo del alimento, calcula los kilogramos nominales totales, el precio neto de compra por kilogramo, el subtotal neto, el valor del impuesto y el total de la compra, genera un movimiento confirmado de entrada y conserva los precios históricos asociados a la recepción para el módulo 3
 
 2. **Scenario**: Registro de una entrega con un código de lote existente
