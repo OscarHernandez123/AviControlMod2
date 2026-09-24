@@ -177,6 +177,10 @@ Esta sección documenta la correspondencia estricta entre los controles del prot
 | Componente UI | Tipo | FR Asociado | Comportamiento Técnico y Validación |
 | :--- | :--- | :--- | :--- |
 | **Tabla de Patologías** | Data Grid | FR-002 | Lista código, nombre, nivel de riesgo, tipo y estado de sacrificio |
+| **Stat Cards de Resumen** | Metric Cards (4) | FR-002, FR-005 | Muestran: Total registradas, Riesgo Alto/Crítico, Riesgo Medio, Riesgo Bajo (agregados de la tabla) |
+| **Barra de Filtros** | Filter Bar | FR-002, FR-005, FR-006, FR-007 | Búsqueda por nombre/código + filtros por Nivel de Riesgo, Tipo Etiológico y Sacrificio Sanitario |
+| **Banner Informativo** | Info Banner | FR-002 | Muestra "Catálogo clínico maestro: sustenta prescripciones (Spec 008) y sacrificios (Spec 012)" |
+| **Warning Box en Formulario** | Alert Box | FR-010, FR-013 | Advierte que la modificación incrementará la versión optimista y prohíbe el borrado físico |
 | **Botón "+ Registrar enfermedad"** | Button (Primary) | FR-001, FR-002 | Abre el formulario lateral de alta (bloqueado para roles no autorizados) |
 | **Input "Código Nosológico Oficial"** | Text Input | FR-003 | Formato obligatorio `ID-ENF-XXX`, validación de unicidad en base de datos |
 | **Input "Nombre Clínico"** | Text Input | FR-002, FR-004 | Obligatorio, normalizado con `.trim()`, rechaza espacios en blanco |

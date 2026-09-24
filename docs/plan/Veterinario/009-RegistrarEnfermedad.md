@@ -157,14 +157,14 @@ src/main/java/com/avicontrol/sanidad/
 **Test Independiente**: `POST /api/v1/sanitary/enfermedades` con datos válidos y rol `VETERINARIO` retorna `201 Created`[cite: 1]. La enfermedad queda visible en la consulta, se genera una traza en `san_auditoria`, se almacena el mensaje en `san_outbox` y queda disponible para selección clínica inmediata[cite: 1].
 
 #### Tests para User Story 1
-- [ ] **T017** `[P]` `[US1]` Test de contrato: `POST /api/v1/sanitary/enfermedades` → 201 Created con cabecera `Location` y payload JSON (`EnfermedadControllerTest` vía MockMvc).
-- [ ] **T018** `[P]` `[US1]` Test de contrato: `POST /api/v1/sanitary/enfermedades` sin rol `VETERINARIO` → 403 Forbidden[cite: 1].
-- [ ] **T019** `[P]` `[US1]` Test de contrato: `POST /api/v1/sanitary/enfermedades` con código duplicado "ID-ENF-001" → 409 Conflict[cite: 5].
-- [ ] **T020** `[P]` `[US1]` Test de contrato: `POST /api/v1/sanitary/enfermedades` omitiendo campos obligatorios o enviando espacios en blanco → 400 Bad Request.
-- [ ] **T021** `[P]` `[US1]` Test de contrato: `POST /api/v1/sanitary/enfermedades` sin seleccionar explícitamente el indicador de sacrificio (`null`) → 400 Bad Request.
-- [ ] **T022** `[P]` `[US1]` Test unitario de `RegistrarEnfermedadUseCase` validando orquestación, unicidad de código y creación del agregado con invariantes de dominio.
-- [ ] **T023** `[P]` `[US1]` Test de integración con Testcontainers (PostgreSQL): Confirmar atomicidad transaccional (si falla auditoría u outbox, la enfermedad no se persiste).
-- [ ] **T024** `[P]` `[US1]` Test de integración con Testcontainers (Kafka): Verificar que el evento `EnfermedadRegistradaIntegrationEvent` se publique en el tópico `sanitary.disease.registered.v1`.
+- [ ] **T017** `[P]` `[US1]` `[TC-001]` Test de contrato: `POST /api/v1/sanitary/enfermedades` → 201 Created con cabecera `Location` y payload JSON (`EnfermedadControllerTest` vía MockMvc).
+- [ ] **T018** `[P]` `[US1]` `[TC-002]` Test de contrato: `POST /api/v1/sanitary/enfermedades` sin rol `VETERINARIO` → 403 Forbidden[cite: 1].
+- [ ] **T019** `[P]` `[US1]` `[TC-003]` Test de contrato: `POST /api/v1/sanitary/enfermedades` con código duplicado "ID-ENF-001" → 409 Conflict[cite: 5].
+- [ ] **T020** `[P]` `[US1]` `[TC-004]` Test de contrato: `POST /api/v1/sanitary/enfermedades` omitiendo campos obligatorios o enviando espacios en blanco → 400 Bad Request.
+- [ ] **T021** `[P]` `[US1]` `[TC-005]` Test de contrato: `POST /api/v1/sanitary/enfermedades` sin seleccionar explícitamente el indicador de sacrificio (`null`) → 400 Bad Request.
+- [ ] **T022** `[P]` `[US1]` `[TC-006]` Test unitario de `RegistrarEnfermedadUseCase` validando orquestación, unicidad de código y creación del agregado con invariantes de dominio.
+- [ ] **T023** `[P]` `[US1]` `[TC-007]` Test de integración con Testcontainers (PostgreSQL): Confirmar atomicidad transaccional (si falla auditoría u outbox, la enfermedad no se persiste).
+- [ ] **T024** `[P]` `[US1]` `[TC-008]` Test de integración con Testcontainers (Kafka): Verificar que el evento `EnfermedadRegistradaIntegrationEvent` se publique en el tópico `sanitary.disease.registered.v1`.
 
 #### Implementación de User Story 1
 - [ ] **T025** `[US1]` Crear DTOs de entrada y salida: `CrearEnfermedadRequest.java` con validaciones Jakarta (`@NotBlank`, `@Size(min=10)` para descripción, `@NotNull` para el booleano) y `EnfermedadResponse.java`.
@@ -188,11 +188,11 @@ src/main/java/com/avicontrol/sanidad/
 **Test Independiente**: Modificar el nivel de riesgo de una enfermedad de "Medio" a "Crítico" vía `PUT /api/v1/sanitary/enfermedades/{id}` eleva su versión a 2[cite: 5]. Los diagnósticos históricos asociados conservan los valores originales sin recálculo[cite: 4].
 
 #### Tests para User Story 2
-- [ ] **T031** `[P]` `[US2]` Test de contrato: `PUT /api/v1/sanitary/enfermedades/{id}` con datos válidos y versión coincidente → 200 OK.
-- [ ] **T032** `[P]` `[US2]` Test de contrato: `PUT /api/v1/sanitary/enfermedades/{id}` con modificación concurrente y versión desactualizada → 409 Conflict (`ConcurrenciaOptimistaException`).
-- [ ] **T033** `[P]` `[US2]` Test de contrato: `PUT /api/v1/sanitary/enfermedades/{id}` con ID inexistente → 404 Not Found.
-- [ ] **T034** `[P]` `[US2]` Test unitario de `EditarEnfermedadUseCase`: Verificar que los cambios eleven la versión y generen el evento `EnfermedadActualizadaIntegrationEvent`.
-- [ ] **T035** `[P]` `[US2]` Test de integración con Testcontainers: Verificar que la actualización modifique únicamente la tupla seleccionada y genere su respectiva traza histórica en `san_auditoria`.
+- [ ] **T031** `[P]` `[US2]` `[TC-009]` Test de contrato: `PUT /api/v1/sanitary/enfermedades/{id}` con datos válidos y versión coincidente → 200 OK.
+- [ ] **T032** `[P]` `[US2]` `[TC-010]` Test de contrato: `PUT /api/v1/sanitary/enfermedades/{id}` con modificación concurrente y versión desactualizada → 409 Conflict (`ConcurrenciaOptimistaException`).
+- [ ] **T033** `[P]` `[US2]` `[TC-011]` Test de contrato: `PUT /api/v1/sanitary/enfermedades/{id}` con ID inexistente → 404 Not Found.
+- [ ] **T034** `[P]` `[US2]` `[TC-012]` Test unitario de `EditarEnfermedadUseCase`: Verificar que los cambios eleven la versión y generen el evento `EnfermedadActualizadaIntegrationEvent`.
+- [ ] **T035** `[P]` `[US2]` `[TC-013]` Test de integración con Testcontainers: Verificar que la actualización modifique únicamente la tupla seleccionada y genere su respectiva traza histórica en `san_auditoria`.
 
 #### Implementación de User Story 2
 - [ ] **T036** `[US2]` Crear DTO `EditarEnfermedadRequest.java` con campos mutables (`nombre`, `nivelRiesgo`, `tipo`, `descripcion`, `requiereSacrificioSanitario`, `versionActual`).
@@ -214,10 +214,10 @@ src/main/java/com/avicontrol/sanidad/
 **Test Independiente**: Ejecutar `DELETE /api/v1/sanitary/enfermedades/{id}` retorna `405 Method Not Allowed`[cite: 1]. Los eventos en `san_outbox` en estado `PENDING` se publican en Kafka y cambian a `PROCESSED`.
 
 #### Tests para User Story 3
-- [ ] **T041** `[P]` `[US3]` Test de contrato y seguridad: Comprobar rechazo a llamadas HTTP `DELETE` → 405 Method Not Allowed[cite: 1].
-- [ ] **T042** `[P]` `[US3]` Test de base de datos: Verificar mediante test de repositorio la inexistencia de sentencias o métodos de borrado físico directo (`DELETE`) en la capa de persistencia[cite: 1].
-- [ ] **T043** `[P]` `[US3]` Test de integración Outbox Relay con Testcontainers (Kafka): Verificar lectura por lotes de `san_outbox` y publicación efectiva en el tópico `sanitary.disease.registered.v1`.
-- [ ] **T044** `[P]` `[US3]` Test de idempotencia: Enviar dos requests consecutivas idénticas con el mismo `X-Idempotency-Key` y verificar que la segunda retorna la respuesta original sin duplicar inserciones.
+- [ ] **T041** `[P]` `[US3]` `[TC-014]` Test de contrato y seguridad: Comprobar rechazo a llamadas HTTP `DELETE` → 405 Method Not Allowed[cite: 1].
+- [ ] **T042** `[P]` `[US3]` `[TC-015]` Test de base de datos: Verificar mediante test de repositorio la inexistencia de sentencias o métodos de borrado físico directo (`DELETE`) en la capa de persistencia[cite: 1].
+- [ ] **T043** `[P]` `[US3]` `[TC-016]` Test de integración Outbox Relay con Testcontainers (Kafka): Verificar lectura por lotes de `san_outbox` y publicación efectiva en el tópico `sanitary.disease.registered.v1`.
+- [ ] **T044** `[P]` `[US3]` `[TC-017]` Test de idempotencia: Enviar dos requests consecutivas idénticas con el mismo `X-Idempotency-Key` y verificar que la segunda retorna la respuesta original sin duplicar inserciones.
 
 #### Implementación de User Story 3
 - [ ] **T045** `[US3]` Configurar `SecurityConfig.java` bloqueando explícitamente cualquier verbo `DELETE` sobre rutas `/api/v1/sanitary/**`[cite: 1].
@@ -239,7 +239,7 @@ src/main/java/com/avicontrol/sanidad/
 
 - [ ] **T050** Configurar logging estructurado en formato JSON incorporando `traceId`, `spanId` y `correlationId` vía MDC de Slf4j.
 - [ ] **T051** Exponer métricas Prometheus con Micrometer (`sanitary_enfermedad_created_total`, `sanitary_outbox_lag_seconds`).
-- [ ] **T052** Implementar pruebas de carga con Gatling/k6 validando latencia < 250 ms bajo concurrencia sostenida de 200 req/s.
+- [ ] **T052** `[TC-018]` Implementar pruebas de carga con Gatling/k6 validando latencia < 250 ms bajo concurrencia sostenida de 200 req/s.
 - [ ] **T053** Auditoría de dependencias: Validar mediante ArchUnit que el paquete `domain/` mantenga cero imports de Spring, JPA/Hibernate, Jackson o librerías externas.
 - [ ] **T054** Verificar correspondencia campo a campo entre el DTO de respuesta y la vista Figma importada (`5.1 Listado y búsqueda de enfermedades`), asegurando que el estado `activa` (Boolean) se refleje visualmente en la tabla y confirmando la inexistencia de controles o botones de borrado físico en la UI.
 
@@ -262,38 +262,56 @@ src/main/java/com/avicontrol/sanidad/
 
 ---
 
-## 6. Traceability Matrix (Spec 009 vs Implementation Plan)
+## 6. API Contracts (Endpoints ↔ FR ↔ DTOs)
 
-| Requerimiento Spec 009 | Tarea(s) en Implementation Plan | Componente Técnico Responsable |
-| :--- | :--- | :--- |
-| **FR-001** (Exclusivo Veterinario)[cite: 1] | T016, T018, T028 | `RoleValidationFilter`, `RegistrarEnfermedadUseCase` |
-| **FR-002** (Campos obligatorios)[cite: 4] | T008, T020, T025 | Value Objects, Jakarta DTO (`CrearEnfermedadRequest`) |
-| **FR-003** (Código único nosológico)[cite: 5] | T007, T019, T028 | Índice único en PostgreSQL, `existePorCodigo()` |
-| **FR-004** (Texto válido, min 10 chars) | T008, T020 | `DescripcionClinica.java` Value Object, `@Size(min=10)` |
-| **FR-005** (Nivel de riesgo Enum)[cite: 5] | T008, T020 | `NivelRiesgo.java` Enum (`BAJO`, `MEDIO`, `ALTO`, `CRITICO`) |
-| **FR-006** (Tipo etiológico Enum)[cite: 5] | T008, T020 | `TipoEtiologico.java` Enum (`VIRAL`, `BACTERIANA`, etc.) |
-| **FR-007** (Selección explícita de sacrificio) | T008, T021, T025 | `@NotNull` en DTO, validación estricta en dominio |
-| **FR-008** (Habilita sacrificio si true)[cite: 4] | T026, T028 | `EnfermedadRegistradaIntegrationEvent` (`sanitary.disease.registered.v1`) |
-| **FR-009** (Exige medicación si false)[cite: 4] | T026, T028 | `EnfermedadRegistradaIntegrationEvent` (`sanitary.disease.registered.v1`) |
-| **FR-010** (Versión optimista, inmutabilidad)[cite: 1, 4] | T009, T038 | Aggregate Root `actualizarDatos()`, `@Version` en entidad JPA |
-| **FR-011** (Evento Outbox garantizado) | T026, T028, T047 | `san_outbox`, `OutboxRelayScheduler`, Kafka Topic |
-| **FR-012** (Trazabilidad auditoría)[cite: 1] | T007, T013, T028 | `san_auditoria`, `AuditoriaSanitariaPort` |
-| **FR-013** (Prohibido borrado físico)[cite: 1] | T041, T042, T045 | `SecurityConfig`, revocación de permisos SQL `DELETE` |
-| **FR-014** (Concurrencia e Idempotencia)[cite: 1] | T015, T032, T044 | `IdempotencyFilter`, `@Version` en entidad JPA |
-| **FR-015** (Desactivación lógica) | T009, T038, T045 | Invariante `activa = false` en `Enfermedad.actualizarDatos()`, exclusión en repositorios y `SecurityConfig` sin DELETE |
-| **SC-001** (Disponibilidad inmediata para selección) | T017, T030 | Endpoint `GET /api/v1/sanitary/enfermedades/{id}` y verificación de latencia en test de contrato |
-| **SC-002** (Inmutabilidad histórica de diagnósticos) | T035 | Test de integración con Testcontainers verificando integridad de diagnósticos previos |
-| **SC-003** (Selección binaria obligatoria de sacrificio) | T021 | Test de contrato validando rechazo HTTP 400 ante valor nulo en el indicador de sacrificio |
-| **SC-004** (Bloqueo por rol no autorizado) | T018 | `RoleValidationFilter` denegando acceso HTTP 403 a roles distintos de `VETERINARIO` |
-| **SC-005** (Código nosológico único) | T007, T019 | Índice único en PostgreSQL + test de contrato ante duplicados (HTTP 409) |
-| **SC-006** (Latencia < 250 ms en registro) | T052 | Pruebas de carga con Gatling/k6 bajo concurrencia sostenida de 200 req/s |
-| **SC-007** (Prohibición absoluta de borrado físico) | T041, T042, T045 | `SecurityConfig` bloqueando verbo `DELETE` (HTTP 405) + test de repositorio verificando ausencia de SQL `DELETE` |
-| **SC-008** (Atomicidad transaccional del Outbox) | T023, T043 | Test de integración transaccional rollback + `OutboxRelayScheduler` publicando en Kafka |
-| **SC-009** (Exclusión lógica de enfermedades inactivas) | T009, T011, T038, T054 | Invariante `activa = false` en `Enfermedad.actualizarDatos()`, método `listarActivas()` en `EnfermedadRepositoryPort`, exclusión en casos de uso y verificación visual en Figma |
+Contratos REST formales que vinculan cada endpoint con los requerimientos funcionales que cubre y sus modelos de transferencia de datos.
+
+| Endpoint | Método | FRs Cubiertos | Request DTO | Response DTO | Código Éxito |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| `/api/v1/sanitary/enfermedades` | POST | FR-001, FR-002, FR-003, FR-004, FR-005, FR-006, FR-007, FR-008, FR-009, FR-011, FR-012, FR-014 | `CrearEnfermedadRequest` | `EnfermedadResponse` | 201 Created |
+| `/api/v1/sanitary/enfermedades/{id}` | PUT | FR-010, FR-014, FR-015 | `EditarEnfermedadRequest` | `EnfermedadResponse` | 200 OK |
+| `/api/v1/sanitary/enfermedades/{id}` | GET | FR-002 | — | `EnfermedadResponse` | 200 OK |
+| `/api/v1/sanitary/enfermedades` | GET | FR-002, FR-015 | `EnfermedadFiltroRequest` | `Page<EnfermedadResponse>` | 200 OK |
+
+## 7. Traceability Matrix Unificada (3-Vías)
+
+### 7.1 Trazabilidad Funcional (FR ↔ AS ↔ Tareas ↔ TC ↔ UI)
+
+| FR (Spec) | AS (BDD) | Tarea(s) Plan | Test Case (TC) | Componente UI (Prototipo) |
+| :--- | :--- | :--- | :--- | :--- |
+| **FR-001** (Rol VETERINARIO) | AS-006 | T016, T018, T028 | TC-002 | Botón "+ Registrar enfermedad" |
+| **FR-002** (Campos obligatorios) | AS-001, AS-004 | T008, T020, T025 | TC-004 | Inputs formulario / Data Grid |
+| **FR-003** (Código único) | AS-003 | T007, T019, T028 | TC-003 | Input "Código Nosológico Oficial" |
+| **FR-004** (Texto ≥ 10 chars) | AS-004 | T008, T020 | TC-004 | Textarea "Descripción Sintomática" |
+| **FR-005** (Enum Riesgo) | AS-001 | T008, T020 | TC-001 | Select "Nivel de Riesgo" |
+| **FR-006** (Enum Tipo) | AS-001 | T008, T020 | TC-001 | Select "Tipo Etiológico" |
+| **FR-007** (Sacrificio explícito) | AS-005 | T008, T021, T025 | TC-005 | Radios "¿Requiere Sacrificio?" |
+| **FR-008** (Habilita Spec 012) | AS-002 | T026, T028 | TC-001, TC-005 | Radio "Sí (Letal)" seleccionado |
+| **FR-009** (Exige Spec 008) | AS-001 | T026, T028 | TC-001, TC-005 | Radio "No (Tratable)" seleccionado |
+| **FR-010** (@Version optimista) | AS-007, AS-009 | T009, T032, T038 | TC-010 | Botón "Editar" (ícono lápiz) |
+| **FR-011** (Outbox Kafka) | AS-001, AS-002 | T026, T028, T047 | TC-008, TC-016 | (Evento asíncrono en BD) |
+| **FR-012** (Auditoría inmutable) | AS-001, AS-007 | T007, T013, T028 | TC-007, TC-013 | (Asiento append-only en BD) |
+| **FR-013** (Prohibido DELETE) | AS-010 | T041, T042, T045 | TC-014, TC-015 | ❌ Ausencia de botón Eliminar |
+| **FR-014** (Idempotencia) | AS-011 | T015, T032, T044 | TC-010, TC-017 | Control de doble clic |
+| **FR-015** (Desactivación lógica) | AS-007 | T009, T011, T038, T054 | TC-009, TC-012 | Badge "Activa" / "Inactiva" |
+
+### 7.2 Trazabilidad de Métricas de Éxito (SC ↔ Tareas ↔ TC ↔ Verificación)
+
+| SC (Spec) | Tarea(s) Plan | Test Case (TC) | Verificación Técnica |
+| :--- | :--- | :--- | :--- |
+| **SC-001** (Disponibilidad inmediata) | T017, T030 | TC-001 | Test contrato POST 201 + verificación de consulta en GET |
+| **SC-002** (Inmutabilidad histórica) | T035 | TC-013 | Test integración Testcontainers sobre diagnósticos previos |
+| **SC-003** (Selección binaria sacrificio) | T021 | TC-005 | Test contrato sin selección de booleano → HTTP 400 |
+| **SC-004** (Bloqueo por rol no autorizado) | T018 | TC-002 | Test contrato con rol TRABAJADOR → HTTP 403 |
+| **SC-005** (Código nosológico único) | T007, T019 | TC-003 | Índice único en DDL + test contrato código duplicado → HTTP 409 |
+| **SC-006** (Latencia < 250 ms) | T052 | TC-018 | Pruebas de carga Gatling/k6 bajo concurrencia de 200 req/s |
+| **SC-007** (Prohibición DELETE) | T041, T042, T045 | TC-014, TC-015 | SecurityConfig bloqueando DELETE (HTTP 405) + ausencia SQL DELETE |
+| **SC-008** (Atomicidad Outbox) | T023, T043 | TC-007, TC-016 | Test integración transaccional rollback + Outbox Relay Kafka |
+| **SC-009** (Exclusión inactivas) | T009, T011, T038, T054 | TC-009, TC-012 | Invariante activa = false + método listarActivas() |
 
 ---
 
-## 7. Notes
+## 8. Notes
 
 - Cada tarea cuenta con su identificador único `T0xx` para seguimiento en tableros Kanban o Jira.
 - Las escrituras que involucran `san_enfermedades`, `san_outbox` y `san_auditoria` se ejecutan dentro del mismo bloque `@Transactional` de Spring Data JPA.
