@@ -188,12 +188,40 @@ Como nutricionista, quiero ajustar manualmente los días de duración de una eta
 
 ### Edge Cases
 
-- **Intento de cambio de alimento a mitad de etapa**: Si por contingencia de inventario un alimento se agota a mitad de etapa, la operativa de despacho diario ([SPEC-014]) gestiona la alerta o sustitución en almacén, pero la definición estructural de la etapa en el plan nutricional permanece inmutable para evitar distorsionar la proyección contable consolidada en [SPEC-022].
-- **Alimento sin duración recomendada en catálogo (`duracionRecomendadaEtapaDias = null`)**: Prevalece la duración base configurada en la plantilla de la etapa, habilitando el campo para ajuste manual del usuario en etapas no iniciadas.
-- **Galpón con población viva en cero**: Si un galpón no tiene aves activas (vacío o descanso sanitario), la demanda diaria calculada es `0.0 kg` y `0.0 bultos` sin arrojar excepciones de división.
-- **Raciones con alta precisión decimal**: El sistema admite hasta 4 decimales en kilogramos (ej. `0.0125` kg/ave/día) para cubrir dosificaciones exactas de primeros días de vida.
-- **Fracciones en cálculo de bultos**: El cálculo de demanda en bultos (`DemandaKg / PesoBulto`) reporta el valor decimal exacto junto con el total exacto en kg, sin redondeos forzados que distorsionen el stock.
-- **Intento de solapamiento manual de fechas**: Si el usuario intenta forzar manualmente un rango de días que solape con la etapa anterior, el sistema reajusta automáticamente `DiaInicio = DiaFinEtapaAnterior + 1`.
+- **Edge case #1 - Intento de sustitución o cambio de alimento durante una etapa activa**
+
+  - ¿Cómo responde el sistema si un usuario intenta cambiar el alimento comercial o presentación asignado a una etapa que ya se encuentra en curso en un galpón?  
+    El sistema debe bloquear los controles de edición del producto para la etapa activa e informar que el insumo es inmutable durante el curso de dicha fase para proteger la proyección de consumo y costo unitario registrada en el SPEC-022. Debe orientar al usuario a programar cualquier cambio de alimento comercial exclusivamente para las etapas futuras que aún no hayan comenzado.
+
+- **Edge case #2 - Alimento comercial sin duración recomendada registrada en el catálogo**
+
+  - ¿Qué duración adopta la etapa si el nutricionista selecciona un alimento comercial cuya ficha técnica no especifica `duracionRecomendadaEtapaDias` (valor nulo o no configurado)?  
+    El sistema debe mantener la duración base de días configurada en la plantilla maestra de la etapa sin forzar recálculos automáticos. Debe presentar dicho valor base en el campo de duración de la interfaz y permitir al nutricionista ajustarlo manualmente si su criterio técnico así lo requiere.
+
+- **Edge case #3 - Lote alojado con población viva igual a cero (galpón en descanso o vacío)**
+
+  - ¿Cómo calcula el sistema la demanda en kilogramos y bultos cuando un galpón se encuentra vacío, en descanso sanitario o con población activa de cero aves?  
+    El sistema debe calcular y mostrar `0.0 kg` y `0.0 bultos` de demanda diaria sin generar errores de división por cero ni excepciones aritméticas, manteniendo disponibles los parámetros de ración configurados para cuando se aloje un nuevo lote.
+
+- **Edge case #4 - Ración diaria individual con alta precisión decimal**
+
+  - ¿Cómo maneja el sistema la parametrización de raciones de pollitos en sus primeros días de vida que requieren múltiples cifras decimales (ej. 12.5 gramos = 0.0125 kg/ave/día)?  
+    El sistema debe admitir una precisión numérica de hasta 4 cifras decimales en kilogramos (`0.0001 kg/ave/día`) en los campos de ración y aplicar redondeo estándar uniforme en los cálculos de demanda, impidiendo el truncamiento arbitrario que subestime el alimento necesario.
+
+- **Edge case #5 - Demanda calculada con fracciones de bultos requeridos**
+
+  - ¿Qué resultado presenta el sistema cuando la división entre la demanda diaria en kilogramos y el peso nominal del bulto produce un resultado con decimales (ej. 11.25 bultos)?  
+    El sistema debe presentar el valor exacto fraccionario en bultos acompañado del total exacto en kilogramos netos, sin forzar redondeos a números enteros en la planificación para no distorsionar el saldo real de inventario ni los días de autonomía calculados.
+
+- **Edge case #6 - Intento de fijar manualmente rangos de días con solapamientos o fechas invertidas**
+
+  - ¿Cómo actúa el sistema si el usuario intenta ingresar un día de inicio menor o igual al día final de la etapa anterior, o un día final menor al día de inicio?  
+    El sistema debe validar la secuencia temporal estricta y rechazar la configuración, reajustando automáticamente el inicio según la regla `DiaInicio = DiaFinEtapaAnterior + 1`. Asimismo, debe validar que `DiaFin >= DiaInicio` y que en etapas activas `DiaFin >= EdadActualLote`.
+
+- **Edge case #7 - Desabastecimiento físico sobrevenido de un alimento planificado**
+
+  - ¿Qué ocurre si un alimento comercial se planificó con estado "Sin stock" o sus existencias se agotan en bodega central antes de que el lote termine su etapa?  
+    El sistema debe conservar inalterada la parametrización lógica y la proyección en el plan nutricional, sin invalidarla. La alerta y validación de disponibilidad física se traslada a la operación diaria de despacho ([SPEC-014]) y consulta de inventario ([SPEC-023]), permitiendo a bodega gestionar el reabastecimiento sin corromper la planificación.
 
 ---
 

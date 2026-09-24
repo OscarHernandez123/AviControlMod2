@@ -118,14 +118,45 @@ Como administrador de la granja (o encargado de compras y logística), quiero co
 
 ### Edge Cases
 
-- **Inmutabilidad del alimento asignado durante la etapa activa del lote**: Dado que el SPEC-021 bloquea estrictamente el cambio de producto comercial durante el transcurso de una etapa activa, la proyección garantiza que cada etapa del lote almacene un único tipo de alimento y un único costo unitario. Si se autoriza una prórroga de días por contingencia (cuarentena o bajo peso), el sistema actualiza los kilogramos requeridos sobre la base de los nuevos días efectivos, conservando intacto el mismo alimento y costo unitario.
-- **Historial de múltiples lotes en un mismo galpón**: Al consultar la historia de consumos o liquidaciones, el sistema filtra y entrega los datos discriminados por el identificador único del lote (`loteId`). La entrada de un nuevo lote a un galpón no sobreescribe ni fusiona las proyecciones del lote previo que finalizó su ciclo en ese mismo espacio.
-- **Lote inexistente en la base de datos**: Si la petición de consulta del Módulo 3 envía un identificador de lote que no existe, el sistema retorna un código de respuesta estructurado de recurso no encontrado (HTTP 404) con mensaje descriptivo sin generar fallas internas.
-- **Petición con parámetros vacíos o tipos de datos inválidos**: Si la solicitud carece de identificadores obligatorios o incluye formatos de datos incompatibles, el sistema rechaza la petición mediante código HTTP 400 (Bad Request).
-- **Lote con población en cero por contingencia extrema**: Si por anomalía o contingencia extrema la población viva al corte del cambio de etapa es de cero aves, el sistema procesa el registro asignando 0.00 kg a la proyección sin incurrir en excepciones de división o desbordamiento numérico.
-- **Alimento sin costo unitario configurado o nulo en inventario**: Si al momento de la consulta un tipo de alimento carece de costo unitario registrado en catálogo, el sistema retorna el valor del costo como nulo o no asignado acompañado de una advertencia informativa de metadatos, sin interrumpir la entrega de los kilogramos calculados para la etapa.
-- **Interrupción o timeout en la integración API con Módulo 3**: Si ocurre una interrupción de red durante la invocación del servicio desde el Módulo 3, la consulta opera de forma idempotente de solo lectura, permitiendo reintentos seguros sin efectos secundarios ni duplicidades.
-- **Redondeo y precisión matemática en la serialización**: Al serializar los valores en kilogramos y costos unitarios, el sistema aplica redondeo numérico estándar (*half-up*) a dos decimales para evitar discrepancias de redondeo en el transporte de datos.
+- **Edge case #1 - Inmutabilidad del alimento asignado durante la etapa activa del lote**
+
+  - ¿Cómo garantiza el sistema que la proyección no mezcle insumos ni costos heterogéneos si ocurre una contingencia durante la etapa activa?  
+    El sistema se apoya en la regla de bloqueo del SPEC-021, impidiendo el cambio de alimento comercial durante una etapa activa. Si se aprueba una prórroga por cuarentena sanitaria o bajo peso, el sistema recalcula los kilogramos sobre los nuevos días efectivos totales, conservando estrictamente el mismo alimento y costo unitario histórico.
+
+- **Edge case #2 - Convivencia de múltiples lotes históricos alojados sucesivamente en un mismo galpón**
+
+  - ¿Cómo evita el sistema que las proyecciones de un nuevo lote que ingresa a un galpón sobreescriban o se mezclen con las proyecciones del lote anterior que ya concluyó su ciclo en ese mismo galpón?  
+    El sistema vincula todas las proyecciones al identificador único e inmutable del lote (`loteId`). Al consultar la historia o liquidación, filtra exclusivamente por el lote correspondiente, garantizando que los registros del lote anterior permanezcan inalterados y archivados con su respectivo código de lote.
+
+- **Edge case #3 - Consulta de requerimientos para un lote inexistente en la base de datos**
+
+  - ¿Cómo responde el servicio de consulta si el Módulo 3 (Finanzas) solicita la proyección enviando un identificador de lote no registrado o eliminado?  
+    El sistema debe interceptar la solicitud, evitar fallas internas no controladas y retornar un código de respuesta HTTP 404 (Not Found) estructurado con un mensaje descriptivo que informe que el lote solicitado no existe en el sistema.
+
+- **Edge case #4 - Petición con parámetros vacíos o tipos de datos inválidos**
+
+  - ¿Qué respuesta emite el sistema si la invocación API carece de identificadores obligatorios o incluye formatos incompatibles (ej. caracteres alfanuméricos en identificadores numéricos)?  
+    El sistema debe validar los parámetros de entrada antes de ejecutar la consulta y responder con un código HTTP 400 (Bad Request), detallando el parámetro erróneo sin ejecutar cálculos innecesarios ni comprometer la disponibilidad del servicio.
+
+- **Edge case #5 - Lote activo con población viva en cero por contingencia extrema de mortalidad**
+
+  - ¿Cómo calcula la proyección el sistema si al registrar el cambio de etapa la población viva del lote es igual a cero aves por mortalidad total o anomalía zootécnica?  
+    El sistema debe registrar la etapa asignando exactamente `0.00 kg` a la proyección de requerimiento, evitando excepciones de división por cero o desbordamientos numéricos, y registrando el costo unitario correspondiente para fines de auditoría.
+
+- **Edge case #6 - Alimento comercial sin costo unitario registrado o con valor nulo en inventario**
+
+  - ¿Qué información retorna la consulta de liquidación si al momento de la consulta un tipo de alimento carece de costo de compra registrado en el catálogo o inventario?  
+    El sistema debe entregar los kilogramos calculados para la etapa sin interrupciones, retornando el costo unitario como nulo o no asignado (`null`) e incluyendo una advertencia descriptiva en los metadatos para que Finanzas gestione el ingreso del precio antes del cierre formal del lote.
+
+- **Edge case #7 - Interrupción de red o timeout durante la integración API con el Módulo 3**
+
+  - ¿Cómo se garantiza la consistencia si la comunicación entre el Módulo 2 y el Módulo 3 se corta mientras se transfiere la consulta de requerimientos?  
+    El servicio de consulta debe ser estrictamente de solo lectura e idempotente. Ante un fallo de red o tiempo de espera agotado, el Módulo 3 puede reintentar la solicitud cuantas veces sea necesario sin generar duplicidades, cambios de estado ni bloqueos en los registros del lote.
+
+- **Edge case #8 - Redondeo y precisión matemática en la serialización de kilogramos y costos**
+
+  - ¿Cómo maneja el sistema las discrepancias de decimales al calcular y serializar los kilogramos requeridos y los costos unitarios?  
+    El sistema debe aplicar redondeo numérico estándar (*half-up*) a dos decimales (`0.01`) tanto para los kilogramos de alimento proyectados como para los montos monetarios de costo unitario, evitando discrepancias de centavos o fracciones acumuladas en el transporte JSON hacia el Módulo 3.
 
 ---
 
