@@ -133,6 +133,7 @@ Como auditor de inocuidad y responsable sanitario de la granja, quiero garantiza
 - **FR-012**: Cada creación o actualización DEBE registrar un asiento inmutable en la tabla san_auditoria con usuario responsable, fecha, hora y detalle técnico del cambio.
 - **FR-013**: Queda ESTRICTAMENTE PROHIBIDO el borrado físico (DELETE en SQL) sobre las tuplas de la tabla san_enfermedades.
 - **FR-014**: El sistema DEBE implementar control de concurrencia optimista (@Version) y admitir cabeceras de idempotencia técnica X-Idempotency-Key retenidas durante 24 horas.
+- **FR-015**: El sistema DEBE permitir desactivar lógicamente una enfermedad estableciendo `activa = false`, sin eliminar físicamente el registro. Las enfermedades inactivas NO DEBEN poder seleccionarse en nuevos diagnósticos (Spec 011) ni en nuevas medicaciones (Spec 008), pero los expedientes históricos existentes conservan su referencia. Si existen medicaciones vigentes asociadas a la enfermedad, se conservan, pero el sistema bloquea la creación de nuevos esquemas de medicación.
 
 ### Key Entities
 
@@ -154,3 +155,4 @@ Como auditor de inocuidad y responsable sanitario de la granja, quiero garantiza
 - **SC-006**: El tiempo de respuesta del sistema para validar y registrar una patología es inferior a 250 milisegundos en condiciones normales de operación.
 - **SC-007**: Cero registros (0%) de enfermedades eliminados físicamente de la base de datos a lo largo de todo el ciclo de vida del software.
 - **SC-008**: El 100% de los eventos de integración son guardados atómicamente en la tabla Outbox dentro de la misma transacción local de base de datos.
+- **SC-009**: El 100% de las enfermedades desactivadas lógicamente quedan excluidas de selección en diagnósticos y medicaciones futuras, conservando de forma íntegra su referencia histórica en expedientes previos.

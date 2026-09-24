@@ -2,7 +2,7 @@
 
 **Date**: 2026-09-22  
 **Specs**:  
-- [009-RegistrarEnfermedad.md](docs/specs/009-RegistrarEnfermedad.md)
+- [009-RegistrarEnfermedad.md](../specs/Veterinario/009-RegistrarEnfermedad.md)
 
 ---
 
@@ -241,7 +241,7 @@ src/main/java/com/avicontrol/sanidad/
 - [ ] **T051** Exponer métricas Prometheus con Micrometer (`sanitary_enfermedad_created_total`, `sanitary_outbox_lag_seconds`).
 - [ ] **T052** Implementar pruebas de carga con Gatling/k6 validando latencia < 250 ms bajo concurrencia sostenida de 200 req/s.
 - [ ] **T053** Auditoría de dependencias: Validar mediante ArchUnit que el paquete `domain/` mantenga cero imports de Spring, JPA/Hibernate, Jackson o librerías externas.
-- [ ] **T054** Verificar correspondencia campo a campo entre el DTO de respuesta y la vista Figma importada (`5.1 Listado y búsqueda de enfermedades`)[cite: 5].
+- [ ] **T054** Verificar correspondencia campo a campo entre el DTO de respuesta y la vista Figma importada (`5.1 Listado y búsqueda de enfermedades`), asegurando que el estado `activa` (Boolean) se refleje visualmente en la tabla y confirmando la inexistencia de controles o botones de borrado físico en la UI.
 
 ---
 
@@ -280,7 +280,16 @@ src/main/java/com/avicontrol/sanidad/
 | **FR-012** (Trazabilidad auditoría)[cite: 1] | T007, T013, T028 | `san_auditoria`, `AuditoriaSanitariaPort` |
 | **FR-013** (Prohibido borrado físico)[cite: 1] | T041, T042, T045 | `SecurityConfig`, revocación de permisos SQL `DELETE` |
 | **FR-014** (Concurrencia e Idempotencia)[cite: 1] | T015, T032, T044 | `IdempotencyFilter`, `@Version` en entidad JPA |
-| **SC-001 a SC-008** (Métricas de éxito)[cite: 1] | T023, T043, T051, T052 | Pruebas de integración, métricas Prometheus y Jacoco |
+| **FR-015** (Desactivación lógica) | T009, T038, T045 | Invariante `activa = false` en `Enfermedad.actualizarDatos()`, exclusión en repositorios y `SecurityConfig` sin DELETE |
+| **SC-001** (Disponibilidad inmediata para selección) | T017, T030 | Endpoint `GET /api/v1/sanitary/enfermedades/{id}` y verificación de latencia en test de contrato |
+| **SC-002** (Inmutabilidad histórica de diagnósticos) | T035 | Test de integración con Testcontainers verificando integridad de diagnósticos previos |
+| **SC-003** (Selección binaria obligatoria de sacrificio) | T021 | Test de contrato validando rechazo HTTP 400 ante valor nulo en el indicador de sacrificio |
+| **SC-004** (Bloqueo por rol no autorizado) | T018 | `RoleValidationFilter` denegando acceso HTTP 403 a roles distintos de `VETERINARIO` |
+| **SC-005** (Código nosológico único) | T007, T019 | Índice único en PostgreSQL + test de contrato ante duplicados (HTTP 409) |
+| **SC-006** (Latencia < 250 ms en registro) | T052 | Pruebas de carga con Gatling/k6 bajo concurrencia sostenida de 200 req/s |
+| **SC-007** (Prohibición absoluta de borrado físico) | T041, T042, T045 | `SecurityConfig` bloqueando verbo `DELETE` (HTTP 405) + test de repositorio verificando ausencia de SQL `DELETE` |
+| **SC-008** (Atomicidad transaccional del Outbox) | T023, T043 | Test de integración transaccional rollback + `OutboxRelayScheduler` publicando en Kafka |
+| **SC-009** (Exclusión lógica de enfermedades inactivas) | T009, T011, T038, T054 | Invariante `activa = false` en `Enfermedad.actualizarDatos()`, método `listarActivas()` en `EnfermedadRepositoryPort`, exclusión en casos de uso y verificación visual en Figma |
 
 ---
 
