@@ -4,11 +4,11 @@
 **Specs**:  
 - [008-RegistrarMedicacion.md](../specs/Veterinario/008-RegistrarMedicacion.md)
 
-## Summary
+## 1. Summary
 
 El módulo **Registrar medicación** permite al Médico Veterinario gestionar el catálogo de protocolos terapéuticos estándar de la granja avícola. Vincula una patología activa del catálogo nosológico (`Spec 009`), un medicamento disponible en el inventario central, dosis cuantitativa, duración en días enteros positivos (> 0) e instrucciones clínicas de administración. **No descuenta existencias de bodega ni altera tratamientos pasados**. La solución emplea **Java 21** con **Spring Boot 3.x (Spring MVC + Spring Data JPA)** bajo **arquitectura hexagonal pura**, el patrón **Transactional Outbox** para despacho garantizado de eventos hacia **Kafka**, control de **Concurrencia Optimista (`version`)**, trazabilidad inmutable en **`san_auditoria`** y validación de idempotencia técnica vía cabeceras HTTP.
 
-## Technical Context
+## 2. Technical Context
 
 - **Language/Version**: Java 21 (LTS - Virtual Threads habilitados)
 - **Primary Dependencies**: Spring Boot 3.x (Spring MVC), Spring Cloud Stream (Kafka Binder), Spring Data JPA (Hibernate 6.x), PostgreSQL JDBC Driver, Lombok, MapStruct, Jakarta Validation, JUnit 5, Mockito, Testcontainers (PostgreSQL + Kafka)
@@ -24,7 +24,7 @@ El módulo **Registrar medicación** permite al Médico Veterinario gestionar el
   - Verificación no bloqueante de inventario sin alteración de existencias (`FR-006`, `SC-002`).
   - Idempotencia HTTP mediante cabecera `X-Idempotency-Key` retenida por 24 horas (`FR-011`).
 
-## Project Structure
+## 3. Project Structure
 
 ```text
 src/main/java/com/avicontrol/sanidad/
@@ -107,7 +107,9 @@ src/main/java/com/avicontrol/sanidad/
 
 ---
 
-## Phase 1: Setup (Shared Infrastructure)
+## 4. Implementation Phases
+
+### Phase 1: Setup (Shared Infrastructure)
 
 **Purpose**: Inicializar el proyecto base, configuración estándar de Spring Boot y herramientas de calidad.
 
@@ -120,7 +122,7 @@ src/main/java/com/avicontrol/sanidad/
 
 ---
 
-## Phase 2: Foundational (Blocking Prerequisites)
+### Phase 2: Foundational (Blocking Prerequisites)
 
 **Purpose**: Construir el modelo de dominio puro, la persistencia JPA, el Transactional Outbox y la auditoría inmutable.  
 ⚠️ **CRITICAL**: Ningún caso de uso funcional debe implementarse antes de validar esta fase.
@@ -147,19 +149,19 @@ src/main/java/com/avicontrol/sanidad/
 
 ---
 
-## Phase 3: User Story 1 – Alta de Protocolo Terapéutico Estandarizado (P1)
+### Phase 3: User Story 1 – Alta de Protocolo Terapéutico Estandarizado (P1)
 
 **Goal**: Permitir al Médico Veterinario dar de alta un protocolo terapéutico asociando enfermedad activa y medicamento disponible, persistiendo atómicamente la entidad, la auditoría y el evento Outbox sin descontar existencias de bodega.  
 **Independent Test**: `POST /api/v1/sanitary/medicaciones` con datos válidos y rol `VETERINARIO` retorna `201 Created` y el recurso aparece en `GET /api/v1/sanitary/medicaciones`. `POST` con campos en blanco o duración $\le 0$ retorna `400 Bad Request` con el detalle de campos inválidos.
 
 ### Tests para User Story 1
 
-- [ ] **T016** [P] [US1] Test de contrato: `POST /api/v1/sanitary/medicaciones` con datos válidos retorna HTTP 201 con la medicación creada y cabecera `Location` — `MedicacionControllerTest.java`.
-- [ ] **T017** [P] [US1] Test de contrato: `POST /api/v1/sanitary/medicaciones` omitiendo dosis o con descripción vacía retorna HTTP 400 — `MedicacionControllerTest.java`.
-- [ ] **T018** [P] [US1] Test de contrato: `POST /api/v1/sanitary/medicaciones` con duración = 0 o negativa retorna HTTP 400 — `MedicacionControllerTest.java`.
-- [ ] **T019** [P] [US1] Test de contrato: `POST /api/v1/sanitary/medicaciones` ejecutado con rol `TRABAJADOR` retorna HTTP 403 Forbidden — `MedicacionControllerTest.java`.
-- [ ] **T020** [P] [US1] Test unitario de `RegistrarMedicacionUseCase` validando orquestación, verificación de puertos mockeados y creación de agregados — `RegistrarMedicacionUseCaseTest.java`.
-- [ ] **T021** [P] [US1] Test de integración con Testcontainers (PostgreSQL JDBC): Confirmar atomicidad transaccional con `@Transactional` (si falla auditoría u outbox, la medicación no se persiste).
+- [ ] **T016** [P] [US1] [TC-001] Test de contrato: `POST /api/v1/sanitary/medicaciones` con datos válidos retorna HTTP 201 con la medicación creada y cabecera `Location` — `MedicacionControllerTest.java`.
+- [ ] **T017** [P] [US1] [TC-002] Test de contrato: `POST /api/v1/sanitary/medicaciones` omitiendo dosis o con descripción vacía retorna HTTP 400 — `MedicacionControllerTest.java`.
+- [ ] **T018** [P] [US1] [TC-003] Test de contrato: `POST /api/v1/sanitary/medicaciones` con duración = 0 o negativa retorna HTTP 400 — `MedicacionControllerTest.java`.
+- [ ] **T019** [P] [US1] [TC-004] Test de contrato: `POST /api/v1/sanitary/medicaciones` ejecutado con rol `TRABAJADOR` retorna HTTP 403 Forbidden — `MedicacionControllerTest.java`.
+- [ ] **T020** [P] [US1] [TC-005] Test unitario de `RegistrarMedicacionUseCase` validando orquestación, verificación de puertos mockeados y creación de agregados — `RegistrarMedicacionUseCaseTest.java`.
+- [ ] **T021** [P] [US1] [TC-006] Test de integración con Testcontainers (PostgreSQL JDBC): Confirmar atomicidad transaccional con `@Transactional` (si falla auditoría u outbox, la medicación no se persiste).
 
 ### Implementación de User Story 1
 
@@ -179,18 +181,18 @@ src/main/java/com/avicontrol/sanidad/
 
 ---
 
-## Phase 4: User Story 2 – Actualización de Pautas Terapéuticas y Protección de Históricos (P2)
+### Phase 4: User Story 2 – Actualización de Pautas Terapéuticas y Protección de Históricos (P2)
 
 **Goal**: Permitir al Veterinario actualizar dosis, duración o descripción de un esquema terapéutico, garantizando control de concurrencia optimista y protegiendo la inmutabilidad de prescripciones previas.  
 **Independent Test**: Modificar una medicación de 5 a 7 días vía `PUT /api/v1/sanitary/medicaciones/{id}` eleva su versión a 2 y retorna HTTP 200. Los tratamientos históricos asociados a diagnósticos previos conservan sus valores originales sin recálculo.
 
 ### Tests para User Story 2
 
-- [ ] **T029** [P] [US2] Test de contrato: `PUT /api/v1/sanitary/medicaciones/{id}` con datos válidos y versión coincidente retorna HTTP 200 con la medicación actualizada — `MedicacionControllerTest.java`.
-- [ ] **T030** [P] [US2] Test de contrato: `PUT /api/v1/sanitary/medicaciones/{id}` enviando una versión desactualizada retorna HTTP 409 Conflict por concurrencia (`MedicacionConcurrenciaException`) — `MedicacionControllerTest.java`.
-- [ ] **T031** [P] [US2] Test de contrato: `PUT /api/v1/sanitary/medicaciones/{id}` con ID inexistente retorna HTTP 404 Not Found — `MedicacionControllerTest.java`.
-- [ ] **T032** [P] [US2] Test unitario de `EditarMedicacionUseCase` validando elevación de versión y despacho de evento `MedicacionActualizadaIntegrationEvent` — `EditarMedicacionUseCaseTest.java`.
-- [ ] **T033** [P] [US2] Test de integración con Testcontainers: verificar que la edición modifique únicamente la tupla seleccionada y genere su respectiva traza histórica en `san_auditoria` — `MedicacionRepositoryAdapterTest.java`.
+- [ ] **T029** [P] [US2] [TC-007] Test de contrato: `PUT /api/v1/sanitary/medicaciones/{id}` con datos válidos y versión coincidente retorna HTTP 200 con la medicación actualizada — `MedicacionControllerTest.java`.
+- [ ] **T030** [P] [US2] [TC-008] Test de contrato: `PUT /api/v1/sanitary/medicaciones/{id}` enviando una versión desactualizada retorna HTTP 409 Conflict por concurrencia (`MedicacionConcurrenciaException`) — `MedicacionControllerTest.java`.
+- [ ] **T031** [P] [US2] [TC-009] Test de contrato: `PUT /api/v1/sanitary/medicaciones/{id}` con ID inexistente retorna HTTP 404 Not Found — `MedicacionControllerTest.java`.
+- [ ] **T032** [P] [US2] [TC-010] Test unitario de `EditarMedicacionUseCase` validando elevación de versión y despacho de evento `MedicacionActualizadaIntegrationEvent` — `EditarMedicacionUseCaseTest.java`.
+- [ ] **T033** [P] [US2] [TC-011] Test de integración con Testcontainers: verificar que la edición modifique únicamente la tupla seleccionada y genere su respectiva traza histórica en `san_auditoria` — `MedicacionRepositoryAdapterTest.java`.
 
 ### Implementación de User Story 2
 
@@ -207,17 +209,17 @@ src/main/java/com/avicontrol/sanidad/
 
 ---
 
-## Phase 5: User Story 3 – Integridad Transaccional, Outbox Relay e Inmutabilidad (P3)
+### Phase 5: User Story 3 – Integridad Transaccional, Outbox Relay e Inmutabilidad (P3)
 
 **Goal**: Asegurar que las medicaciones no se puedan eliminar físicamente (`DELETE`), despachar eventos hacia Kafka desde la tabla Outbox de forma resiliente y garantizar idempotencia.  
 **Independent Test**: Ejecutar `DELETE /api/v1/sanitary/medicaciones/{id}` retorna `405 Method Not Allowed`. Se verifica mediante worker en background que los eventos en `san_outbox` en estado `PENDING` se publiquen en Kafka y cambien a `PROCESSED`.
 
 ### Tests para User Story 3
 
-- [ ] **T039** [P] [US3] Test de contrato y seguridad: Comprobar rechazo a llamadas HTTP `DELETE` → 405 Method Not Allowed — `MedicacionControllerTest.java`.
-- [ ] **T040** [P] [US3] Test de base de datos: Verificar mediante test de repositorio la inexistencia de sentencias o métodos de borrado físico directo (`DELETE`) en la capa de persistencia.
-- [ ] **T041** [P] [US3] Test de integración Outbox Relay con Testcontainers (Kafka): Verificar lectura por lotes de `san_outbox` y publicación efectiva en el tópico `sanitary.medication.registered.v1`.
-- [ ] **T042** [P] [US3] Test de idempotencia: Enviar dos requests consecutivas idénticas con el mismo `X-Idempotency-Key` y verificar que la segunda retorna la respuesta original sin duplicar inserciones.
+- [ ] **T039** [P] [US3] [TC-012] Test de contrato y seguridad: Comprobar rechazo a llamadas HTTP `DELETE` → 405 Method Not Allowed — `MedicacionControllerTest.java`.
+- [ ] **T040** [P] [US3] [TC-013] Test de base de datos: Verificar mediante test de repositorio la inexistencia de sentencias o métodos de borrado físico directo (`DELETE`) en la capa de persistencia.
+- [ ] **T041** [P] [US3] [TC-014] Test de integración Outbox Relay con Testcontainers (Kafka): Verificar lectura por lotes de `san_outbox` y publicación efectiva en el tópico `sanitary.medication.registered.v1`.
+- [ ] **T042** [P] [US3] [TC-015] Test de idempotencia: Enviar dos requests consecutivas idénticas con el mismo `X-Idempotency-Key` y verificar que la segunda retorna la respuesta original sin duplicar inserciones.
 
 ### Implementación de User Story 3
 
@@ -234,17 +236,17 @@ src/main/java/com/avicontrol/sanidad/
 
 ---
 
-## Phase 6: Polish & Cross-Cutting Concerns
+### Phase 6: Polish & Cross-Cutting Concerns
 
 - [ ] **T048** Configurar logging estructurado en formato JSON incorporando `traceId`, `spanId` y `correlationId` vía MDC de Slf4j.
 - [ ] **T049** Exponer métricas Prometheus con Micrometer (`sanitary_medication_created_total`, `sanitary_outbox_lag_seconds`).
-- [ ] **T050** Implementar pruebas de carga con Gatling/k6 validando latencia < 250 ms bajo concurrencia sostenida de 200 req/s.
+- [ ] **T050** [TC-016] Implementar pruebas de carga con Gatling/k6 validando latencia < 250 ms bajo concurrencia sostenida de 200 req/s.
 - [ ] **T051** Auditoría de dependencias: Validar mediante ArchUnit que el paquete `domain/` mantenga cero imports de Spring, JPA/Hibernate, Jackson o librerías externas.
 - [ ] **T052** Verificar correspondencia campo a campo entre el DTO de respuesta y la vista Figma importada (Catálogo de Medicación), incluyendo que el campo `activa` (Boolean) se muestre visualmente como estado de la medicación y que NO exista botón de borrado físico en la interfaz.
 
 ---
 
-## Dependencies & Execution Order
+## 5. Dependencies & Execution Order
 
 ### Phase Dependencies
 
@@ -263,27 +265,55 @@ src/main/java/com/avicontrol/sanidad/
 
 ---
 
-## Traceability Matrix (Spec 008 vs Implementation Plan)
+## 6. API Contracts (Endpoints ↔ FR ↔ DTOs)
 
-| **Requerimiento Spec 008** | **Tarea(s) en Implementation Plan** | **Componente Técnico Responsable** |
-|---|---|---|
-| **FR-001** (Exclusivo Veterinario) | T019, T026 | `RoleValidationFilter`, `RegistrarMedicacionUseCase` |
-| **FR-002** (Campos obligatorios) | T008, T017, T022 | Value Objects (`Dosis`, `Duracion`, `Indicacion`), Jakarta DTO |
-| **FR-003** (Duración entera > 0) | T008, T018 | `DuracionTratamiento.java` Value Object |
-| **FR-004** (Enfermedad activa Spec 009) | T011, T024, T026 | `EnfermedadQueryPort`, `EnfermedadQueryAdapter` |
-| **FR-005** (Medicamento en inventario) | T011, T025, T026 | `MedicamentoQueryPort`, `MedicamentoQueryAdapter` |
-| **FR-006** (Sin descuento de bodega) | T025, T026 | Operación de solo lectura en adaptador de inventario |
-| **FR-007** (Inmutabilidad histórica) | T009, T036 | Aggregate Root versionado; preservación de prescripciones |
-| **FR-008** (Evento Outbox Kafka) | T023, T026, T045 | `san_outbox`, `OutboxRelayScheduler`, Kafka Topic |
-| **FR-009** (Trazabilidad auditoría) | T007, T013, T026 | `san_auditoria`, `AuditoriaSanitariaPort` |
-| **FR-010** (Prohibido borrado físico) | T039, T040, T043 | `SecurityConfig`, ausencia de sentencias SQL `DELETE` |
-| **FR-011** (Concurrencia e Idempotencia) | T015, T030, T042 | `IdempotencyFilter`, `@Version` en entidad JPA |
-| **FR-012** (Desactivación lógica) | T009, T036, T043 | `Medicacion.actualizarPauta()` con `activa = false`; `SecurityConfig` sin `DELETE` |
-| **SC-001 a SC-008** (Métricas de éxito) | T020, T049, T050 | Pruebas de integración, métricas Prometheus y Jacoco |
+Contratos REST formales que vinculan cada endpoint con los requerimientos 
+funcionales que cubre y sus modelos de transferencia de datos.
+
+| Endpoint | Método | FRs Cubiertos | Request DTO | Response DTO | Código Éxito |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| `/api/v1/sanitary/medicaciones` | POST | FR-001, FR-002, FR-003, FR-004, FR-005, FR-006, FR-008, FR-009, FR-011 | `CrearMedicacionRequest` | `MedicacionResponse` | 201 Created |
+| `/api/v1/sanitary/medicaciones/{id}` | PUT | FR-007, FR-011, FR-012 | `EditarMedicacionRequest` | `MedicacionResponse` | 200 OK |
+| `/api/v1/sanitary/medicaciones/{id}` | GET | FR-002 | — | `MedicacionResponse` | 200 OK |
+| `/api/v1/sanitary/medicaciones` | GET | FR-002, FR-012 | `MedicacionFiltroRequest` | `Page<MedicacionResponse>` | 200 OK |
 
 ---
 
-## Notes
+## 7. Traceability Matrix Unificada (3-Vías)
+
+### 7.1 Trazabilidad Funcional (FR ↔ AS ↔ Tareas ↔ TC ↔ UI)
+
+| FR (Spec) | AS (BDD) | Tarea(s) Plan | Test Case (TC) | Componente UI (Prototipo) |
+| :--- | :--- | :--- | :--- | :--- |
+| **FR-001** (Rol VETERINARIO) | AS-006, AS-009 | T019, T026 | TC-004 | Botón "+ Registrar medicación" |
+| **FR-002** (Campos obligatorios) | AS-001, AS-002 | T008, T017, T022 | TC-002 | Inputs formulario / Data Grid / Stat Cards |
+| **FR-003** (Duración entera > 0) | AS-003 | T008, T018 | TC-003 | Input "Duración (Días enteros)" |
+| **FR-004** (Patología ACTIVA Spec 009) | AS-004 | T011, T024, T026 | TC-005 | Dropdown "Patología vinculada" / Filtro |
+| **FR-005** (Fármaco inventario central) | AS-005 | T011, T025, T026 | TC-005 | Dropdown "Medicamento activo" |
+| **FR-006** (Sin descuento de bodega) | AS-001 | T025, T026 | TC-001 | Banner Informativo superior |
+| **FR-007** (Inmutabilidad histórica) | AS-008 | T009, T036 | TC-011 | Acción "Editar" (ícono lápiz) |
+| **FR-008** (Evento Outbox Kafka) | AS-001 | T023, T026, T045 | TC-001, TC-014 | (Evento asíncrono en BD) |
+| **FR-009** (Trazabilidad auditoría) | AS-001, AS-007 | T007, T013, T026 | TC-006, TC-011 | (Asiento append-only en BD) |
+| **FR-010** (Prohibido DELETE) | AS-010 | T039, T040, T043 | TC-012, TC-013 | ❌ Ausencia de botón Eliminar / Warning Box |
+| **FR-011** (Concurrencia e Idempotencia) | AS-011, AS-012 | T015, T030, T042 | TC-008, TC-015 | Control concurrente `@Version` |
+| **FR-012** (Desactivación lógica) | AS-007 | T009, T036, T043, T052 | TC-007 | Badge "Activa" / "Inactiva" |
+
+### 7.2 Trazabilidad de Métricas de Éxito (SC ↔ Tareas ↔ TC ↔ Verificación)
+
+| SC (Spec) | Tarea(s) Plan | Test Case (TC) | Verificación Técnica |
+| :--- | :--- | :--- | :--- |
+| **SC-001** (Disponibilidad inmediata) | T016, T028 | TC-001 | Test contrato POST 201 + verificación de consulta en GET |
+| **SC-002** (Cero descuento en inventario) | T025, T026 | TC-001, TC-005 | Verificación de solo lectura en adaptadores de bodega |
+| **SC-003** (Inmutabilidad prescripciones) | T033, T036 | TC-011 | Test integración Testcontainers sobre diagnósticos previos |
+| **SC-004** (Bloqueo por rol no autorizado) | T019 | TC-004 | RoleValidationFilter denegando acceso HTTP 403 |
+| **SC-005** (Latencia < 250 ms) | T050 | TC-016 | Pruebas de carga Gatling/k6 bajo concurrencia sostenida |
+| **SC-006** (Prohibición DELETE) | T039, T040, T043 | TC-012, TC-013 | SecurityConfig bloqueando DELETE (HTTP 405) + ausencia SQL DELETE |
+| **SC-007** (Atomicidad Outbox) | T021, T041 | TC-006, TC-014 | Test integración transaccional rollback + Outbox Relay Kafka |
+| **SC-008** (Exclusión inactivas) | T009, T011, T036, T052 | TC-007 | Invariante activa = false + método listarActivas() |
+
+---
+
+## 8. Notes
 
 - Cada tarea cuenta con su identificador único `T0xx` para seguimiento en tableros Kanban o Jira.
 - Las escrituras que involucran `san_medicaciones`, `san_outbox` y `san_auditoria` se ejecutan dentro del mismo `@Transactional` de Spring estándar.
