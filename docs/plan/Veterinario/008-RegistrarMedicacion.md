@@ -2,7 +2,7 @@
 
 **Date**: 2026-09-22  
 **Specs**:  
-- [008-RegistrarMedicacion.md](docs/specs/008-RegistrarMedicacion.md)
+- [008-RegistrarMedicacion.md](../specs/Veterinario/008-RegistrarMedicacion.md)
 
 ## Summary
 
@@ -240,7 +240,7 @@ src/main/java/com/avicontrol/sanidad/
 - [ ] **T049** Exponer métricas Prometheus con Micrometer (`sanitary_medication_created_total`, `sanitary_outbox_lag_seconds`).
 - [ ] **T050** Implementar pruebas de carga con Gatling/k6 validando latencia < 250 ms bajo concurrencia sostenida de 200 req/s.
 - [ ] **T051** Auditoría de dependencias: Validar mediante ArchUnit que el paquete `domain/` mantenga cero imports de Spring, JPA/Hibernate, Jackson o librerías externas.
-- [ ] **T052** Verificar correspondencia campo a campo entre el DTO de respuesta y la vista Figma importada (Catálogo de Medicación).
+- [ ] **T052** Verificar correspondencia campo a campo entre el DTO de respuesta y la vista Figma importada (Catálogo de Medicación), incluyendo que el campo `activa` (Boolean) se muestre visualmente como estado de la medicación y que NO exista botón de borrado físico en la interfaz.
 
 ---
 
@@ -278,7 +278,8 @@ src/main/java/com/avicontrol/sanidad/
 | **FR-009** (Trazabilidad auditoría) | T007, T013, T026 | `san_auditoria`, `AuditoriaSanitariaPort` |
 | **FR-010** (Prohibido borrado físico) | T039, T040, T043 | `SecurityConfig`, ausencia de sentencias SQL `DELETE` |
 | **FR-011** (Concurrencia e Idempotencia) | T015, T030, T042 | `IdempotencyFilter`, `@Version` en entidad JPA |
-| **SC-001 a SC-007** (Métricas de éxito) | T020, T049, T050 | Pruebas de integración, métricas Prometheus y Jacoco |
+| **FR-012** (Desactivación lógica) | T009, T036, T043 | `Medicacion.actualizarPauta()` con `activa = false`; `SecurityConfig` sin `DELETE` |
+| **SC-001 a SC-008** (Métricas de éxito) | T020, T049, T050 | Pruebas de integración, métricas Prometheus y Jacoco |
 
 ---
 
