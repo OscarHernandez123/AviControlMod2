@@ -34,13 +34,13 @@ Como sistema de gestión avícola, quiero generar de forma automática e inmedia
 
 ---
 
-### User Story 2 - Consolidar información clínica y de población para el veterinario (Priority: P2)
+### User Story 2 - Consolidar información y contexto del evento para el veterinario (Priority: P2)
 
-Como veterinario de granja, quiero que la alerta sanitaria generada consolide automáticamente los datos del galpón, los atributos del lote activo y los síntomas reportados en la mortalidad anormal, para disponer de todo el contexto clínico antes de acudir al galpón.
+Como veterinario de granja, quiero que la alerta sanitaria generada consolide automáticamente los datos del galpón, los atributos del lote activo, la causa probable reportada y las observaciones del trabajador en la mortalidad anormal, para disponer de todo el contexto necesario antes de acudir al galpón.
 
-**Why this priority**: Permite al veterinario conocer de inmediato la magnitud de las bajas, el porcentaje de mortalidad respecto a la población viva, la edad de las aves y los signos observados para preparar el protocolo de bioseguridad adecuado.
+**Why this priority**: Permite al veterinario conocer de inmediato la magnitud de las bajas, el porcentaje de mortalidad respecto a la población viva, la edad de las aves y la causa probable observada para preparar el protocolo de bioseguridad adecuado.
 
-**Independent Test**: Se puede probar consultando la alerta sanitaria generada y verificando que presente el nombre y aforo del galpón, el nombre, edad en días y población actual del lote, y los síntomas/causas reportadas en la mortalidad anormal.
+**Independent Test**: Se puede probar consultando la alerta sanitaria generada y verificando que presente el nombre y aforo del galpón, el nombre, edad en días y población actual del lote, y la causa probable y observaciones reportadas en la mortalidad anormal.
 
 **Acceptance Scenarios**:
 
@@ -48,7 +48,7 @@ Como veterinario de granja, quiero que la alerta sanitaria generada consolide au
    - **Given** una alerta sanitaria generada automáticamente en estado "Pendiente de atención veterinaria"
    - **When** el veterinario accede a su bandeja de alertas sanitarias
    - **Then** el sistema muestra los datos del galpón (nombre, aforo, estado) y del lote (nombre, población actual, edad en días)
-   - **And** muestra la cantidad de muertes anormales, porcentaje de mortalidad calculado, causa sospechosa, síntomas clínicos y observaciones del trabajador
+   - **And** muestra la cantidad de muertes anormales, porcentaje de mortalidad calculado, causa probable o sospechosa y observaciones del trabajador
 
 ---
 
@@ -80,7 +80,7 @@ Como veterinario de granja, quiero que la alerta sanitaria generada consolide au
 - **FR-003**: La alerta sanitaria DEBE quedar asociada mediante llaves foráneas al galpón afectado, al lote activo correspondiente y al registro de mortalidad anormal que la originó.
 - **FR-004**: El sistema DEBE obtener y vincular los atributos del galpón: UUID, Nombre, Aforo máximo y Estado.
 - **FR-005**: El sistema DEBE obtener y vincular los atributos del lote activo: UUID único, Nombre, Población actual (aves vivas), Fecha de ingreso y edad en días calculada.
-- **FR-006**: La alerta sanitaria DEBE incorporar los datos clínicos del registro de mortalidad anormal: cantidad de muertes anormales, porcentaje de mortalidad calculado, causa sospechosa, síntomas y signos observados y observaciones del trabajador.
+- **FR-006**: La alerta sanitaria DEBE incorporar los datos del registro de mortalidad anormal: cantidad de muertes anormales, porcentaje de mortalidad calculado, causa probable o sospechosa y observaciones adicionales del trabajador.
 - **FR-007**: El sistema DEBE asignar el nivel de prioridad de la alerta (`Alta`, `Crítica` o `Emergencia sanitaria`) con base en el porcentaje de mortalidad y la severidad del evento.
 - **FR-008**: La alerta sanitaria generada DEBE dirigirse y ponerse a disposición exclusiva del usuario o equipo con rol de `Veterinario` para su diagnóstico y resolución.
 - **FR-009**: El sistema DEBE garantizar que la alerta sanitaria no pueda ser cerrada, editada ni eliminada durante el proceso de generación automática.
@@ -96,7 +96,7 @@ Como veterinario de granja, quiero que la alerta sanitaria generada consolide au
 - **Lote**: Grupo de aves afectado que referencia al galpón mediante llave foránea.
   - Atributos utilizados: `UUID único`, `Nombre`, `Población actual`, `Fecha de ingreso` (edad en días), `Llave foránea del galpón`.
 - **Registro de mortalidad anormal**: Evento detonante que originó la alerta sanitaria.
-  - Atributos utilizados: `UUID único`, `Cantidad de muertes anormales`, `Porcentaje de mortalidad (%)`, `Causa sospechosa`, `Síntomas y signos clínicos`, `Observaciones`.
+  - Atributos utilizados: `UUID único`, `Cantidad de muertes anormales`, `Porcentaje de mortalidad (%)`, `Causa probable o sospechosa`, `Observaciones adicionales`.
 - **Veterinario**: Rol destinatario responsable de atender la alerta, emitir el diagnóstico clínico y determinar el tratamiento o sacrificio sanitario.
 
 ---
@@ -107,7 +107,7 @@ Como veterinario de granja, quiero que la alerta sanitaria generada consolide au
 
 - **SC-001**: El 100 % de los registros de mortalidad anormal confirmados genera automáticamente una alerta sanitaria con estado `Pendiente de atención veterinaria`.
 - **SC-002**: El 100 % de las alertas sanitarias generadas vincula con exactitud el UUID del galpón, el UUID del lote activo y el UUID del registro de mortalidad anormal.
-- **SC-003**: En el 100 % de las alertas, se incluye la cantidad de muertes, el porcentaje de mortalidad calculado, la causa sospechosa y los síntomas clínicos reportados.
+- **SC-003**: En el 100 % de las alertas, se incluye la cantidad de muertes, el porcentaje de mortalidad calculado, la causa probable o sospechosa y las observaciones del trabajador.
 - **SC-004**: El 100 % de las alertas sanitarias se pone a disposición inmediata del rol Veterinario.
 - **SC-005**: El tiempo de generación automática de la alerta sanitaria tras la confirmación de la mortalidad anormal es menor a 2 segundos en el sistema.
 - **SC-006**: Ninguna alerta sanitaria generada puede ser eliminada del historial del sistema.
