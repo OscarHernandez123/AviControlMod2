@@ -15,7 +15,7 @@ Como Médico Veterinario de la granja, quiero registrar una pauta de medicación
 
 **Acceptance Scenarios**:
 
-1. **Scenario**: Registro exitoso de una pauta de medicación
+1. **AS-001 - Scenario**: Registro exitoso de una pauta de medicación
    - **Given** que la patología "Bronquitis Infecciosa Aviar" se encuentra en estado "ACTIVA" en el catálogo nosológico
    - **And** el fármaco "Tilosina Tartrato 50%" existe y está habilitado en el inventario central de medicamentos
    - **When** el Veterinario ingresa dosis "0.5 g/L de agua", duración de 5 días y la descripción técnica "Suministrar disuelto en tanques de agua de bebida exclusivamente durante las mañanas"
@@ -25,29 +25,29 @@ Como Médico Veterinario de la granja, quiero registrar una pauta de medicación
    - **And** la medicación queda disponible inmediatamente para ser seleccionada en futuros diagnósticos de galpón
    - **And** mantiene intacto el stock de existencias físicas del medicamento en bodega
 
-2. **Scenario**: Rechazo de registro por datos obligatorios faltantes o con espacios en blanco
+2. **AS-002 - Scenario**: Rechazo de registro por datos obligatorios faltantes o con espacios en blanco
    - **Given** que el Veterinario inicia el formulario de registro de medicación
    - **When** intenta guardar omitiendo la dosis o ingresando una descripción compuesta únicamente por espacios en blanco ("   ")
    - **Then** el sistema detiene el procesamiento, resalta los campos mandatorios incompletos y no persiste la medicación
 
-3. **Scenario**: Rechazo por duración en días no válida
+3. **AS-003 - Scenario**: Rechazo por duración en días no válida
    - **Given** que el Veterinario diligencia la configuración terapéutica
    - **When** ingresa un valor de duración igual a 0, un número negativo (-3) o un valor con decimales (4.5 días)
    - **Then** el sistema rechaza el valor indicando que la duración debe ser estrictamente un número entero mayor a cero
    - **And** cancela la creación del registro
 
-4. **Scenario**: Rechazo por patología inactiva o inexistente en catálogo
+4. **AS-004 - Scenario**: Rechazo por patología inactiva o inexistente en catálogo
    - **Given** una patología registrada en el catálogo en estado "INACTIVA" (o un identificador inexistente)
    - **When** el Veterinario intenta seleccionarla para asociar la medicación
    - **Then** el sistema bloquea la selección e informa que la enfermedad no se encuentra vigente en el catálogo
 
-5. **Scenario**: Rechazo por medicamento no registrado o inactivo en inventario
+5. **AS-005 - Scenario**: Rechazo por medicamento no registrado o inactivo en inventario
    - **Given** un código de producto farmacéutico que no figura en el inventario de medicamentos de la granja
    - **When** el Veterinario intenta asignarlo a la pauta de tratamiento
    - **Then** el sistema interrumpe la operación informando que el medicamento no está disponible en inventario
    - **And** no guarda la medicación
 
-6. **Scenario**: Denegación de acceso a usuarios sin rol veterinario
+6. **AS-006 - Scenario**: Denegación de acceso a usuarios sin rol veterinario
    - **Given** un usuario autenticado en el sistema con rol "TRABAJADOR" o "ADMINISTRADOR"
    - **When** intenta ejecutar el comando de creación de una medicación
    - **Then** el sistema bloquea la acción por falta de privilegios sanitarios
@@ -65,7 +65,7 @@ Como Médico Veterinario de la granja, quiero editar los parámetros de una medi
 
 **Acceptance Scenarios**:
 
-1. **Scenario**: Edición técnica exitosa de una medicación
+1. **AS-007 - Scenario**: Edición técnica exitosa de una medicación
    - **Given** una medicación registrada con duración de 5 días y dosis "0.5 g/L"
    - **When** el Veterinario modifica la duración a 7 días y ajusta la descripción técnica de dosificación
    - **Then** el sistema persiste la actualización de la entidad elevando su versión optimista
@@ -73,13 +73,13 @@ Como Médico Veterinario de la granja, quiero editar los parámetros de una medi
    - **And** registra el cambio en "san_auditoria"
    - **And** publica los nuevos valores únicamente para futuros diagnósticos
 
-2. **Scenario**: Inmutabilidad de prescripciones y cálculos de retiro previos
+2. **AS-008 - Scenario**: Inmutabilidad de prescripciones y cálculos de retiro previos
    - **Given** un galpón diagnosticado previamente cuya prescripción médica utilizó la versión de 5 días de la medicación
    - **When** el Veterinario modifica en el catálogo la medicación elevándola a 7 días
    - **Then** el galpón previamente diagnosticado conserva intactos los 5 días originales y su fecha calculada de retiro toxicológico
    - **And** el sistema no recalcula ni altera ningún expediente clínico activo o cerrado
 
-3. **Scenario**: Rechazo de edición por rol no autorizado
+3. **AS-009 - Scenario**: Rechazo de edición por rol no autorizado
    - **Given** un usuario sin facultades clínicas (rol distinto a "VETERINARIO")
    - **When** intenta emitir la orden de modificación de una medicación
    - **Then** el sistema rechaza la solicitud y mantiene inalterados los datos de la medicación
@@ -96,19 +96,19 @@ Como auditor de inocuidad y responsable técnico sanitario de la granja, quiero 
 
 **Acceptance Scenarios**:
 
-1. **Scenario**: Prohibición absoluta de borrado físico
+1. **AS-010 - Scenario**: Prohibición absoluta de borrado físico
    - **Given** una medicación registrada en el catálogo de tratamientos
    - **When** se intenta ejecutar una instrucción de borrado físico directo (`DELETE`)
    - **Then** el sistema intercepta y rechaza la operación
    - **And** preserva intacto el registro en la base de datos
 
-2. **Scenario**: Prevención de duplicados por reintentos de red (Idempotencia)
+2. **AS-011 - Scenario**: Prevención de duplicados por reintentos de red (Idempotencia)
    - **Given** un comando de registro de medicación procesado con éxito bajo la cabecera "X-Idempotency-Key: IDEMP-MED-9910"
    - **When** la aplicación cliente reenvía la misma petición idéntica debido a una pérdida temporal de conexión
    - **Then** el sistema reconoce la clave de idempotencia previa
    - **And** devuelve la respuesta original almacenada sin duplicar el registro de medicación en el catálogo
 
-3. **Scenario**: Control de concurrencia optimista en modificaciones simultáneas
+3. **AS-012 - Scenario**: Control de concurrencia optimista en modificaciones simultáneas
    - **Given** un registro de medicación en versión 1 en la base de datos
    - **When** un veterinario guarda una modificación elevando la versión a 2
    - **And** un segundo veterinario intenta guardar cambios basados en la versión 1 desactualizada
@@ -129,7 +129,7 @@ Como auditor de inocuidad y responsable técnico sanitario de la granja, quiero 
 ### Functional Requirements
 
 - **FR-001**: El registro y actualización de medicaciones DEBE estar reservado exclusivamente a usuarios autenticados con rol `VETERINARIO`.
-- **FR-002**: Toda medicación DEBE registrar obligatoriamente: patología asociada, medicamento de inventario, dosis exacta con unidad de medida, duración total en días y descripción de administración.
+- **FR-002**: Toda medicación DEBE registrar obligatoriamente: patología asociada, medicamento de inventario, dosis con formato `<valor><unidad>` (ej. `'0.5 g/L de agua'`), duración en días enteros positivos, y descripción de administración. El sistema DEBE normalizar los campos de texto con `trim()` y rechazar valores nulos, vacíos o compuestos únicamente por espacios. La descripción DEBE tener entre 10 y 500 caracteres tras normalización.
 - **FR-003**: La duración del tratamiento DEBE ser validada como un número entero estrictamente mayor a cero ($\text{diasTratamiento} \in \mathbb{Z}^+$).
 - **FR-004**: El sistema DEBE validar que la patología referenciada exista en el catálogo de enfermedades de la granja y esté en estado `ACTIVA` (`Spec 009: Registrar enfermedad`)[cite: 9].
 - **FR-005**: El sistema DEBE validar que el medicamento referenciado exista y se encuentre habilitado para su uso en el inventario central de medicamentos.
@@ -139,6 +139,16 @@ Como auditor de inocuidad y responsable técnico sanitario de la granja, quiero 
 - **FR-009**: Cada creación o edición de medicación DEBE persistir un asiento histórico inmutable en la tabla `san_auditoria` con usuario responsable, fecha, hora y justificación de cambio.
 - **FR-010**: Queda ESTRICTAMENTE PROHIBIDO el borrado físico (`DELETE` en base de datos) de cualquier registro de medicación.
 - **FR-011**: El sistema DEBE aplicar control de concurrencia optimista (`version`) y soportar cabeceras de idempotencia técnica para evitar tratamientos duplicados ante reconexiones de red.
+- **FR-012**: El sistema DEBE permitir desactivar lógicamente una medicación estableciendo `activa = false`, sin eliminar físicamente el registro. Las medicaciones inactivas NO DEBEN poder seleccionarse en nuevos diagnósticos, pero los diagnósticos existentes conservan su referencia histórica a la medicación inactiva.
+
+### Non-Functional Requirements
+
+| ID | Categoría | Requerimiento | Métrica |
+| :--- | :--- | :--- | :--- |
+| **NFR-001** | Rendimiento | Latencia de validación, registro y persistencia | < 250 ms (p95) bajo carga normal |
+| **NFR-002** | Seguridad | Acceso restringido exclusivamente al rol VETERINARIO | HTTP 403 Forbidden a otros roles |
+| **NFR-003** | Integridad | Escritura atómica (entidad + outbox + auditoría) bajo `@Transactional` | 100% de consistencia local |
+| **NFR-004** | Persistencia | Prohibición estricta de sentencias `DELETE` SQL en base de datos | 0% borrados físicos |
 
 ### Key Entities
 
@@ -158,3 +168,39 @@ Como auditor de inocuidad y responsable técnico sanitario de la granja, quiero 
 - **SC-005**: El tiempo de respuesta del sistema para validar y registrar una medicación es inferior a 250 milisegundos en condiciones operativas habituales.
 - **SC-006**: Cero incidentes (0%) de registros de medicación eliminados físicamente de la base de datos a lo largo del ciclo de vida del sistema.
 - **SC-007**: El 100% de los eventos de integración son respaldados en la tabla Outbox dentro de la misma transacción de base de datos, garantizando entrega confiable al broker de colas.
+- **SC-008**: El 100% de las medicaciones desactivadas lógicamente quedan excluidas de selección en diagnósticos futuros y conservan su referencia histórica en diagnósticos existentes.
+
+## UI Component Mapping (Prototipo ↔ Spec)
+
+Esta sección documenta la correspondencia estricta entre los controles del prototipo visual oficial (`008-RegistrarMedicacion.png`) y los requerimientos funcionales del sistema. Todo componente visual debe responder a un FR y ningún comportamiento fuera de este catálogo está permitido.
+
+### Pantalla: Catálogo de Medicación
+- **Prototipo de Referencia**: `docs/prototype/Veterinario/008-RegistrarMedicacion.png`
+- **Actor Exclusivo**: `VETERINARIO` (FR-001)
+
+| Componente UI | Tipo | FR Asociado | Comportamiento Técnico y Validación |
+| :--- | :--- | :--- | :--- |
+| **Tabla de Medicaciones** | Data Grid | FR-002 | Lista enfermedad asociada, fármaco, dosis/vía, duración, instrucciones, estado |
+| **Stat Cards de Resumen** | Metric Cards (4) | FR-002, FR-012 | Muestran: Pautas registradas, Pautas activas, Fármacos vinculados, Patologías cubiertas |
+| **Barra de Filtros** | Filter Bar | FR-002, FR-004 | Búsqueda por patología/fármaco + filtros por patología y estado (activa/inactiva) |
+| **Banner Informativo** | Info Banner | FR-006 | Muestra "Las pautas aquí configuradas no descuentan stock ni alteran prescripciones previas" |
+| **Botón "+ Registrar medicación"** | Button (Primary) | FR-001, FR-002 | Abre el formulario lateral de alta (restringido a rol VETERINARIO) |
+| **Dropdown "Patología vinculada"** | Dropdown | FR-004 | Solo patologías en estado ACTIVA (integración con Spec 009) |
+| **Dropdown "Medicamento activo"** | Dropdown | FR-005 | Solo fármacos habilitados en inventario central |
+| **Input "Dosis y Unidad"** | Text Input | FR-002 | Formato `<valor><unidad>` (ej. "0.5 g/L de agua"), no vacío tras trim() |
+| **Input "Duración (Días enteros)"** | Number Input | FR-003 | Entero estrictamente mayor a cero |
+| **Textarea "Indicaciones clínicas"** | Textarea | FR-002 | Entre 10 y 500 caracteres tras trim() |
+| **Badge "Activa" / "Inactiva"** | Status Badge | FR-012 | Refleja el estado lógico `activa == true/false` |
+| **Acción "Ver detalle" (Ícono ojo)** | Action Button | FR-002 | Carga el detalle en modo solo lectura |
+| **Acción "Editar" (Ícono lápiz)** | Action Button | FR-007, FR-011 | Permite mutación controlada respetando `@Version` |
+| **Warning Box en Formulario** | Alert Box | FR-010 | Advierte que la pauta quedará disponible para diagnósticos y prohíbe la eliminación física |
+
+### Elementos Prohibidos en la Pantalla (Guardrails Sanitarios)
+- ❌ **Botón "Eliminar" / "Borrar"**: Terminantemente prohibido (`FR-010`). No existe eliminación física de protocolos.
+- ❌ **Campos huérfanos**: Prohibido añadir campos de fechas de auditoría o autores que no pertenezcan al dominio funcional.
+- ❌ **Selectores que permitan patologías inactivas**: Solo patologías ACTIVAS (`FR-004`).
+
+### Estados Operativos del Formulario
+- **Validación inline**: Resaltado de campos obligatorios con asterisco rojo y validación de formato de dosis y duración.
+- **Transacción en progreso**: Bloqueo de controles de envío durante el commit atómico (`san_medicaciones` + `san_outbox` + `san_auditoria`).
+- **Colisión de Concurrencia**: Modal informativo ante HTTP 409 (`ConcurrenciaOptimistaException`) solicitando recarga de datos.
