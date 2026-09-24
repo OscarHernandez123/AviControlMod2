@@ -12,18 +12,20 @@ El sistema opera bajo los siguientes principios de arquitectura y reglas de nego
 1. **Plantilla Maestra vs. Instancia Desacoplada:**
    - **Plantilla Maestra (Catálogo Global):** El nutricionista define modelos estándar (ej. *Plan Estándar Broiler*, *Crecimiento Rápido*) con etapas base, raciones por ave (`kg/pollo/día`), duraciones base estimadas y el bulto/alimento por defecto. Solo puede existir **un único plan marcado como predeterminado (`esPredeterminado = true`) por cada tipo de ave**.
    - **Instancia del Galpón:** Al alojar un lote, el galpón recibe su propia copia independiente del plan. Los ajustes en un galpón **jamás alteran la plantilla maestra ni a otros galpones**.
-2. **Bloqueo e Inmutabilidad del Alimento durante la Etapa Activa (Blindaje con SPEC-022):**
-   - Al activarse una etapa en un galpón, el alimento comercial seleccionado queda **estrictamente bloqueado e inmutable para dicha etapa y NO puede ser modificado durante su transcurso**.
-   - Esta restricción previene inconsistencias zootécnicas y garantiza la integridad de la proyección contable de requerimientos generada para el Módulo 3 (Finanzas) según el [SPEC-022](file:///C:/Users/ESTUDIANTE/IdeaProjects/practicaweb/AviControlMod2/docs/specs/022-ConsultarAlimentoRequeridoPorLote.md), la cual almacena de forma inmutable el alimento y costo unitario de la etapa.
-   - Cualquier cambio de alimento comercial debe planificarse exclusivamente para las **etapas posteriores que aún no hayan comenzado**. Durante la etapa activa, el único ajuste permitido sobre el cronograma es la prórroga o modificación de su duración en días por contingencias (conforme a US-4).
+2. **Bloqueo e Inmutabilidad en Etapa Activa y Protección de Proyecciones (Blindaje con SPEC-022):**
+   - Al activarse una etapa en un galpón, la población viva base al corte, la ración diaria, el alimento comercial seleccionado, la presentación del bulto y el costo unitario de referencia capturado ([SPEC-022](file:///C:/Users/ESTUDIANTE/IdeaProjects/practicaweb/AviControlMod2/docs/specs/022-ConsultarAlimentoRequeridoPorLote.md)) quedan **estrictamente bloqueados e inmutables para dicha etapa y NO pueden ser modificados durante su transcurso**.
+   - Esta restricción previene inconsistencias zootécnicas y garantiza la integridad de la proyección contable de requerimientos generada para el Módulo 3 (Finanzas) según el [SPEC-022](file:///C:/Users/ESTUDIANTE/IdeaProjects/practicaweb/AviControlMod2/docs/specs/022-ConsultarAlimentoRequeridoPorLote.md).
+   - Cualquier cambio de alimento comercial debe planificarse exclusivamente para las **etapas posteriores que aún no hayan comenzado**. Durante la etapa activa, el único ajuste permitido sobre el cronograma es la prórroga o modificación de su duración en días por contingencias zootécnicas (cuarentena sanitaria o bajo peso conforme a US-4), lo cual recalcula los kilogramos proyectados en SPEC-022 manteniendo invariable el costo unitario capturado.
+   - Cada ajuste de duración se registra en un historial acumulativo inmutable (`HistorialAjusteProyeccion`), el cual preserva fecha/hora, usuario, motivo, justificación y valores previos y nuevos de duración y kilogramos sin sobreescribir ajustes anteriores.
+   - Al transicionar la etapa a estado `COMPLETADA`, su proyección adquiere **inmutabilidad absoluta**, prohibiendo cualquier modificación posterior.
 3. **Cierre Matemático de Cascada y Fecha de Salida:**
    - Al modificarse el día final de una etapa `k`, todas las etapas posteriores `i` (donde `i > k`) **conservan su duración efectiva previamente configurada** (`diasEfectivos_i`) y recalculan su cronograma en cascada:
      $$\text{DiaInicio}_i = \text{DiaFin}_{i-1} + 1$$
      $$\text{DiaFin}_i = \text{DiaInicio}_i + \text{diasEfectivos}_i - 1$$
    - La última etapa del ciclo ("Finalización/Engorde") recalcula su `DiaFin`, el cual actualiza automáticamente la **fecha proyectada de salida/sacrificio** del lote y emite una notificación de advertencia zootécnica.
-4. **Sustitución de Plan No Destructiva (Inmutabilidad Histórica):**
+4. **Sustitución de Plan No Destructiva (Inmutabilidad Histórica y Blindaje de Etapa Activa):**
    - La sustitución de un plan en un lote activo **mantiene estrictamente inmutables las etapas ya transcurridas** (con sus raciones, fechas y consumos históricos registrados).
-   - El nuevo plan se empareja a partir de la **etapa activa vigente** según la edad actual de las aves, proyectando exclusivamente las etapas presentes y futuras.
+   - La sustitución de plan **jamás permite evadir las restricciones de la etapa activa**: la etapa en curso conserva inmutables su alimento asignado, su cuota, su costo unitario capturado, sus días y su historial de ajustes. El nuevo plan se acopla para regir exclusivamente a partir de las **etapas futuras que aún no hayan comenzado**.
 5. **Matriz de Excepciones en la Asignación Automática:**
    - Si no existe un plan predeterminado activo para el tipo de ave, el sistema marca el galpón en estado `"Pendiente de Asignación Nutricional"` y emite una alerta prioritaria al nutricionista sin bloquear el alojamiento.
    - Si el lote ingresa con una edad superior al inicio estándar (ej. día 14 de vida), las etapas previas se registran como `"Omitidas"` y se activa directamente la etapa que cubra la edad de recepción.
@@ -60,11 +62,11 @@ Como nutricionista de la granja, quiero crear y gestionar plantillas maestras de
 
 ### User Story 2 - Asignación de Plan a Galpón, Excepciones y Sustitución Históricamente Segura (Priority: P1)
 
-Como nutricionista o administrador, quiero que al ingresar un lote a un galpón se le asigne automáticamente el plan predeterminado según el tipo de ave (gestionando excepciones de ingreso por edad o ausencia de plan), y disponer de la facultad de sustituir el plan en lotes activos preservando el historial transcurrido, para garantizar que ningún lote opere sin pauta alimenticia y que los cambios de plan respeten la trazabilidad zootécnica.
+Como nutricionista o administrador, quiero que al ingresar un lote a un galpón se le asigne automáticamente el plan predeterminado según el tipo de ave (gestionando excepciones de ingreso por edad o ausencia de plan), y disponer de la facultad de sustituir el plan en lotes activos preservando el historial transcurrido y blindando la etapa activa, para garantizar que ningún lote opere sin pauta alimenticia y que los cambios de plan respeten la trazabilidad zootécnica y contable.
 
-**Why this priority**: Evita galpones huérfanos de plan, maneja ingresos atípicos y permite corregir o cambiar el régimen alimenticio a mitad de ciclo sin corromper los datos históricos de consumo.
+**Why this priority**: Evita galpones huérfanos de plan, maneja ingresos atípicos y permite corregir o cambiar el régimen alimenticio a mitad de ciclo sin corromper los datos históricos de consumo ni evadir las restricciones de la etapa en curso.
 
-**Independent Test**: Se puede probar alojando un lote de 1 día (asignación automática inmediata), alojando un lote que llega a día 14 (omisión de Pre-inicio y activación en Inicio), forzando el ingreso sin plan predeterminado (alerta y estado Pendiente), y sustituyendo el plan en día 25 (conservando etapas de Pre-inicio e Inicio inmutables).
+**Independent Test**: Se puede probar alojando un lote de 1 día (asignación automática inmediata), alojando un lote que llega a día 14 (omisión de Pre-inicio y activación en Inicio), forzando el ingreso sin plan predeterminado (alerta y estado Pendiente), y sustituyendo el plan en día 25 (conservando etapas de Pre-inicio e Inicio inmutables y manteniendo bloqueada la etapa activa).
 
 **Acceptance Scenarios**:
 
@@ -88,11 +90,12 @@ Como nutricionista o administrador, quiero que al ingresar un lote a un galpón 
    - **And** genera una notificación de alta prioridad en la bandeja del nutricionista requiriendo la asignación manual del plan
    - **And** registra demanda en kg igual a `0.0` hasta que se asigne un plan formal.
 
-4. **Scenario**: Sustitución de plan en lote activo preservando inmutabilidad histórica
-   - **Given** un galpón en el día 25 de vida (cursando la etapa "Engorde") con etapas "Pre-inicio" (días 1-7) e "Inicio" (días 8-21) ya completadas
+4. **Scenario**: Sustitución de plan en lote activo preservando inmutabilidad histórica y blindaje de etapa activa
+   - **Given** un galpón en el día 25 de vida (cursando la etapa activa "Engorde" con alimento y costo unitario capturado bloqueados) y etapas "Pre-inicio" (días 1-7) e "Inicio" (días 8-21) ya concluidas en estado `COMPLETADA`
    - **When** el nutricionista abre el modal de asignación y sustituye el plan actual por "Plan Crecimiento Rápido"
-   - **Then** el sistema conserva inalterado el historial y consumos de las etapas transcurridas "Pre-inicio" e "Inicio"
-   - **And** acopla el nuevo plan para iniciar a partir de la etapa activa vigente ("Engorde"), respetando el alimento bloqueado para la fase en curso y aplicando cambios únicamente a las etapas subsiguientes.
+   - **Then** el sistema conserva estrictamente inmutables las etapas transcurridas "Pre-inicio" e "Inicio" (con sus proyecciones históricas y consumos)
+   - **And** mantiene inmutable el alimento asignado, la cuota, el costo unitario capturado y el historial de ajustes de la etapa activa vigente ("Engorde"), impidiendo evadir su bloqueo
+   - **And** programa las pautas del nuevo plan exclusivamente para las etapas posteriores que aún no hayan comenzado (si existieran fases subsiguientes como "Finalización tardía").
 
 ---
 
@@ -153,11 +156,11 @@ Como nutricionista, quiero consultar los alimentos compatibles del catálogo y s
 
 ### User Story 4 - Ajuste Manual de Días de Etapa, Cierre de Cascada y Sincronización de Salida (Priority: P1)
 
-Como nutricionista, quiero ajustar manualmente los días de duración de una etapa activa por contingencias (bajo peso o cuarentena sanitaria) manteniendo su alimento inmutable y registrando una justificación obligatoria, para que el sistema cierre matemáticamente la cascada conservando las duraciones de las etapas posteriores y actualice la fecha proyectada de salida/sacrificio sin generar errores contables en la proyección del lote.
+Como nutricionista, quiero ajustar manualmente los días de duración de una etapa activa por contingencias (bajo peso o cuarentena sanitaria) manteniendo su alimento inmutable y registrando una justificación obligatoria, para que el sistema cierre matemáticamente la cascada conservando las duraciones de las etapas posteriores, actualice la fecha proyectada de salida/sacrificio y conserve el historial acumulado de ajustes sin generar errores contables en la proyección del lote.
 
-**Why this priority**: Las contingencias zootécnicas exigen prorrogar o acortar fases. El ajuste exclusivo sobre los días (sin alterar el insumo) permite actualizar los kilogramos en SPEC-022 con el mismo costo unitario, manteniendo cerrada la cascada y sincronizada la faena.
+**Why this priority**: Las contingencias zootécnicas exigen prorrogar o acortar fases. El ajuste exclusivo sobre los días (sin alterar el insumo ni el costo capturado) permite actualizar los kilogramos en SPEC-022 acumulando el historial de auditoría, manteniendo cerrada la cascada y sincronizada la faena.
 
-**Independent Test**: Se puede probar en un lote de 45 días totales, extendiendo la etapa activa "Inicio" en 5 días con justificación técnica (sin modificar el alimento), comprobando que "Engorde" mantenga sus 24 días efectivos iniciando 5 días después, y verificando que la fecha proyectada de sacrificio del lote se desplace automáticamente en 5 días.
+**Independent Test**: Se puede probar en un lote de 45 días totales, extendiendo la etapa activa "Inicio" en 5 días con justificación técnica (sin modificar el alimento), comprobando que "Engorde" mantenga sus 24 días efectivos iniciando 5 días después, verificando que la fecha proyectada de sacrificio del lote se desplace automáticamente en 5 días y confirmando que la proyección en SPEC-022 registre el evento en su historial de ajustes sin alterar el costo unitario.
 
 **Acceptance Scenarios**:
 
@@ -166,23 +169,30 @@ Como nutricionista, quiero ajustar manualmente los días de duración de una eta
    - **When** el nutricionista amplía la etapa "Inicio" hasta el día 26 (duración total 19 días) por bajo peso y registra la justificación obligatoria
    - **Then** el sistema actualiza la etapa "Inicio" para abarcar los días 8 al 26 manteniendo estrictamente el mismo alimento comercial asignado
    - **And** desplaza automáticamente la etapa "Engorde" aplicando la fórmula de cascada: conserva sus 24 días efectivos, fijando `DiaInicio = 27` y `DiaFin = 27 + 24 - 1 = Día 50`
-   - **And** actualiza automáticamente la fecha proyectada de salida/sacrificio del lote sumando 5 días al cronograma general.
+   - **And** actualiza automáticamente la fecha proyectada de salida/sacrificio del lote sumando 5 días al cronograma general
+   - **And** notifica a SPEC-022 para recalcular los kilogramos proyectados y agregar la entrada correspondiente al historial de ajustes de proyección.
 
-2. **Scenario**: Rechazo de ajuste sin justificación obligatoria
+2. **Scenario**: Prórrogas sucesivas sobre la etapa activa acumuladas en el historial sin sobreescritura
+   - **Given** un lote cursando la etapa activa "Inicio" que ya cuenta con un ajuste previo registrado por `BAJO_PESO` (duración ajustada a 17 días con su justificación técnica)
+   - **When** el nutricionista registra una segunda extensión de 2 días adicionales por `CUARENTENA_SANITARIA` con su respectiva justificación
+   - **Then** el sistema amplía la duración efectiva de la etapa a 19 días, desplaza en cascada las etapas posteriores y adelanta la fecha de sacrificio en 2 días adicionales
+   - **And** añade un segundo registro al historial de ajustes de la proyección en SPEC-022, conservando intactos el primer registro de ajuste y el costo unitario de referencia original.
+
+3. **Scenario**: Rechazo de ajuste sin justificación obligatoria
    - **Given** el formulario de ajuste de etapa de un galpón
    - **When** el nutricionista modifica el día final pero deja el campo "Justificación del Ajuste" vacío o con espacios en blanco
    - **Then** el sistema bloquea el guardado e informa que la justificación técnica es obligatoria para auditoría.
 
-3. **Scenario**: Bloqueo de edición de etapas históricas transcurridas
-   - **Given** un galpón con lote en el día 28 de vida (etapa "Engorde")
-   - **When** el usuario intenta modificar las etapas "Pre-inicio" o "Inicio"
-   - **Then** el sistema bloquea los controles de edición de dichas etapas e informa que las etapas transcurridas son inmutables.
+4. **Scenario**: Bloqueo absoluto de edición en etapas completadas o históricas
+   - **Given** un galpón con lote en el día 28 de vida (etapa "Engorde") y etapas "Pre-inicio" e "Inicio" en estado `COMPLETADA`
+   - **When** el usuario intenta modificar los días, fechas, cuotas o alimento de las etapas "Pre-inicio" o "Inicio"
+   - **Then** el sistema bloquea los controles de edición de dichas etapas e informa que las etapas completadas y sus proyecciones son completamente inmutables.
 
-4. **Scenario**: Reducción de etapa activa con avance en cascada de fecha de sacrificio
+5. **Scenario**: Reducción de etapa activa con avance en cascada de fecha de sacrificio
    - **Given** un lote con etapa activa "Inicio" acortada en 3 días debido a ganancia acelerada de peso
    - **When** se confirma la reducción de la etapa respetando `DiaFin >= EdadActualLote`
    - **Then** la etapa "Engorde" adelanta su inicio en 3 días manteniendo su duración efectiva
-   - **And** el día final del lote se adelanta en 3 días, actualizando la fecha estimada de sacrificio y emitiendo una notificación informativa.
+   - **And** el día final del lote se adelanta en 3 días, actualizando la fecha estimada de sacrificio y registrando el ajuste en el historial de proyección.
 
 ---
 
@@ -223,6 +233,16 @@ Como nutricionista, quiero ajustar manualmente los días de duración de una eta
   - ¿Qué ocurre si un alimento comercial se planificó con estado "Sin stock" o sus existencias se agotan en bodega central antes de que el lote termine su etapa?  
     El sistema debe conservar inalterada la parametrización lógica y la proyección en el plan nutricional, sin invalidarla. La alerta y validación de disponibilidad física se traslada a la operación diaria de despacho ([SPEC-014]) y consulta de inventario ([SPEC-023]), permitiendo a bodega gestionar el reabastecimiento sin corromper la planificación.
 
+- **Edge case #8 - Intentos sucesivos de prórroga y acumulación histórica**
+
+  - ¿Cómo se garantiza que al registrar una segunda o tercera prórroga sobre una etapa activa no se pierda la justificación de la primera prórroga?  
+    El sistema anexa cada ajuste como una nueva entrada cronológica en el historial acumulativo (`HistorialAjusteProyeccion`) en SPEC-022, conservando para cada ajuste los días previos, días otorgados, motivo, justificación, responsable y fecha, evitando la sobreescritura del historial.
+
+- **Edge case #9 - Intento de modificación o prórroga en una etapa concluida (`COMPLETADA`)**
+
+  - ¿Qué respuesta ofrece el sistema si un usuario intenta prorrogar o modificar los días de una etapa que ya finalizó su curso?  
+    El sistema bloquea la acción indicando que la etapa se encuentra en estado `COMPLETADA` y que sus parámetros de duración, fechas y proyección contable han adquirido inmutabilidad absoluta.
+
 ---
 
 ## Requirements *(mandatory)*
@@ -235,7 +255,7 @@ Como nutricionista, quiero ajustar manualmente los días de duración de una eta
 - **FR-004**: Al confirmar el ingreso de un nuevo lote a un galpón, el sistema DEBE asignar automáticamente una instancia desacoplada del plan nutricional predeterminado del tipo de ave correspondiente.
 - **FR-005**: Si no existe un plan predeterminado activo para el tipo de ave del lote entrante, el sistema DEBE registrar el alojamiento, marcar el galpón en estado `"Pendiente de Asignación Nutricional"`, emitir una alerta prioritaria en la bandeja del nutricionista y fijar la demanda proyectada en 0.0 hasta su asignación manual.
 - **FR-006**: Si el lote ingresa con una edad superior al día 1 de vida, el sistema DEBE marcar como `"Omitida"` toda etapa cuyo `DiaFin` sea menor a la edad de ingreso, activar inmediatamente la etapa que cubra la edad actual y computar el consumo a partir de dicho día.
-- **FR-007**: El sistema DEBE permitir sustituir el plan nutricional de un galpón con lote activo mediante selección en modal. La sustitución DEBE preservar inmutables las etapas y consumos históricos transcurridos y acoplar el nuevo plan a partir de la etapa activa vigente, respetando el alimento asignado a la fase en curso.
+- **FR-007**: El sistema DEBE permitir sustituir el plan nutricional de un galpón con lote activo mediante selección en modal. La sustitución DEBE preservar inmutables las etapas transcurridas (`COMPLETADA`) y NO DEBE permitir evadir las restricciones de la etapa activa vigente (la cual conserva su alimento bloqueado, cuota, costo unitario capturado y proyección). El nuevo plan aplicará exclusivamente a partir de las etapas futuras no iniciadas.
 - **FR-008**: Las modificaciones realizadas en la instancia de un galpón NO DEBEN alterar la plantilla maestra ni a los demás galpones, y los cambios en una plantilla maestra aplicarán exclusivamente a futuros lotes.
 - **FR-009**: Cada producto comercial del catálogo de alimentos DEBE incluir su peso nominal por bulto (`pesoNominalPorBulto`), su perfil nutricional base (% proteína, energía) y, opcionalmente, la duración recomendada de la etapa en días (`duracionRecomendadaEtapaDias`).
 - **FR-010**: Al configurar una etapa, el sistema DEBE consultar en tiempo real y mostrar únicamente los alimentos comerciales activos compatibles con el `TipoAlimento` de dicha etapa.
@@ -244,18 +264,18 @@ Como nutricionista, quiero ajustar manualmente los días de duración de una eta
 - **FR-013**: Los alimentos compatibles con existencia disponible igual a 0 kg DEBEN mostrarse identificados como "Sin stock", permitiendo su selección con una advertencia visual de reabastecimiento requerido en etapas no iniciadas.
 - **FR-014**: El sistema DEBE bloquear estrictamente la asignación de cualquier alimento comercial cuyo `TipoAlimento` no corresponda a la etapa configurada.
 - **FR-015**: Al seleccionar un alimento para una etapa no iniciada con `duracionRecomendadaEtapaDias` configurado, el sistema DEBE prellenar dicho valor en el campo de duración de la etapa en la interfaz y aplicarlo como duración total de la etapa al guardar la selección. Si dicho atributo es nulo, el sistema DEBE mantener la duración base de la etapa.
-- **FR-016**: Al activarse una etapa en el galpón y generarse su proyección en el SPEC-022, el alimento comercial asignado DEBE quedar estrictamente bloqueado como inmutable para dicha etapa, prohibiendo cambios de insumo comercial durante el transcurso de la etapa activa para evitar inconsistencias de costo unitario y zootécnicas.
-- **FR-017**: Las modificaciones sobre una etapa activa DEBEN limitarse exclusivamente al ajuste o prórroga de su duración en días (bajo las reglas de justificación del FR-021), conservando invariable el alimento asignado.
+- **FR-016**: Al activarse una etapa en el galpón y generarse su proyección en el SPEC-022, la población viva base al corte, la ración diaria, el alimento comercial asignado, la presentación del bulto y el costo unitario capturado DEBEN quedar estrictamente bloqueados como inmutables para dicha etapa, prohibiendo cambios de insumo comercial a mitad de etapa para evitar inconsistencias de costo y trazabilidad.
+- **FR-017**: Las modificaciones sobre una etapa activa DEBEN limitarse exclusivamente al ajuste o prórroga de su duración en días (bajo las reglas de justificación del FR-021 y FR-022), recalculando la proyección de kilogramos en SPEC-022 y conservando invariable el alimento y el costo unitario asignados.
 - **FR-018**: Al modificarse el día final de una etapa `k`, el sistema DEBE cerrar la cascada recalculando todas las etapas posteriores `i > k`: conservando sus días efectivos configurados (`diasEfectivos_i`), fijando `DiaInicio_i = DiaFin_{i-1} + 1` y `DiaFin_i = DiaInicio_i + diasEfectivos_i - 1`.
 - **FR-019**: El recálculo de la última etapa del ciclo DEBE actualizar automáticamente la fecha proyectada de salida/sacrificio del lote en el sistema y emitir una notificación informativa.
 - **FR-020**: El guardado de la asignación del alimento y las raciones en el plan nutricional DEBE operar como configuración lógica y NO DEBE descontar inventario, registrar consumos ni reservar bultos físicos en bodega central.
 - **FR-021**: El sistema DEBE validar que la ración diaria por ave sea estrictamente positiva mayor a 0 (admitiendo hasta 4 decimales en kilogramos).
-- **FR-022**: El sistema DEBE permitir ajustar manualmente los días de una etapa en un galpón ante contingencias, exigiendo obligatoriamente el registro de la justificación técnica del ajuste y el usuario responsable.
-- **FR-023**: El sistema DEBE bloquear la modificación de etapas transcurridas en el galpón para proteger la integridad de los datos históricos.
+- **FR-022**: El sistema DEBE permitir ajustar manualmente los días de una etapa activa ante contingencias zootécnicas (`CUARENTENA_SANITARIA` o `BAJO_PESO`), exigiendo obligatoriamente el registro de la justificación técnica del ajuste y el usuario responsable, y anexando cada ajuste de forma acumulativa en el historial de auditoría de proyecciones sin sobreescribir los registros precedentes.
+- **FR-023**: El sistema DEBE bloquear y rechazar de forma estricta cualquier intento de modificación sobre etapas cuyo estado sea `COMPLETADA` o pertenezcan a lotes finalizados, garantizando la inmutabilidad absoluta de los datos históricos y de las proyecciones cerradas.
 - **FR-024**: El sistema DEBE calcular automáticamente la demanda diaria en kg mediante la fórmula: `DemandaKg = PoblacionAves * RacionKgPorPolloDia`.
 - **FR-025**: El sistema DEBE calcular la demanda equivalente en bultos mediante la fórmula: `DemandaBultos = DemandaKg / PesoNetoKgPorBulto`.
 - **FR-026**: El sistema DEBE calcular los días de autonomía de alimento comparando el stock disponible del alimento seleccionado en bodega central contra la demanda diaria del galpón.
-- **FR-027**: El sistema DEBE mantener un registro auditable de todas las asignaciones y ajustes de planes nutricionales (timestamp, usuario, galpón, lote, valores anteriores y nuevos valores).
+- **FR-027**: El sistema DEBE mantener un registro auditable de todas las asignaciones y ajustes de planes nutricionales (timestamp, usuario, galpón, lote, valores anteriores y nuevos valores), sincronizado con el historial de proyecciones del SPEC-022.
 
 ---
 
@@ -270,8 +290,8 @@ Como nutricionista, quiero ajustar manualmente los días de duración de una eta
   - *Atributos*: ID, galponId, loteId, plantillaOrigenId, estado (ACTIVO, PENDIENTE_ASIGNACION, FINALIZADO), fechaAsignacion, usuarioAsignador.
   - *Relaciones*: contiene la lista de `CalendarioEtapaGalpon`.
 - **CalendarioEtapaGalpon**: Configuración de la etapa para un galpón específico.
-  - *Atributos*: ID, planGalponId, etapaCrianza, diaInicio, diaFin, diasEfectivos, estadoEtapa (OMITIDA, ACTIVA, COMPLETADA), alimentoBloqueado (booleano), racionKgPolloDia, alimentoId, pesoNetoKgPorBulto, justificacionAjuste, usuarioAjuste, fechaActualizacion.
-  - *Relaciones*: referencia a `Alimento` y a `TipoAlimento`.
+  - *Atributos*: ID, planGalponId, etapaCrianza, diaInicio, diaFin, diasBase, diasProrroga, diasEfectivos, estadoEtapa (`OMITIDA`, `ACTIVA`, `COMPLETADA`), alimentoBloqueado (booleano), racionKgPolloDia, alimentoId, pesoNetoKgPorBulto, justificacionAjuste, usuarioAjuste, fechaActivacionEtapa, fechaActualizacion.
+  - *Relaciones*: referencia a `Alimento`, a `TipoAlimento` y se sincroniza con `ProyeccionAlimentoEtapa` ([SPEC-022](file:///C:/Users/ESTUDIANTE/IdeaProjects/practicaweb/AviControlMod2/docs/specs/022-ConsultarAlimentoRequeridoPorLote.md)).
 - **TipoAlimento**: Clasificación zootécnica vinculada a la etapa productiva (consistente con SPEC-001).
   - *Atributos*: ID, nombre (ej. Pre-iniciador, Iniciador, Engorde), etapaAsociada, descripcionNutricional, estado.
 - **Alimento**: Producto comercial específico del catálogo de insumos (consistente con SPEC-001).
@@ -291,9 +311,11 @@ Como nutricionista, quiero ajustar manualmente los días de duración de una eta
 - **SC-001**: 100% de los lotes nuevos de edad estándar reciben automáticamente la instancia de su plan predeterminado sin intervención manual obligatoria.
 - **SC-002**: 100% de los alojamientos sin plan predeterminado activo activan el estado `"Pendiente de Asignación Nutricional"` con notificación prioritaria sin bloquear el registro del lote.
 - **SC-003**: 100% de los lotes recibidos con edad > 1 día omiten las etapas previas e inician su cómputo estrictamente en la etapa correspondiente a su edad.
-- **SC-004**: 100% de las etapas en estado activo mantienen su alimento comercial estrictamente bloqueado, registrando 0% de modificaciones de insumo a mitad de etapa.
-- **SC-005**: 100% de las sustituciones de plan en lotes en curso conservan inalteradas las etapas y consumos históricos transcurridos.
+- **SC-004**: 100% de las etapas en estado activo mantienen su alimento comercial, cuota y parámetros base estrictamente bloqueados, registrando 0% de modificaciones de insumo a mitad de etapa.
+- **SC-005**: 100% de las sustituciones de plan en lotes en curso conservan inalteradas las etapas transcurridas y respetan los parámetros bloqueados de la etapa activa vigente.
 - **SC-006**: 100% de los recálculos por perfil nutricional en etapas en planificación aplican la duración recomendada al confirmar la selección y cierran la cascada.
 - **SC-007**: 100% de los desplazamientos en cascada recalculan el inicio y fin de etapas posteriores preservando sus días efectivos y actualizando la fecha proyectada de sacrificio.
 - **SC-008**: 0% de movimientos o deducciones de inventario físico generados por configurar o guardar un plan nutricional.
-- **SC-009**: 100% de las prórrogas y ajustes manuales de días en etapas activas exigen y persisten la justificación técnica obligatoria del usuario responsable conservando el mismo alimento comercial.
+- **SC-009**: 100% de las prórrogas y ajustes manuales de días en etapas activas exigen y persisten la justificación técnica obligatoria del usuario responsable conservando el mismo alimento comercial y costo unitario.
+- **SC-010**: 100% de los ajustes sucesivos sobre una etapa activa se anexan al historial acumulativo de auditoría de proyecciones sin sobreescribir los registros anteriores.
+- **SC-011**: 100% de los intentos de modificar etapas en estado `COMPLETADA` son bloqueados por el sistema, garantizando la inmutabilidad histórica.
