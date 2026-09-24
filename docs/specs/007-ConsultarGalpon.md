@@ -66,6 +66,42 @@ Como administrador, quiero visualizar en la pantalla de inicio la cantidad total
    - **When** actualiza o vuelve a abrir la pantalla de inicio
    - **Then** el sistema obtiene los estados vigentes desde el módulo 1 sin modificar ningún galpón ni lote
 
+---
+
+### User Story 3 - Visualizar galpones asignados al trabajador (Priority: P2)
+
+Como trabajador u operario de granja, quiero visualizar en mi pantalla de inicio la cantidad total de galpones asignados a mi cargo, la sumatoria de aves vivas bajo mi responsabilidad y el listado de mis galpones asignados detallando el nombre del galpón, identificador del lote, su estado, población actual, edad del lote en días, la dieta del día de hoy y su ración diaria requerida, para tener un control general e inmediato de mi asignación antes de realizar las labores de la jornada.
+
+**Why this priority**: Es la pantalla de entrada operativa del trabajador ("Inicio de trabajador"), permitiéndole conocer en una sola vista cuántos galpones tiene a su cargo y cuántas aves vivas gestiona en total, además del estado nutricional y operativo de cada galpón, restringiendo el acceso exclusivamente a los galpones asignados bajo su responsabilidad formal.
+
+**Independent Test**: Se puede probar autenticándose como un trabajador que tiene asignados tres galpones en el módulo 1 (por ejemplo, Galpón 1 con 5.000 aves, 38 días, dieta Engorde Stage 2 y ración de 450 kg / 9 bultos; Galpón 3 con 4.800 aves, 35 días, dieta Engorde Stage 2 y ración de 430 kg / 8.6 bultos; y Galpón 5 con 4.000 aves y 41 días), verificando que la interfaz presente la tarjeta "Mis Galpones Asignados" con el valor 3 y "13.800 Aves Vivas", y liste exclusivamente las tarjetas de esos 3 galpones con sus respectivos nombres, lotes activos, estados, poblaciones vivas, edades en días, dietas de hoy y raciones diarias (kg y bultos), excluyendo galpones no asignados.
+
+**Acceptance Scenarios**:
+
+1. **Scenario**: Visualización de métricas de galpones asignados y aves vivas
+   - **Given** que un trabajador autenticado tiene asignados 3 galpones a su cargo en el módulo 1 con lotes activos cuyas poblaciones son 5.000, 4.800 y 4.000 aves vivas
+   - **When** accede a su pantalla de inicio ("Inicio de trabajador")
+   - **Then** el sistema muestra la tarjeta métrica "Mis Galpones Asignados" con la cantidad de 3 galpones
+   - **And** muestra la sumatoria consolidada de 13.800 aves vivas bajo su cargo
+
+2. **Scenario**: Listado de tarjetas de galpones a su cargo
+   - **Given** que el trabajador autenticado tiene galpones asignados con lotes activos
+   - **When** consulta la sección "Galpones a su Cargo"
+   - **Then** el sistema presenta una tarjeta por cada galpón asignado mostrando: nombre del galpón, identificador del lote activo, estado vigente, población viva actual, edad del lote en días, dieta del día de hoy y ración diaria requerida (expresada en kilogramos y bultos)
+   - **And** restringe la visualización exclusivamente a los galpones asignados a dicho trabajador
+
+3. **Scenario**: Trabajador sin galpones asignados
+   - **Given** un trabajador autenticado que no tiene galpones asignados formalmente a su cargo
+   - **When** ingresa a su pantalla de inicio
+   - **Then** el sistema muestra 0 galpones asignados, 0 aves vivas y presenta un mensaje indicando que no tiene galpones a su cargo actualmente
+
+4. **Scenario**: Intento de acceso a galpones no asignados
+   - **Given** que existen galpones registrados en la granja asignados a otros operarios
+   - **When** el trabajador visualiza su pantalla de inicio
+   - **Then** el sistema filtra rigurosamente la consulta y no muestra ningún galpón ajeno a su asignación
+
+---
+
 ### Edge Cases
 
 - **Edge case #1 - Fecha de ingreso posterior a la fecha actual**
@@ -105,6 +141,11 @@ Como administrador, quiero visualizar en la pantalla de inicio la cantidad total
 - **FR-011**: La suma de los conteos por estado DEBE coincidir con el total de galpones válidos incluidos en el resumen.
 - **FR-012**: El resumen DEBE obtener la información vigente del módulo 1 y operar estrictamente en modo de solo lectura.
 - **FR-013**: Los galpones sin estado o con un estado no permitido NO DEBEN incluirse en otro estado; el sistema DEBE informar su cantidad como registros inconsistentes.
+- **FR-014**: El sistema DEBE permitir la consulta de galpones asignados a usuarios autenticados con rol de trabajador / operario de granja.
+- **FR-015**: El sistema DEBE restringir la visualización de galpones en la pantalla de inicio del trabajador exclusivamente a aquellos formalmente asignados a su cargo.
+- **FR-016**: El sistema DEBE calcular y presentar en la pantalla de inicio del trabajador la cantidad total de galpones asignados a su cargo.
+- **FR-017**: El sistema DEBE calcular y mostrar la sumatoria consolidada de aves vivas (población actual) de todos los lotes activos correspondientes a los galpones asignados al trabajador.
+- **FR-018**: Para cada galpón asignado presentado en la sección de galpones a su cargo, el sistema DEBE mostrar obligatoriamente: nombre del galpón, identificador del lote activo, estado operativo vigente, población actual de aves vivas, edad del lote calculada en días, la dieta correspondiente a la fecha actual (tipo de alimento o etapa) y la ración diaria requerida expresada simultáneamente en kilogramos netos y en bultos equivalentes.
 
 ### Key Entities
 
@@ -118,6 +159,9 @@ Como administrador, quiero visualizar en la pantalla de inicio la cantidad total
 - **Resumen general de galpones**: Representa la vista agregada de los galpones vigentes para la pantalla de inicio del administrador.
   - **Datos mostrados**: cantidad total de galpones, conteo por cada estado permitido y cantidad de registros inconsistentes.
   - **Origen**: se calcula en cada consulta a partir de los galpones proporcionados por el módulo 1 y no se utiliza para modificar sus estados.
+- **Resumen de galpones asignados al trabajador**: Representa la consolidación de galpones bajo responsabilidad del operario para su pantalla de inicio.
+  - **Datos mostrados**: cantidad total de galpones asignados, población total acumulada de aves vivas y listado de tarjetas de galpones asignados con nombre, lote, estado, población actual, edad en días, dieta de hoy y ración diaria (en kg y bultos).
+  - **Restricción**: filtrado estricto por el identificador del trabajador autenticado.
 
 ## Success Criteria
 
@@ -130,3 +174,4 @@ Como administrador, quiero visualizar en la pantalla de inicio la cantidad total
 - **SC-005**: El 100 % de los resúmenes contabiliza cada galpón válido exactamente una vez según su único estado vigente.
 - **SC-006**: El 95 % de los resúmenes muestra el total y los conteos por estado en un máximo de 1 segundo.
 - **SC-007**: El 100 % de las consultas del resumen se ejecuta sin modificar galpones ni lotes del módulo 1.
+- **SC-008**: El 100 % de las pantallas de inicio de trabajadores muestra únicamente los galpones asignados a su cargo, calculando con exactitud la cantidad total de galpones, la sumatoria acumulada de aves vivas y detallando en cada tarjeta: nombre, lote, estado, población viva, edad, dieta de hoy y ración diaria en kilogramos y bultos.
