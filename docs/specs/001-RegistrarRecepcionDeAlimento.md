@@ -200,9 +200,3 @@ Como administrador, quiero consultar y filtrar el historial de recepciones de al
 - **SC-006**: El 95 % de las búsquedas y filtros del historial presenta los resultados en un máximo de 2 segundos.
 - **SC-007**: El 100 % de los detalles presenta valores consistentes con la recepción seleccionada y no modifica información.
 - **SC-008**: El 100 % de los intentos de editar desde el historial una recepción con movimientos asociados es bloqueado.
-
-## Out of Scope
-
-- La consulta consolidada de existencias de alimentos y medicamentos en la bodega central, cubierta por el SPEC-023 *Consultar inventario*.
-- El registro de salidas, despachos, consumos o ajustes de alimento.
-- La creación o administración del catálogo de alimentos y tipos de alimento.

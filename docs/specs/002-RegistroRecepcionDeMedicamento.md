@@ -191,16 +191,5 @@ Como administrador, quiero consultar y filtrar el historial de recepciones de me
 - **SC-001**: Al menos el 90 % de los administradores puede completar un registro de medicamento válido en menos de 3 minutos.
 - **SC-002**: El 95 % de los registros confirmados muestra los cálculos, genera el movimiento de entrada y deja sus precios históricos de compra disponibles para el módulo 3 en un máximo de 2 segundos.
 - **SC-003**: Al menos el 90 % de los usuarios completa correctamente el registro de medicamento en el primer intento durante pruebas de usabilidad.
-- **SC-004**: Al menos el 85 % de los administradores califica la experiencia de registro con 4 o más puntos sobre 5.
-- **SC-005**: El 100 % de los registros y ediciones válidos calcula correctamente el contenido neto total, el precio neto por unidad de medida, el subtotal neto, el valor del impuesto y el precio total.
-- **SC-006**: El 95 % de las búsquedas y filtros del historial presenta los resultados en un máximo de 2 segundos.
-- **SC-007**: El 100 % de los detalles presenta valores consistentes con la recepción seleccionada y no modifica información.
-- **SC-008**: El 100 % de los intentos de editar desde el historial una recepción con movimientos asociados es bloqueado.
 
-## Out of Scope
-
-- La consulta consolidada de existencias de alimentos y medicamentos en la bodega central, cubierta por el SPEC-023 *Consultar inventario*.
-- El registro de salidas, despachos, aplicaciones, consumos o ajustes de medicamentos.
-- La creación o administración del catálogo de medicamentos y sus presentaciones.
-- La definición de los valores concretos permitidos para presentación y unidad de medida.
 
