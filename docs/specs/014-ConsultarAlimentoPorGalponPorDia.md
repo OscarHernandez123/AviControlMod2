@@ -81,6 +81,51 @@ Como trabajador u operario de granja, quiero que el sistema me alerte visualment
 
 ---
 
+### User Story 3 - Visualizar el resumen consolidado de alimento diario requerido para todos los galpones asignados (Priority: P2)
+
+Como trabajador u operario de granja, quiero visualizar en mi pantalla de inicio la sumatoria consolidada del alimento diario requerido para todos los galpones a mi cargo (expresada en kilogramos y bultos), junto con el estado global de disponibilidad en bodega central y una tabla de detalle por galpón asignado, para conocer de inmediato el volumen total de alimento que debo gestionar en la jornada y verificar que la bodega central cuenta con stock suficiente.
+
+**Why this priority**: Es la vista general de alimentación en el dashboard operativo ("Inicio de trabajador") que le permite al operario saber de un vistazo cuánto alimento requiere en total el conjunto de sus galpones asignados antes de iniciar la distribución y confirmar si la bodega central está abastecida, sin tener que consultar y sumar manualmente galpón por galpón.
+
+**Independent Test**: Se puede probar autenticándose como un trabajador que tiene asignados 3 galpones con lotes activos:
+- Galpón 1: lote en Engorde con cuota diaria de 450 kg (9 bultos de 50 kg) de alimento "Engorde Stage 2" y stock suficiente en bodega.
+- Galpón 3: lote en Engorde con cuota diaria de 430 kg (8.6 bultos de 50 kg) de alimento "Engorde Stage 2" y stock suficiente en bodega.
+- Galpón 5: lote en Finalización con cuota diaria de 370 kg (7.4 bultos de 50 kg) de alimento "Engorde Finisher" y stock suficiente en bodega.
+Verificar que la tarjeta métrica superior "Alimento Diario Requerido" calcule y presente exactamente `1.250 kg` y `25 Bultos (Bodega Central OK)`, y que la tabla de detalle "Consulta de Alimento Diario (Spec 014)" liste los 3 galpones con sus respectivas columnas `GALPÓN`, `TIPO ALIMENTO`, `CUOTA KG`, `BULTOS (50KG)` y `ESTADO BODEGA` (Suficiente), excluyendo galpones ajenos.
+
+**Acceptance Scenarios**:
+
+1. **Scenario**: Cálculo y visualización de la tarjeta métrica de alimento diario requerido
+   - **Given** un trabajador autenticado que tiene asignados galpones con lotes activos cuyas cuotas diarias suman 1.250 kg y 25 bultos
+   - **And** que la bodega central cuenta con inventario suficiente para cubrir todos los tipos de alimento requeridos
+   - **When** el trabajador accede a su pantalla de inicio ("Inicio de trabajador")
+   - **Then** el sistema presenta la tarjeta métrica "Alimento Diario Requerido" indicando `1.250 kg`
+   - **And** muestra el desglose de `25 Bultos` acompañado del indicador favorable de bodega central (`Bodega Central OK`)
+
+2. **Scenario**: Presentación de la tabla consolidada de alimento diario por galpón asignado
+   - **Given** que el trabajador tiene asignados múltiples galpones con lotes activos (ej. Galpón 1, Galpón 3 y Galpón 5)
+   - **When** consulta la sección "Consulta de Alimento Diario (Spec 014)" en su pantalla de inicio
+   - **Then** el sistema presenta una tabla detallada donde cada fila corresponde a un galpón a su cargo mostrando:
+     - Nombre del galpón
+     - Tipo de alimento aplicable según la etapa del lote
+     - Cuota diaria requerida en kilogramos (`CUOTA KG`)
+     - Cuota diaria requerida en bultos (`BULTOS`) según el peso nominal del bulto (ej. 50 kg)
+     - Estado de disponibilidad en bodega central para ese tipo de alimento (`ESTADO BODEGA`: `Suficiente` o `Insuficiente`)
+   - **And** restringe el listado estrictamente a los galpones asignados al trabajador
+
+3. **Scenario**: Alerta global cuando la bodega central tiene déficit para alguno de los alimentos requeridos
+   - **Given** que para al menos uno de los galpones asignados el stock en bodega central es inferior a la cuota diaria requerida
+   - **When** el trabajador consulta el resumen de alimento diario
+   - **Then** el sistema refleja en la tarjeta métrica y en la cabecera de la tabla un estado de alerta o déficit en bodega
+   - **And** resalta en la tabla la fila del galpón afectado indicando `Insuficiente` en la columna de estado de bodega
+
+4. **Scenario**: Trabajador sin galpones asignados o con galpones sin aves activas
+   - **Given** que el trabajador no tiene galpones asignados o sus galpones no cuentan con lotes con aves vivas
+   - **When** accede a su pantalla de inicio
+   - **Then** el sistema muestra `0 kg` y `0 Bultos` en la tarjeta métrica de alimento requerido y presenta la tabla vacía con un mensaje informativo indicando la ausencia de cuotas de alimento activas
+
+---
+
 ### Edge Cases
 
 - **¿Qué sucede si un galpón no tiene un lote activo o su población actual es 0?**
@@ -125,6 +170,10 @@ Como trabajador u operario de granja, quiero que el sistema me alerte visualment
 - **FR-016**: El sistema DEBE emitir una alerta visual de cumplimiento pendiente mientras exista un saldo de alimento pendiente por suministrar en la jornada.
 - **FR-017**: El sistema DEBE emitir una alerta visual si en la fecha actual se registra un cambio en el tipo de alimento, en la ración diaria o en la etapa en que se encuentra el galpón.
 - **FR-018**: La funcionalidad de consulta de alimento por galpón por día DEBE operar estrictamente en modo de solo lectura, sin alterar inventarios, parámetros nutricionales ni registros de galpones o lotes.
+- **FR-019**: El sistema DEBE calcular y presentar en la pantalla de inicio del trabajador la tarjeta métrica consolidada "Alimento Diario Requerido", mostrando la sumatoria total en kilogramos netos y en bultos equivalentes del alimento requerido en la fecha actual para todos los galpones formalmente asignados a su cargo.
+- **FR-020**: El sistema DEBE presentar en la pantalla de inicio del trabajador el panel / tabla consolidado "Consulta de Alimento Diario (Spec 014)", listando exclusivamente los galpones asignados al trabajador y detallando por cada uno: nombre del galpón, tipo de alimento requerido hoy (según etapa y edad del lote), cuota requerida en kilogramos (`CUOTA KG`), cuota requerida en bultos (`BULTOS`) según el peso nominal del bulto (ej. 50 kg), y el estado de disponibilidad en bodega central (`ESTADO BODEGA`: `Suficiente` o `Insuficiente`).
+- **FR-021**: El sistema DEBE evaluar la suficiencia en bodega central para cada tipo de alimento requerido en los galpones asignados; si el stock disponible en bodega cubre o supera la cuota diaria requerida, el estado individual DEBE mostrarse como `Suficiente` y el indicador global como favorable (`Bodega Central OK` o `Bodega Central Disponible`), y si es inferior, DEBE mostrarse como `Insuficiente` reflejando la alerta correspondiente.
+- **FR-022**: La conversión de cuota diaria a bultos en la vista consolidada DEBE calcularse dividiendo la cuota en kilogramos entre el peso nominal por bulto configurado para el tipo de alimento (ej. 50 kg/bulto).
 
 ### Key Entities 
 
@@ -138,6 +187,8 @@ Como trabajador u operario de granja, quiero que el sistema me alerte visualment
 - **Saldo pendiente del día**: Diferencia calculada en kilogramos y bultos entre el consumo requerido y el alimento suministrado en la fecha.
 - **Bodega central**: Inventario principal del cual se consulta la disponibilidad de existencias netas en kilogramos y bultos compatibles con la etapa del galpón.
 - **Alerta de alimentación**: Indicador visual emitido ante déficit de existencias en bodega central, saldo pendiente de entrega o inconsistencias en la asignación nutricional.
+- **Resumen consolidado de alimento diario del trabajador**: Agrupación y sumatoria de requerimientos nutricionales del día correspondientes a todos los galpones asignados a un operario.
+  - *Atributos calculados*: Total de kilogramos diarios requeridos, Total de bultos equivalentes, Estado consolidado de bodega central (`Bodega Central OK` / `Bodega Central Disponible`), y Lista de filas de galpones asignados (`Galpón`, `Tipo Alimento`, `Cuota Kg`, `Bultos`, `Estado Bodega`).
 
 ---
 
@@ -153,6 +204,8 @@ Como trabajador u operario de granja, quiero que el sistema me alerte visualment
 - **SC-006**: El 100 % de los casos con disponibilidad en bodega central menor al requerimiento diario genera una alerta visible de desabastecimiento.
 - **SC-007**: El 100 % de las modificaciones de ración, alimento o etapa realizadas en el día genera una alerta visual inmediata para el trabajador.
 - **SC-008**: El 100 % de las operaciones de consulta se ejecuta sin modificar ningún dato en la base de datos (garantía de solo lectura).
+- **SC-009**: El 100 % de las pantallas de inicio de trabajadores calcula la sumatoria de alimento diario requerido (kg y bultos) con exactitud matemática coincidente con la suma de las cuotas de sus galpones asignados.
+- **SC-010**: El 100 % de las consultas al panel de consulta de alimento diario muestra únicamente los galpones asignados al trabajador autenticado, discriminando con precisión el tipo de alimento, cuota en kg, cuota en bultos y el estado de stock en bodega central.
 
 ---
 
