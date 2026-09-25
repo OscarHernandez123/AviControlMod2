@@ -10,29 +10,29 @@ Como administrador, quiero validar si un lote de aves y el galpón en el que est
 
 **Why this priority**: La validación permite confirmar de forma clara si el lote alcanzó la edad mínima y si el galpón se encuentra en el estado operativo requerido, además de dejar registrado que está apto antes de continuar con el proceso de sacrificio.
 
-**Independent Test**: Se puede probar utilizando un galpón y su lote actualmente alojado proporcionados por el módulo 1, consultando la edad del lote y ejecutando posteriormente la validación. El sistema debe mostrar `Apto` y cambiar el estado de la entidad Galpón a `En cosecha` únicamente cuando la edad sea de 45 días o más y su estado vigente sea `En producción`; en cualquier otro caso debe mostrar `No apto`, indicar las razones correspondientes y conservar el estado actual del galpón.
+**Independent Test**: Se puede probar utilizando un galpón y su lote actualmente alojado proporcionados por el módulo 1, consultando la edad del lote y ejecutando posteriormente la validación. El sistema debe mostrar `Apto` y cambiar el estado de la entidad Galpón a `en cosecha` únicamente cuando la edad sea de 45 días o más y su estado vigente sea `productiva`; en cualquier otro caso debe mostrar `No apto`, indicar las razones correspondientes y conservar el estado actual del galpón.
 
 **Acceptance Scenarios**:
 
 1. **Scenario**: Galpón apto para sacrificio
-   - **Given** que el módulo 1 proporciona un galpón en estado `En producción` con un lote alojado actualmente cuya edad consultada es de 45 días o más
+   - **Given** que el módulo 1 proporciona un galpón en estado `productiva` con un lote alojado actualmente cuya edad consultada es de 45 días o más
    - **When** selecciona la opción de validar aptitud para sacrificio
-   - **Then** el sistema muestra el resultado `Apto` y cambia el estado del galpón a `En cosecha`
+   - **Then** el sistema muestra el resultado `Apto` y cambia el estado del galpón a `en cosecha`
 
 2. **Scenario**: Lote que no cumple la edad mínima
-   - **Given** que el administrador consultó correctamente la edad de un lote de 44 días y el galpón está en estado `En producción`
+   - **Given** que el administrador consultó correctamente la edad de un lote de 44 días y el galpón está en estado `productiva`
    - **When** selecciona la opción de validar aptitud para sacrificio
    - **Then** el sistema muestra `No apto`, indica que el lote no cumple la edad mínima de 45 días y conserva el estado actual del galpón
 
-3. **Scenario**: Galpón que no está en producción
-   - **Given** que el administrador consultó correctamente la edad de un lote de 45 días o más y el galpón no está en estado `En producción`
+3. **Scenario**: Galpón que no está en estado productiva
+   - **Given** que el administrador consultó correctamente la edad de un lote de 45 días o más y el galpón no está en estado `productiva`
    - **When** selecciona la opción de validar aptitud para sacrificio
-   - **Then** el sistema muestra `No apto`, indica que el galpón no se encuentra en producción y conserva su estado actual
+   - **Then** el sistema muestra `No apto`, indica que el galpón no se encuentra en estado `productiva` y conserva su estado actual
 
 4. **Scenario**: Incumplimiento simultáneo de las condiciones
-   - **Given** que el administrador consultó correctamente la edad de un lote menor de 45 días y el galpón no está en estado `En producción`
+   - **Given** que el administrador consultó correctamente la edad de un lote menor de 45 días y el galpón no está en estado `productiva`
    - **When** selecciona la opción de validar aptitud para sacrificio
-   - **Then** el sistema muestra `No apto`, informa que el lote no cumple la edad mínima y que el galpón no se encuentra en producción, y conserva su estado actual
+   - **Then** el sistema muestra `No apto`, informa que el lote no cumple la edad mínima y que el galpón no se encuentra en estado `productiva`, y conserva su estado actual
 
 5. **Scenario**: Validación por un usuario no autorizado
    - **Given** que un usuario sin rol de administrador intenta validar la aptitud de un galpón
@@ -58,9 +58,9 @@ Como administrador, quiero validar si un lote de aves y el galpón en el que est
 - **FR-001**: El sistema DEBE permitir la validación de aptitud para sacrificio exclusivamente a usuarios con rol de administrador.
 - **FR-002**: La opción de validar aptitud para sacrificio DEBE estar disponible únicamente después de consultar correctamente la edad del lote alojado actualmente en un galpón.
 - **FR-003**: El sistema DEBE obtener del módulo 1 la entidad Lote alojada actualmente y su fecha de ingreso, recalcular su edad y comprobar que sea igual o superior a 45 días.
-- **FR-004**: El sistema DEBE obtener del módulo 1 el estado vigente de la entidad Galpón y comprobar que se encuentre en estado `En producción`.
+- **FR-004**: El sistema DEBE obtener del módulo 1 el estado vigente de la entidad Galpón y comprobar que se encuentre en estado `productiva`.
 - **FR-005**: El sistema DEBE mostrar `Apto` únicamente cuando se cumplan ambas condiciones; en caso contrario, DEBE mostrar `No apto` y todas las razones correspondientes.
-- **FR-006**: Cuando el resultado sea `Apto`, el sistema DEBE cambiar y guardar como `En cosecha` el estado de la entidad Galpón proporcionada por el módulo 1.
+- **FR-006**: Cuando el resultado sea `Apto`, el sistema DEBE cambiar y guardar como `en cosecha` el estado de la entidad Galpón proporcionada por el módulo 1.
 - **FR-007**: Cuando el resultado sea `No apto`, el sistema DEBE conservar el estado actual del galpón y NO DEBE modificar el lote ni el proceso de sacrificio.
 - **FR-008**: La validación DEBE utilizar la información vigente de las entidades Galpón y Lote proporcionadas por el módulo 1 y DEBE rechazar la operación si no puede verificarla completamente.
 
@@ -79,6 +79,6 @@ Como administrador, quiero validar si un lote de aves y el galpón en el que est
 ### Measurable Outcomes
 
 - **SC-001**: Al menos el 90 % de los administradores puede completar la validación en menos de 15 segundos después de consultar la edad.
-- **SC-002**: El 95 % de las validaciones muestra el resultado y sus razones y, cuando corresponde, establece el estado `En cosecha` en un máximo de 1 segundo.
+- **SC-002**: El 95 % de las validaciones muestra el resultado y sus razones y, cuando corresponde, establece el estado `en cosecha` en un máximo de 1 segundo.
 - **SC-003**: Al menos el 95 % de los administradores interpreta correctamente el resultado en el primer intento durante pruebas de usabilidad.
 - **SC-004**: Al menos el 85 % de los administradores califica la claridad del resultado y sus razones con 4 o más puntos sobre 5.
