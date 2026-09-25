@@ -1,6 +1,7 @@
 # Implementation Plan: Consulta y Seguimiento de Galpones
 
 **Date**: 25/09/2026  
+**Arquitectura y tecnologías**: [General.md](General.md)  
 **Specs**:
 
 - [003-ConsultarEdadPorGalpon.md](../specs/003-ConsultarEdadPorGalpon.md)
@@ -15,20 +16,15 @@ El Módulo 2 debe permitir que administradores y usuarios autorizados consulten 
 
 Un galpón no contiene ni almacena directamente lotes. Cada lote conserva la llave foránea del galpón para el cual fue registrado. Para encontrar el lote vigente de un galpón, el Módulo 2 consulta sus proyecciones de lotes por `galponId` y aplica la regla funcional correspondiente, sin agregar una colección de lotes dentro del modelo de galpón.
 
-La implementación utiliza arquitectura hexagonal y responsabilidad única. Cada operación se representa mediante un caso de uso independiente en `application/`; el dominio contiene modelos de consulta, reglas y puertos sin dependencias de frameworks; y los controladores REST, consumidores Kafka y repositorios JPA se ubican en `infrastructure/`.
-
 Al confirmarse una mortalidad, el Módulo 2 emitirá una solicitud idempotente de descuento de población. El Módulo 1 realizará la modificación autoritativa del lote y publicará su resultado; el Módulo 2 actualizará su proyección local al consumir la confirmación.
 
 ## Technical Context
 
-**Language/Version**: Java 21  
-**Primary Dependencies**: Spring Boot 4.1.1, Spring MVC, Spring Data JPA, Bean Validation, Spring Security, Spring Kafka, Spring Modulith y Lombok  
-**Storage**: PostgreSQL, con esquema versionado mediante Flyway  
-**Testing**: JUnit 5, Mockito, MockMvc, Spring Boot Test, Spring Modulith Test y Testcontainers para PostgreSQL y Kafka  
-**Target Platform**: Backend server desplegable en contenedor Linux  
-**Project Type**: Aplicación web modular con API REST y consumidores/productores de eventos  
+**Base técnica**: Definida en [General.md](General.md)  
+**Integraciones específicas**: Eventos de galpón y lote provenientes del Módulo 1, puerto de consulta de respaldo y solicitud de descuento de población  
+**Datos específicos**: Proyecciones locales de galpón y lote, más el seguimiento de solicitudes de descuento  
 **Performance Goals**: El 95 % de las consultas de edad, detalle y resumen debe responder en máximo 1 segundo cuando las proyecciones estén sincronizadas  
-**Constraints**: Gradle como única herramienta de construcción; arquitectura hexagonal; `Galpón` y `Lote` son propiedad del Módulo 1; no existen asignaciones entre trabajadores y galpones; el lote referencia al galpón mediante llave foránea; consistencia eventual entre módulos; el día de ingreso cuenta como día 1; no se permiten edades ni poblaciones negativas  
+**Constraints**: `Galpón` y `Lote` son propiedad del Módulo 1; no existen asignaciones entre trabajadores y galpones; el lote referencia al galpón mediante llave foránea; el día de ingreso cuenta como día 1; no se permiten edades ni poblaciones negativas  
 **Scale/Scope**: Cuatro historias de usuario, tres endpoints REST de consulta, dos proyecciones locales y un flujo de eventos para actualizar la población viva
 
 ## Project Structure
@@ -50,11 +46,6 @@ docs/
 Clases nuevas que agrega este feature:
 
 ```text
-build.gradle
-settings.gradle
-gradlew
-gradlew.bat
-
 src/main/java/com/avicontrol/
 ├── domain/
 │   ├── model/consulta/
@@ -144,20 +135,20 @@ src/test/java/com/avicontrol/
         └── GalponProjectionAdapterTest.java
 ```
 
-**Structure Decision**: Se utiliza arquitectura hexagonal dentro de una aplicación Spring Boot. `domain/` contiene modelos, excepciones y puertos de salida escritos en Java puro. `application/` contiene un caso de uso por responsabilidad. `infrastructure/` contiene controladores, DTOs, listeners, entidades JPA, repositorios y adaptadores. Los mappers impiden mezclar modelos del dominio con modelos REST, JPA o Kafka. `GalponConsultado` y `LoteConsultado` son modelos de lectura del Módulo 2 y sus nombres evitan confundirlos con las entidades autoritativas del Módulo 1. Los contratos de eventos recibidos están en adaptadores de entrada; el único contrato producido por este feature está en el adaptador de salida.
+**Structure Decision**: La capacidad se distribuye en los paquetes comunes definidos en [General.md](General.md). `GalponConsultado` y `LoteConsultado` son modelos de lectura y sus nombres evitan confundirlos con las entidades autoritativas del Módulo 1. Los contratos recibidos se ubican en entrada; la solicitud de descuento producida por este feature se ubica en salida.
 
 ---
 
 ## Phase 1: Setup (Shared Infrastructure)
 
-**Purpose**: Verificar la configuración inicial con Gradle y preparar la estructura base requerida por el feature.
+**Purpose**: Preparar la estructura y configuración exclusiva de la capacidad de consulta y seguimiento de galpones.
 
-- [ ] T001 Verificar que el proyecto base configurado con Gradle Wrapper compile y ejecute las pruebas con Java 21 y Spring Boot 4.1.1 mediante `gradlew test`.
-- [ ] T002 Incorporar en `build.gradle` las dependencias requeridas por el feature: Spring MVC, Spring Data JPA, Validation, Spring Security, PostgreSQL, Flyway, Spring Kafka, Spring Modulith, Lombok y las dependencias de prueba indicadas en Technical Context.
-- [ ] T003 Crear bajo el paquete base existente `com.avicontrol` la estructura hexagonal descrita en este plan.
-- [ ] T004 Sustituir `application.properties` por `application.yml` con perfiles `local`, `test` y `prod`, sin credenciales versionadas.
-- [ ] T005 Configurar Gradle para ejecutar JUnit Platform y agregar Spotless o Checkstyle para formato y análisis estático.
-- [ ] T006 Configurar PostgreSQL y Kafka para desarrollo local y Testcontainers para las pruebas de integración.
+- [ ] T001 Crear los paquetes de dominio, aplicación y adaptadores de galpones descritos en este plan.
+- [ ] T002 Registrar la capacidad de galpones como módulo funcional y declarar su interfaz pública de aplicación.
+- [ ] T003 Configurar las propiedades específicas de los topics y versiones de eventos intercambiados con el Módulo 1.
+- [ ] T004 Configurar el endpoint de consulta de respaldo y el umbral de vigencia de las proyecciones.
+- [ ] T005 Crear fixtures reutilizables de galpones, lotes, mortalidades y versiones de eventos para pruebas.
+- [ ] T006 Crear la estructura de pruebas de dominio, aplicación, REST, persistencia y eventos propia del feature.
 
 ---
 
@@ -348,13 +339,10 @@ src/test/java/com/avicontrol/
 
 - El tag `[P]` identifica tareas que pueden ejecutarse en paralelo porque no modifican los mismos archivos.
 - Los tags `[US1]` a `[US4]` relacionan cada tarea con una user story para mantener trazabilidad.
-- **Gradle**: el proyecto parte desde el inicio con Gradle Wrapper, `build.gradle` y `settings.gradle` correctamente configurados.
-- **Arquitectura hexagonal**: ninguna clase dentro de `domain/` puede importar Spring, JPA, Kafka ni DTOs de infraestructura.
 - **Propiedad de datos**: `GalponConsultado` y `LoteConsultado` son modelos de lectura; las entidades autoritativas pertenecen al Módulo 1.
 - **Relación galpón-lote**: `GalponConsultado` no contiene lotes. `LoteConsultado` conserva `galponId` y se consulta independientemente.
 - **Sin asignaciones de trabajadores**: este plan no crea modelos, tablas, puertos, eventos, endpoints ni casos de uso de asignación entre trabajadores y galpones.
 - **Eventos**: los contratos recibidos se ubican en `adapter/in/event`; `SolicitudDescuentoPoblacionV1`, producido por este módulo, se ubica en `adapter/out/event`.
 - **Consistencia**: las consultas usan proyecciones locales; si una proyección imprescindible no existe o no puede verificarse, el sistema informa la indisponibilidad en lugar de inventar valores.
-- **Tiempo**: los casos de uso reciben un `Clock`; no deben llamar directamente a `LocalDate.now()`.
 - **Población viva**: el Módulo 2 registra y sigue la solicitud, pero el Módulo 1 valida y modifica el lote para conservar la propiedad del dato.
 - **Trazabilidad documental**: la historia de galpones asignados al trabajador todavía aparece en el SPEC-007, pero se excluye de este plan porque contradice el modelo confirmado del Módulo 1 y la decisión de que no existen tales asignaciones.

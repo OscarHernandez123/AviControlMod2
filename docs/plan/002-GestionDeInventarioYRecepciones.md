@@ -1,6 +1,7 @@
 # Implementation Plan: Gestión de Inventario y Recepciones
 
 **Date**: 25/09/2026  
+**Arquitectura y tecnologías**: [General.md](General.md)  
 **Specs**:
 
 - [001-RegistrarRecepcionDeAlimento.md](../specs/001-RegistrarRecepcionDeAlimento.md)
@@ -15,18 +16,13 @@ El inventario se calcula a partir de movimientos confirmados y se presenta en do
 
 La pantalla de inventario también muestra la ocupación de la bodega, las recepciones recientes y la cobertura del requerimiento alimenticio. La demanda solo aplica a alimentos y se consulta mediante un puerto hacia el contexto nutricional; consultar la cobertura no reserva existencias ni genera movimientos.
 
-La implementación utiliza arquitectura hexagonal y eventos. El dominio contiene las recepciones, movimientos, cálculos y reglas de edición. Los casos de uso coordinan puertos de persistencia, catálogo, demanda y publicación. Los controladores REST, entidades JPA, tareas programadas y publicadores de eventos permanecen en infraestructura. Los eventos de recepción confirmada permiten comunicar los valores históricos necesarios a otros contextos sin exponer entidades JPA.
-
 ## Technical Context
 
-**Language/Version**: Java 21  
-**Primary Dependencies**: Spring Boot 4.1.1, Spring MVC, Spring Data JPA, Bean Validation, Spring Security, Spring Kafka, Spring Modulith y Lombok  
-**Storage**: PostgreSQL, con esquema versionado mediante Flyway  
-**Testing**: JUnit 5, Mockito, MockMvc, Spring Boot Test, Spring Modulith Test y Testcontainers para PostgreSQL y Kafka  
-**Target Platform**: Backend server desplegable en contenedor Linux  
-**Project Type**: Aplicación web modular con API REST y publicación de eventos  
+**Base técnica**: Definida en [General.md](General.md)  
+**Integraciones específicas**: Catálogos de alimentos y medicamentos, requerimientos nutricionales y publicación de valores históricos para el Módulo 3  
+**Datos específicos**: Bodega central, recepciones, movimientos de inventario y auditoría  
 **Performance Goals**: El 95 % de los registros y ediciones debe completarse en máximo 2 segundos; el 95 % de los historiales y la consulta consolidada debe responder en máximo 2 segundos  
-**Constraints**: Proyecto configurado con Gradle; arquitectura hexagonal; acceso exclusivo del administrador; cálculos con `BigDecimal` y política uniforme de precisión; recepción y movimiento de entrada atómicos; los códigos de lote no son identificadores únicos; las recepciones utilizadas no se editan; vencimientos y anulaciones no aportan stock; la demanda solo existe para alimentos  
+**Constraints**: Acceso exclusivo del administrador; recepción y movimiento de entrada atómicos; los códigos de lote no son identificadores únicos; las recepciones utilizadas no se editan; vencimientos y anulaciones no aportan stock; la demanda solo existe para alimentos  
 **Scale/Scope**: Nueve historias de usuario, once endpoints REST, una bodega central, dos tipos de recepción, dos libros de movimientos y eventos de integración para precios históricos
 
 ## Project Structure
@@ -185,20 +181,20 @@ src/test/java/com/avicontrol/
         └── InventarioPersistenceAdapterTest.java
 ```
 
-**Structure Decision**: Se utiliza arquitectura hexagonal dentro de la aplicación Spring Boot. `domain/` contiene las reglas, modelos, eventos y puertos en Java puro; `application/` contiene un caso de uso por responsabilidad; `infrastructure/` contiene REST, persistencia, programación de vencimientos e integración con catálogo, nutrición y eventos. Las recepciones y los movimientos son entidades diferentes: la recepción conserva el hecho comercial histórico y los movimientos determinan el saldo disponible. Los mappers evitan exponer entidades JPA o contratos de integración dentro del dominio.
+**Structure Decision**: La capacidad se distribuye en los paquetes comunes definidos en [General.md](General.md). Las recepciones y los movimientos son entidades diferentes: la recepción conserva el hecho comercial histórico y los movimientos determinan el saldo disponible. El feature incorpora adaptadores propios para catálogo, nutrición, vencimientos y publicación de valores históricos.
 
 ---
 
 ## Phase 1: Setup (Shared Infrastructure)
 
-**Purpose**: Preparar la estructura y configuración del feature sobre el proyecto Gradle existente.
+**Purpose**: Preparar la estructura y configuración exclusiva de la capacidad de inventario y recepciones.
 
-- [ ] T001 Verificar que el proyecto base compile y ejecute pruebas mediante Gradle Wrapper con Java 21 y Spring Boot 4.1.1.
-- [ ] T002 Verificar en `build.gradle` las dependencias de Spring MVC, Spring Data JPA, Validation, Security, PostgreSQL, Flyway, Spring Modulith, Spring Kafka y Testcontainers.
-- [ ] T003 Crear bajo `com.avicontrol` los paquetes de dominio, aplicación e infraestructura descritos en este plan.
-- [ ] T004 Configurar en `application.yml` la zona `America/Bogota`, la precisión de cálculos, los perfiles de base de datos y las propiedades del procesamiento de vencimientos.
-- [ ] T005 Configurar PostgreSQL para desarrollo local y Testcontainers para las pruebas de persistencia y eventos.
-- [ ] T006 Verificar que el formato, análisis estático y JUnit Platform se ejecuten mediante Gradle.
+- [ ] T001 Crear los paquetes de dominio, aplicación y adaptadores de inventario descritos en este plan.
+- [ ] T002 Registrar la capacidad de inventario como módulo funcional y declarar su interfaz pública de aplicación.
+- [ ] T003 Configurar las propiedades específicas de precisión, escala y redondeo de recepciones e inventario.
+- [ ] T004 Configurar la frecuencia y el control de idempotencia del procesamiento de vencimientos.
+- [ ] T005 Configurar los destinos de catálogo, requerimientos nutricionales y eventos históricos dirigidos al Módulo 3.
+- [ ] T006 Crear fixtures reutilizables de recepciones, movimientos, productos, vencimientos y demanda para pruebas.
 
 ---
 
@@ -519,8 +515,6 @@ src/test/java/com/avicontrol/
 
 - El tag `[P]` identifica tareas que pueden ejecutarse en paralelo porque no modifican los mismos archivos.
 - Los tags `[US1]` a `[US9]` relacionan cada tarea con una user story para mantener trazabilidad.
-- **Gradle**: el proyecto parte desde el inicio con Gradle Wrapper, `build.gradle` y `settings.gradle` configurados.
-- **Arquitectura hexagonal**: ninguna clase dentro de `domain/` puede importar Spring, JPA, Kafka ni DTOs de infraestructura.
 - **Recepción frente a existencia**: una recepción es un hecho comercial histórico; el stock se calcula desde movimientos confirmados y nunca sobrescribiendo la recepción.
 - **Identidad**: cada recepción usa UUID propio. El código de lote puede repetirse y no se utiliza como llave primaria.
 - **Edición**: solo se permite mientras no existan movimientos de salida, despacho o consumo; los valores calculados nunca llegan como campos editables.
