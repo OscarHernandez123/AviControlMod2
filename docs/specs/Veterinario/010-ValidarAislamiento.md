@@ -17,7 +17,7 @@ Como Médico Veterinario de la granja, quiero acceder a la bandeja de solicitude
 
 **Acceptance Scenarios**:
 
-1. **Scenario**: Aislamiento exitoso de un galpón productivo con derivación a diagnóstico
+1. **AS-001 - Scenario**: Aislamiento exitoso de un galpón productivo con derivación a diagnóstico
    - **Given** que existe una solicitud de revisión en estado `PENDIENTE` enviada por un trabajador para un galpón específico
    - **And** el Módulo 1 confirma que el estado operativo vigente de dicho galpón es `productiva`
    - **And** el usuario autenticado posee el rol `VETERINARIO`
@@ -28,7 +28,7 @@ Como Médico Veterinario de la granja, quiero acceder a la bandeja de solicitude
    - **And** asienta la traza inmutable en `san_auditoria` con matrícula, usuario, fecha y hora
    - **And** habilita automáticamente el flujo de diagnóstico clínico inmediato (`Spec 011`) para dicho galpón
 
-2. **Scenario**: Rechazo clínico de la sospecha (Desestimación del aislamiento)
+2. **AS-002 - Scenario**: Rechazo clínico de la sospecha (Desestimación del aislamiento)
    - **Given** una solicitud de revisión en estado `PENDIENTE` para un galpón en estado `productiva`
    - **When** el Veterinario realiza la inspección, concluye que no hay cuadro infectocontagioso y selecciona la opción `Rechazar validación` ingresando una justificación técnica obligatoria
    - **Then** el sistema actualiza la solicitud a estado `RECHAZADA` almacenando la justificación del descarte
@@ -36,24 +36,24 @@ Como Médico Veterinario de la granja, quiero acceder a la bandeja de solicitude
    - **And** registra el asiento de auditoría en `san_auditoria`
    - **And** no genera eventos de aislamiento ni deriva al flujo de diagnóstico
 
-3. **Scenario**: Bloqueo por ausencia de solicitud de revisión previa
+3. **AS-003 - Scenario**: Bloqueo por ausencia de solicitud de revisión previa
    - **Given** un galpón operativo en estado `productiva` que no posee ninguna solicitud de revisión registrada por un trabajador
    - **When** el Veterinario intenta forzar una orden de aislamiento directa
    - **Then** el sistema deniega la acción, notificando que todo aislamiento requiere como antecedente administrativo una solicitud formal de revisión de campo
 
-4. **Scenario**: Bloqueo por estado incompatible del galpón en Módulo 1
+4. **AS-004 - Scenario**: Bloqueo por estado incompatible del galpón en Módulo 1
    - **Given** una solicitud de revisión pendiente, pero el Módulo 1 reporta que el estado actual del galpón es `aislamiento`, `en_cosecha`, `vaciado_sanitario` o `inactivo`
    - **When** el Veterinario intenta evaluar o confirmar el aislamiento
    - **Then** el sistema interrumpe la operación informando que el galpón no cumple con el estado inicial mandatorio (`productiva`)
    - **And** no altera los registros sanitarios ni emite eventos de outbox
 
-5. **Scenario**: Detección de colisión por cambio de estado concurrente en Módulo 1
+5. **AS-005 - Scenario**: Detección de colisión por cambio de estado concurrente en Módulo 1
    - **Given** que el galpón figuraba en estado `productiva` al momento de abrir la evaluación
    - **And** el galpón transiciona a otro estado en el Módulo 1 (ej. traslado a cosecha) antes de que el Veterinario presione confirmar
    - **When** el Veterinario confirma el aislamiento
    - **Then** el sistema revalida en tiempo real el estado en el Módulo 1, detecta el cambio de estado, cancela la transacción y notifica la inconsistencia al usuario
 
-6. **Scenario**: Denegación de acceso por rol no facultado
+6. **AS-006 - Scenario**: Denegación de acceso por rol no facultado
    - **Given** un usuario autenticado con rol `TRABAJADOR` o `ADMINISTRADOR`
    - **When** intenta enviar el comando HTTP de validación o rechazo de un aislamiento
    - **Then** el sistema intercepta la petición y retorna HTTP 403 Forbidden
@@ -71,14 +71,14 @@ Como auditor de bioseguridad y aseguramiento de calidad, quiero garantizar que c
 
 **Acceptance Scenarios**:
 
-1. **Scenario**: Reintento transparente bajo la misma clave de idempotencia
+1. **AS-007 - Scenario**: Reintento transparente bajo la misma clave de idempotencia
    - **Given** un comando de confirmación de aislamiento procesado exitosamente bajo la cabecera `X-Idempotency-Key: IDEMP-AIS-8840`
    - **When** el frontend o cliente HTTP retransmite la petición con idéntico payload y misma cabecera debido a un corte momentáneo de red
    - **Then** el sistema intercepta la clave de idempotencia
    - **And** retorna la respuesta original almacenada (código 200 OK y DTO de confirmación)
    - **And** no ejecuta una segunda mutación en el Módulo 1 ni inserta filas duplicadas en `san_outbox`
 
-2. **Scenario**: Rechazo de aislamiento sobre un galpón que ya fue aislado
+2. **AS-008 - Scenario**: Rechazo de aislamiento sobre un galpón que ya fue aislado
    - **Given** un galpón cuyo aislamiento ya fue consolidado en el sistema
    - **When** se emite una nueva solicitud o comando sobre dicho galpón
    - **Then** el sistema responde con HTTP 409 Conflict informando que el galpón se encuentra actualmente en régimen de aislamiento
@@ -117,6 +117,18 @@ Como auditor de bioseguridad y aseguramiento de calidad, quiero garantizar que c
 
 ---
 
+### Non-Functional Requirements
+
+| ID | Categoría | Requerimiento | Métrica |
+| :--- | :--- | :--- | :--- |
+| **NFR-001** | Rendimiento | Latencia de validación, rechazo y persistencia | < 250 ms (p95) bajo carga normal |
+| **NFR-002** | Seguridad | Acceso restringido exclusivamente al rol VETERINARIO | HTTP 403 Forbidden a otros roles |
+| **NFR-003** | Integridad | Escritura atómica (aislamiento + outbox + auditoría) bajo `@Transactional` | 100% de consistencia local |
+| **NFR-004** | Persistencia | Prohibición estricta de sentencias `DELETE` SQL en base de datos | 0% borrados físicos |
+| **NFR-005** | Disponibilidad | Si el Módulo 1 no responde, la transacción se aborta completamente (Rollback) | 0% de inconsistencias por fallo cross-context |
+
+---
+
 ### Key Entities
 
 - **SolicitudRevision**: Antecedente administrativo de campo emitido por el trabajador. Atributos: `id` (UUID), `galponId` (UUID), `trabajadorId` (UUID), `estado` (Enum: `PENDIENTE`, `ATENDIDA`, `RECHAZADA`), `observacionesTrabajador` (Texto), `justificacionRechazo` (Texto nullable), `fechaSolicitud` (Timestamp), `version` (Integer).
@@ -140,3 +152,43 @@ Como auditor de bioseguridad y aseguramiento de calidad, quiero garantizar que c
 - **SC-006**: Cero incidentes (0%) de borrado físico (`DELETE`) en bases de datos sobre solicitudes o registros de aislamiento sanitario.
 - **SC-007**: El 100% de los eventos de integración asociados se resguardan de forma atómica en `san_outbox` dentro de la misma transacción local de base de datos.
 - **SC-008**: Cero duplicados (0%) en publicaciones de eventos o cambios de estado gracias a la validación de concurrencia optimista y la cabecera `X-Idempotency-Key`.
+
+---
+
+## UI Component Mapping (Prototipo ↔ Spec)
+
+Esta sección documenta la correspondencia estricta entre los controles del
+prototipo visual oficial (`010-ValidarAislamiento.png`) y los requerimientos
+funcionales del sistema. Todo componente visual debe responder a un FR y
+ningún comportamiento fuera de este catálogo está permitido.
+
+### Pantalla: Aislamiento y Diagnóstico (Bandeja + Panel de Evaluación)
+- **Prototipo de Referencia**: `docs/prototype/Veterinario/010-ValidarAislamiento.png`
+- **Actor Exclusivo**: `VETERINARIO` (FR-001)
+
+| Componente UI | Tipo | FR Asociado | Comportamiento Técnico y Validación |
+| :--- | :--- | :--- | :--- |
+| **Stat Cards de Resumen** | Metric Cards (4) | FR-002 | Muestran: Solicitudes de revisión, Galpones en producción, Galpones aislados, Sospecha descartada |
+| **Banner Informativo superior** | Info Banner | FR-005 | Muestra "Validación síncrona: aislar un galpón transiciona su estado en Módulo 1 y habilita el diagnóstico (Spec 011)" |
+| **Barra de Filtros** | Filter Bar | FR-002, FR-005 | Búsqueda por galpón/código/trabajador + filtros por Estado solicitud y Estado galpón |
+| **Tabla de Solicitudes de Revisión** | Data Grid | FR-002, FR-005 | Lista solicitud, galpón, fecha emisión, trabajador emisor, estado solicitud |
+| **Badges de Estado** | Status Badge | FR-002 | Reflejan `Pendiente`, `ATENDIDA`, `Rechazada` |
+| **Botón "Evaluar ahora"** | Button (Primary) | FR-001 | Abre el panel lateral de evaluación (restringido a VETERINARIO) |
+| **Botón "Evaluar" (secundario)** | Button (Outline) | FR-001 | Abre panel lateral para fila con prioridad normal |
+| **Panel "Evaluar solicitud de aislamiento"** | Side Panel | FR-001, FR-002 | Contiene el formulario de evaluación vinculado a una `SolicitudRevision` |
+| **Info del Galpón + Estado Módulo 1** | Info Card | FR-004, FR-005 | Muestra galpón, estado validado por Módulo 1 (badge "productiva (Verificado)"), reportado por |
+| **Textarea "Observaciones Clínicas del Veterinario"** | Textarea | FR-008 | Obligatorio al confirmar, mín. 10 caracteres tras trim |
+| **Textarea "Justificación Técnica de Descarte"** | Textarea | FR-007 | Obligatorio al rechazar, mín. 10 caracteres tras trim |
+| **Alerta informativa de transición** | Info Alert | FR-008 | Muestra "Al confirmar el aislamiento, el galpón cambiará a aislamiento en el Módulo 1 y se habilitará el formulario de Diagnóstico de Galpón (Spec 011)" |
+| **Botón "Rechazar sospecha"** | Button (Danger) | FR-007 | Transiciona la solicitud a RECHAZADA |
+| **Botón "Confirmar Aislamiento"** | Button (Primary) | FR-008 | Transiciona galpón a `aislamiento` y solicitud a `ATENDIDA` |
+
+### Elementos Prohibidos en la Pantalla (Guardrails Sanitarios)
+- ❌ **Botón "Eliminar" / "Borrar"**: Terminantemente prohibido (`FR-013`). No existe eliminación física de solicitudes o aislamientos.
+- ❌ **Validación de aislamiento sin solicitud previa**: Prohibido (`FR-002`); el formulario de evaluación solo se activa con `SolicitudRevision` en estado `PENDIENTE`.
+- ❌ **Campos huérfanos**: Prohibido añadir campos que no pertenezcan al dominio funcional de validación de aislamiento.
+
+### Estados Operativos del Formulario
+- **Validación inline**: Resaltado de campos obligatorios con asterisco rojo y validación de longitud mínima ≥ 10 caracteres en observaciones y justificación.
+- **Transacción en progreso**: Bloqueo de controles de envío durante el commit atómico (`san_solicitudes_revision` + `san_aislamientos` + `san_outbox` + `san_auditoria`).
+- **Colisión de Concurrencia**: Modal informativo ante HTTP 409 (`OptimisticLockException`) solicitando recarga de datos.
