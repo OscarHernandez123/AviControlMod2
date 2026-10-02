@@ -49,7 +49,7 @@ Como administrador, quiero visualizar en la pantalla de inicio la cantidad total
 1. **Scenario**: Visualización correcta del resumen de galpones
    - **Given** que el módulo 1 proporciona galpones con un único estado vigente cada uno
    - **When** el administrador ingresa a la pantalla de inicio
-   - **Then** el sistema muestra la cantidad total de galpones y el número correspondiente a cada estado: `disponible`, `vaciado sanitario`, `productiva`, `en cosecha`, `mantenimiento` y `aislamiento`
+   - **Then** el sistema muestra la cantidad total de galpones y el número correspondiente a cada estado: `disponible`, `vaciado sanitario`, `productivo`, `en cosecha`, `mantenimiento` y `aislamiento`
 
 2. **Scenario**: Resumen cuando no existen galpones
    - **Given** que el módulo 1 no tiene galpones registrados
@@ -136,7 +136,7 @@ Como trabajador u operario de granja, quiero visualizar el listado general de ga
 - **FR-006**: Cuando el galpón no tenga un lote alojado actualmente, el sistema DEBE mostrar los datos disponibles de la entidad Galpón e indicar que la población actual y la edad del lote no están disponibles.
 - **FR-007**: La consulta DEBE utilizar la información vigente proporcionada por el módulo 1 y NO DEBE modificar las entidades Galpón o Lote.
 - **FR-008**: El sistema DEBE permitir la consulta del resumen general de galpones exclusivamente a usuarios autenticados con rol de administrador.
-- **FR-009**: Cada galpón DEBE tener un único estado vigente entre `disponible`, `vaciado sanitario`, `productiva`, `en cosecha`, `mantenimiento` o `aislamiento`.
+- **FR-009**: Cada galpón DEBE tener un único estado vigente entre `disponible`, `vaciado sanitario`, `productivo`, `en cosecha`, `mantenimiento` o `aislamiento`.
 - **FR-010**: El resumen DEBE mostrar la cantidad total de galpones y el conteo individual de galpones para cada uno de los seis estados permitidos.
 - **FR-011**: La suma de los conteos por estado DEBE coincidir con el total de galpones válidos incluidos en el resumen.
 - **FR-012**: El resumen DEBE obtener la información vigente del módulo 1 y operar estrictamente en modo de solo lectura.
@@ -149,13 +149,15 @@ Como trabajador u operario de granja, quiero visualizar el listado general de ga
 
 ### Key Entities
 
-- **Galpón**: Representa el espacio consultado y es proporcionado por el módulo 1.
-  - **Atributos utilizados**: nombre, aforo máximo y un único estado entre `disponible`, `vaciado sanitario`, `productiva`, `en cosecha`, `mantenimiento` o `aislamiento`.
-  - **Relaciones**: puede alojar un lote de aves actualmente y diferentes lotes a lo largo del tiempo.
-- **Lote**: Representa el grupo de aves alojado actualmente en el galpón y es proporcionado por el módulo 1.
-  - **Atributos utilizados**: población actual y fecha de ingreso.
-  - **Datos derivados**: edad actual calculada por el sistema.
-  - **Relaciones**: se encuentra alojado en un galpón durante su ciclo de crianza.
+- **Galpón**: Representa una unidad física de producción avícola y es proporcionado por el módulo 1.
+  - **Identidad**: UUID único.
+  - **Atributos**: nombre, aforo máximo y un único estado entre `disponible`, `vaciado sanitario`, `productivo`, `en cosecha`, `mantenimiento` o `aislamiento`.
+  - **Relaciones**: no recibe ni almacena directamente lotes. La relación con los lotes se obtiene mediante la llave foránea que cada lote conserva.
+- **Lote**: Representa un grupo de aves registrado para un galpón y es proporcionado por el módulo 1.
+  - **Identidad**: UUID único.
+  - **Atributos**: nombre, población inicial, población actual, fecha de ingreso, costo total y llave foránea `galponId` del galpón para el cual fue registrado.
+  - **Datos derivados**: edad calculada en días a partir de la fecha de ingreso y la fecha actual.
+  - **Relaciones**: referencia a un galpón mediante `galponId`; el lote puede ser histórico o estar actualmente alojado.
 - **Resumen general de galpones**: Representa la vista agregada de los galpones vigentes para la pantalla de inicio del administrador.
   - **Datos mostrados**: cantidad total de galpones, conteo por cada estado permitido y cantidad de registros inconsistentes.
   - **Origen**: se calcula en cada consulta a partir de los galpones proporcionados por el módulo 1 y no se utiliza para modificar sus estados.

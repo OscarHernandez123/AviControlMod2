@@ -31,8 +31,8 @@ La arquitectura es hexagonal dentro de un monolito modular con eventos internos.
 
 ### Decisiones específicas
 
-1. **Entidades**: `Galpon` contiene ID, nombre, aforo máximo y estado operativo. `Lote` contiene ID, `galponId`, población actual y fecha de ingreso. Reutilizar las entidades existentes en esta capacidad si las hay. No agregar costos u otros atributos que estas consultas no utilizan.
-2. **Relación**: El lote referencia al galpón mediante `galponId`. La interfaz propietaria identifica cuál está actualmente alojado; no se elige automáticamente el de fecha más reciente. Cero lotes actuales es válido; más de uno es una inconsistencia.
+1. **Entidades**: `Galpon` contiene `UUID`, nombre, aforo máximo y `EstadoGalpon`. `Galpon` no recibe ni almacena una colección de lotes. `Lote` contiene `UUID`, nombre, población inicial, población actual, fecha de ingreso, costo total y `galponId`. `Edad` es un dato derivado y no un campo persistido. Reutilizar las entidades existentes en esta capacidad si las hay; los endpoints de este plan solo exponen los atributos necesarios para cada consulta.
+2. **Relación**: El lote referencia al galpón mediante `galponId`; el galpón no tiene una lista de lotes. La interfaz propietaria identifica cuál lote está actualmente alojado; no se elige automáticamente el de fecha más reciente. Cero lotes actuales es válido; más de uno es una inconsistencia.
 3. **Edad**: `Lote.calcularEdad(fechaConsulta)` devuelve `Edad`, usando días calendario e incluyendo el día de ingreso. Aplicación obtiene la fecha mediante el `Clock` compartido y la zona de negocio. El formato textual se resuelve en presentación.
 4. **Puertos**: `GalponQueryPort` y `LoteQueryPort` expresan todas las consultas requeridas. No se agrega `Modulo1QueryPort`, porque duplicaría el acceso a los mismos recursos.
 5. **Adaptadores internos**: Traducen los resultados de interfaces públicas de otras capacidades a los modelos requeridos aquí. No acceden a repositorios JPA privados ajenos ni llaman por HTTP al mismo monolito. Una entidad de dominio propia no implica una segunda tabla ni una segunda fuente de datos.
@@ -128,6 +128,35 @@ src/test/java/com/avicontrol/
 
 **Structure Decision**: Entidades organizadas por negocio; casos de uso como entradas públicas de aplicación; puertos de salida implementados por adaptadores internos. Los resultados de aplicación y los DTOs HTTP permanecen separados del dominio. No se agregan listeners sin un efecto propio que deban ejecutar.
 
+### Entidades y relación
+
+`Galpon` y `Lote` son entidades distintas, cada una con su propio UUID. La relación se expresa únicamente en `Lote.galponId`; `Galpon` no contiene una colección ni una referencia directa a lotes. Esto permite conservar el historial de lotes sin convertir al galpón en el propietario de esos registros.
+
+Estas clases representan el modelo de dominio que usa el Módulo 2 para consultar y aplicar sus reglas de lectura; la propiedad autoritativa de los datos y sus operaciones de escritura continúa en el Módulo 1. Por eso este plan no crea tablas ni métodos de alta, edición o eliminación para estas entidades.
+
+```text
+Galpon
+├── id: UUID
+├── nombre: String
+├── aforoMaximo: Integer
+└── estado: EstadoGalpon
+
+Lote
+├── id: UUID
+├── nombre: String
+├── poblacionInicial: Integer
+├── poblacionActual: Integer
+├── fechaIngreso: LocalDate
+├── costoTotal: BigDecimal
+└── galponId: UUID
+
+Edad = datos derivados de Lote.fechaIngreso y la fecha de consulta
+```
+
+`EstadoGalpon` debe representar exactamente `DISPONIBLE`, `VACIADO_SANITARIO`, `PRODUCTIVO`, `EN_COSECHA`, `MANTENIMIENTO` y `AISLAMIENTO`. Sus valores de presentación pueden usar espacios y minúsculas, por ejemplo `vaciado sanitario` y `productivo`.
+
+`poblacionInicial` es inmutable; `poblacionActual` puede cambiar mediante los procesos propietarios de mortalidad o inventario vivo. `costoTotal` se conserva en el modelo del lote para mantener la definición de la entidad, aunque no se calcula ni se expone en las respuestas de este plan.
+
 ### Contratos de los puertos
 
 | Puerto | Responsabilidad |
@@ -184,8 +213,8 @@ Todos los endpoints utilizan `Content-Type: application/problem+json` y la estru
 
 **Purpose**: Preparar entidades y accesos compartidos por las historias.
 
-- [ ] T005 Implementar `Galpon`, `EstadoGalpon`, `Lote` y `Edad` en Java puro; representar los seis estados del spec y mapear `PRODUCTIVO` al valor de presentación `productiva`.
-- [ ] T006 Implementar `Lote.calcularEdad(fechaConsulta)` y validaciones de identidad y población. Detectar una fecha futura al calcular la edad sin perder los demás datos del detalle.
+- [ ] T005 Implementar `Galpon`, `EstadoGalpon`, `Lote` y `Edad` en Java puro; incluir en `Galpon` UUID, nombre, aforo máximo y estado, y en `Lote` UUID, nombre, población inicial, población actual, fecha de ingreso, costo total y `galponId`. No agregar una colección de lotes dentro de `Galpon`.
+- [ ] T006 Implementar `Lote.calcularEdad(fechaConsulta)` y validaciones de identidad, población inicial, población actual, fecha de ingreso y costo total. Detectar una fecha futura al calcular la edad sin perder los demás datos del detalle.
 - [ ] T007 Definir excepciones y los dos puertos con operaciones individuales, por conjunto, paginadas y con semántica de ausencia e inconsistencia. El listado y el resumen se representan mediante resultados de aplicación.
 - [ ] T008 Implementar `GalponQueryAdapter`, `LoteQueryAdapter` y `GalponLoteMapper` sobre interfaces públicas internas. No seleccionar el lote actual únicamente por fecha de ingreso.
 - [ ] T009 Implementar el agregado: `totalRegistrado = totalValido + inconsistentes`; la suma de los seis estados debe igualar `totalValido`.
