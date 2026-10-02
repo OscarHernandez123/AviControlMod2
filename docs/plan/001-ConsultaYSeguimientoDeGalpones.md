@@ -1,31 +1,52 @@
 # Implementation Plan: Consulta y Seguimiento de Galpones
 
-**Date**: 25/09/2026  
-**Arquitectura y tecnologías**: [General.md](General.md)  
+**Date**: 01/10/2026
+
+**Arquitectura y tecnologías**: [General.md](General.md)
+
 **Specs**:
 
 - [003-ConsultarEdadPorGalpon.md](../specs/003-ConsultarEdadPorGalpon.md)
 - [007-ConsultarGalpon.md](../specs/007-ConsultarGalpon.md)
-- [019-ActualizarPoblacionActualPorGalpon.md](../specs/019-ActualizarPoblacionActualPorGalpon.md)
 
 ## Summary
 
-El Módulo 2 debe permitir que administradores y usuarios autorizados consulten la información de los galpones y los lotes registrados para ellos. También debe permitir al administrador consultar la edad del lote vigente y visualizar el resumen general de galpones.
+Implementar la consulta de edad del lote, el detalle de un galpón, el resumen general del administrador y el listado general de galpones. Un trabajador autorizado puede listar y consultar cualquier galpón; no existe una relación de asignación entre trabajadores y galpones.
 
-`Galpón` y `Lote` pertenecen exclusivamente al Módulo 1. El Módulo 2 no crea ni administra estas entidades: conserva proyecciones locales de solo lectura, sincronizadas mediante eventos de integración, para responder las consultas sin acceder directamente a la base de datos del Módulo 1. Cuando falte información vigente, se utilizará un puerto de consulta al Módulo 1.
+`Galpon` y `Lote` se modelan como entidades propias del dominio, con identidad y reglas, organizadas en paquetes de negocio. `Edad` es un objeto de valor; `EstadoGalpon` es un enum. No se utiliza el paquete `consulta` para definir entidades ni nombres como `GalponConsultado` o `LoteConsultado`.
 
-Un galpón no contiene ni almacena directamente lotes. Cada lote conserva la llave foránea del galpón para el cual fue registrado. Para encontrar el lote vigente de un galpón, el Módulo 2 consulta sus proyecciones de lotes por `galponId` y aplica la regla funcional correspondiente, sin agregar una colección de lotes dentro del modelo de galpón.
+Este plan implementa operaciones de lectura. Los specs 003 y 007 requieren obtener datos vigentes del módulo 1 sin modificar galpones o lotes. Definir entidades de dominio no agrega operaciones de creación, cambios de estado o descuentos de población a este feature.
 
-Al confirmarse una mortalidad, el Módulo 2 emitirá una solicitud idempotente de descuento de población. El Módulo 1 realizará la modificación autoritativa del lote y publicará su resultado; el Módulo 2 actualizará su proyección local al consumir la confirmación.
+La arquitectura es hexagonal dentro de un monolito modular con eventos internos. Los casos de uso consultan puertos específicos; los adaptadores invocan interfaces públicas de aplicación dentro del mismo proceso. No se requieren copias persistidas ni sincronización de proyecciones para estas consultas.
 
 ## Technical Context
 
-**Base técnica**: Definida en [General.md](General.md)  
-**Integraciones específicas**: Eventos de galpón y lote provenientes del Módulo 1, puerto de consulta de respaldo y solicitud de descuento de población  
-**Datos específicos**: Proyecciones locales de galpón y lote, más el seguimiento de solicitudes de descuento  
-**Performance Goals**: El 95 % de las consultas de edad, detalle y resumen debe responder en máximo 1 segundo cuando las proyecciones estén sincronizadas  
-**Constraints**: `Galpón` y `Lote` son propiedad del Módulo 1; no existen asignaciones entre trabajadores y galpones; el lote referencia al galpón mediante llave foránea; el día de ingreso cuenta como día 1; no se permiten edades ni poblaciones negativas  
-**Scale/Scope**: Cuatro historias de usuario, tres endpoints REST de consulta, dos proyecciones locales y un flujo de eventos para actualizar la población viva
+**Performance Goals**: El 95 % de las consultas de edad, detalle y resumen general responde en máximo 1 segundo, con un volumen representativo acordado para la entrega.
+
+**Constraints**: Lecturas sin escrituras, datos vigentes, ingreso contado como día 1, población y edad no negativas y autorización por rol. Las consultas no se filtran por trabajador.
+
+**Scale/Scope**: Cuatro historias, cuatro endpoints GET, entidades de dominio, puertos de consulta y adaptadores internos.
+
+**Dependencias funcionales**: Galpones y lotes proporcionados por el módulo 1.
+
+### Decisiones específicas
+
+1. **Entidades**: `Galpon` contiene ID, nombre, aforo máximo y estado operativo. `Lote` contiene ID, `galponId`, población actual y fecha de ingreso. Reutilizar las entidades existentes en esta capacidad si las hay. No agregar costos u otros atributos que estas consultas no utilizan.
+2. **Relación**: El lote referencia al galpón mediante `galponId`. La interfaz propietaria identifica cuál está actualmente alojado; no se elige automáticamente el de fecha más reciente. Cero lotes actuales es válido; más de uno es una inconsistencia.
+3. **Edad**: `Lote.calcularEdad(fechaConsulta)` devuelve `Edad`, usando días calendario e incluyendo el día de ingreso. Aplicación obtiene la fecha mediante el `Clock` compartido y la zona de negocio. El formato textual se resuelve en presentación.
+4. **Puertos**: `GalponQueryPort` y `LoteQueryPort` expresan todas las consultas requeridas. No se agrega `Modulo1QueryPort`, porque duplicaría el acceso a los mismos recursos.
+5. **Adaptadores internos**: Traducen los resultados de interfaces públicas de otras capacidades a los modelos requeridos aquí. No acceden a repositorios JPA privados ajenos ni llaman por HTTP al mismo monolito. Una entidad de dominio propia no implica una segunda tabla ni una segunda fuente de datos.
+6. **Eventos**: Los procesos que cambian datos publican sus eventos internos. Este feature no publica eventos por leer ni consume mortalidades para descontar aves. Al consultar el estado vigente sin caché propia, no necesita listeners para copiar cambios. La integración debe comprobar que una consulta posterior a un proceso confirmado refleja su resultado.
+7. **Persistencia**: No se crean tablas, migraciones, repositorios JPA ni entidades de proyección en este plan. Tampoco topics Kafka, mensajes versionados de integración o solicitudes de descuento. La persistencia permanece en la capacidad que gestiona cada entidad.
+8. **Consistencia**: Obtener los datos relacionados mediante una lectura transaccional coherente, usando las interfaces internas participantes y la configuración del monolito. Verificar ante concurrencia; una transacción marcada como solo lectura no garantiza por sí sola una instantánea coherente. Consultar por conjuntos para evitar una llamada por galpón.
+
+### Alcance documental
+
+- El spec 019 corresponde al plan de mortalidad y actualización del inventario vivo. Aquí se muestra la población vigente sin descontarla.
+- La historia 3 del spec 007 permite al trabajador listar y seleccionar cualquier galpón. No existen modelos, puertos, filtros ni reglas de asignación entre trabajadores y galpones.
+- General.md y este plan coinciden en que no existen asignaciones entre trabajadores y galpones. La arquitectura monolítica indicada para esta revisión se aplica mediante interfaces internas.
+- El resumen de galpones y aves vivas corresponde a este plan. El resumen de alimentos y medicamentos en bodega permanece en el plan 002 y el spec 023.
+- Los nombres concretos de las interfaces ofrecidas por otras capacidades se acuerdan antes de implementar sus adaptadores; los puertos de este documento pertenecen al consumidor.
 
 ## Project Structure
 
@@ -35,314 +56,487 @@ Al confirmarse una mortalidad, el Módulo 2 emitirá una solicitud idempotente d
 docs/
 ├── specs/
 │   ├── 003-ConsultarEdadPorGalpon.md
-│   ├── 007-ConsultarGalpon.md
-│   └── 019-ActualizarPoblacionActualPorGalpon.md
+│   └── 007-ConsultarGalpon.md
 └── plan/
-    └── 001-ConsultaYSeguimientoDeGalpones.md    # Este archivo
+    └── 001-ConsultaYSeguimientoDeGalpones.md
 ```
 
 ### Source Code (repository root)
 
-Clases nuevas que agrega este feature:
+Estructura objetivo de los componentes del feature. Reutilizar actor autenticado, reloj y manejo de errores existentes. Alinear el paquete raíz con el configurado en la aplicación al implementar.
 
 ```text
 src/main/java/com/avicontrol/
 ├── domain/
-│   ├── model/consulta/
-│   │   ├── GalponConsultado.java
-│   │   ├── LoteConsultado.java
-│   │   ├── EdadLote.java
-│   │   └── EstadoGalpon.java
-│   ├── model/poblacion/
-│   │   ├── SolicitudDescuentoPoblacion.java
-│   │   └── EstadoSolicitudPoblacion.java
+│   ├── model/
+│   │   ├── galpon/
+│   │   │   ├── Galpon.java
+│   │   │   └── EstadoGalpon.java
+│   │   └── lote/
+│   │       ├── Lote.java
+│   │       └── Edad.java
 │   ├── exception/galpon/
 │   │   ├── GalponNoEncontradoException.java
-│   │   ├── LoteVigenteNoDisponibleException.java
 │   │   ├── FechaIngresoInconsistenteException.java
-│   │   └── ProyeccionNoDisponibleException.java
+│   │   ├── LoteActualInconsistenteException.java
+│   │   └── InformacionGalponNoDisponibleException.java
 │   └── port/out/galpon/
 │       ├── GalponQueryPort.java
-│       ├── LoteQueryPort.java
-│       ├── SolicitudDescuentoPoblacionPort.java
-│       ├── Modulo1QueryPort.java
-│       └── IntegrationEventPublisherPort.java
+│       └── LoteQueryPort.java
 ├── application/galpon/
-│   ├── CalcularEdadLoteUseCase.java
 │   ├── ConsultarEdadPorGalponUseCase.java
 │   ├── ConsultarGalponUseCase.java
 │   ├── ConsultarResumenGalponesUseCase.java
-│   ├── SincronizarGalponYLoteUseCase.java
-│   └── SolicitarDescuentoPoblacionUseCase.java
+│   ├── ConsultarListadoGalponesUseCase.java
+│   └── result/
+│       ├── EdadLoteResult.java
+│       ├── GalponDetalleResult.java
+│       ├── ResumenGalponesResult.java
+│       ├── GalponListadoResult.java
+│       └── ListadoGalponesResult.java
 └── infrastructure/
     ├── adapter/in/rest/galpon/
     │   ├── GalponController.java
     │   ├── dto/
     │   │   ├── EdadLoteResponse.java
     │   │   ├── GalponDetalleResponse.java
-    │   │   └── ResumenGalponesResponse.java
+    │   │   ├── ResumenGalponesResponse.java
+    │   │   ├── GalponListadoResponse.java
+    │   │   └── ListadoGalponesResponse.java
     │   └── mapper/GalponRestMapper.java
-    ├── adapter/in/event/galpon/
-    │   ├── Modulo1GalponEventListener.java
-    │   ├── MortalidadConfirmadaEventListener.java
-    │   └── dto/
-    │       ├── GalponCreadoV1.java
-    │       ├── GalponActualizadoV1.java
-    │       ├── LoteRegistradoV1.java
-    │       ├── PoblacionLoteActualizadaV1.java
-    │       └── DescuentoPoblacionRechazadoV1.java
-    ├── adapter/out/persistence/galpon/
-    │   ├── entity/
-    │   │   ├── GalponProjectionEntity.java
-    │   │   ├── LoteProjectionEntity.java
-    │   │   └── SolicitudDescuentoPoblacionEntity.java
-    │   ├── repository/
-    │   │   ├── GalponJpaRepository.java
-    │   │   ├── LoteJpaRepository.java
-    │   │   └── SolicitudDescuentoPoblacionJpaRepository.java
-    │   ├── mapper/GalponPersistenceMapper.java
-    │   └── GalponProjectionAdapter.java
-    ├── adapter/out/integration/modulo1/
-    │   └── Modulo1QueryAdapter.java
-    ├── adapter/out/event/galpon/
-    │   ├── GalponIntegrationEventPublisher.java
-    │   └── dto/SolicitudDescuentoPoblacionV1.java
+    ├── adapter/out/internal/galpon/
+    │   ├── GalponQueryAdapter.java
+    │   ├── LoteQueryAdapter.java
+    │   └── mapper/GalponLoteMapper.java
     └── config/
-        ├── GalponBeanConfiguration.java
-        └── ClockConfiguration.java
-
-src/main/resources/
-├── application.yml
-└── db/migration/
-    ├── V1__crear_proyecciones_galpon_y_lote.sql
-    └── V2__crear_solicitud_descuento_poblacion.sql
+        └── GalponBeanConfiguration.java
 
 src/test/java/com/avicontrol/
-├── domain/consulta/
-│   └── EdadLoteTest.java
+├── domain/model/
+│   ├── galpon/GalponTest.java
+│   └── lote/LoteTest.java
 ├── application/galpon/
-│   ├── CalcularEdadLoteUseCaseTest.java
 │   ├── ConsultarEdadPorGalponUseCaseTest.java
 │   ├── ConsultarGalponUseCaseTest.java
 │   ├── ConsultarResumenGalponesUseCaseTest.java
-│   └── SolicitarDescuentoPoblacionUseCaseTest.java
+│   └── ConsultarListadoGalponesUseCaseTest.java
 └── infrastructure/
-    ├── adapter/in/rest/
-    │   └── GalponControllerTest.java
-    ├── adapter/in/event/
-    │   └── Modulo1GalponEventListenerTest.java
-    └── adapter/out/persistence/
-        └── GalponProjectionAdapterTest.java
+    ├── adapter/in/rest/GalponControllerTest.java
+    ├── adapter/out/internal/GalponLoteQueryAdaptersTest.java
+    └── integration/ConsultaGalponesIntegrationTest.java
 ```
 
-**Structure Decision**: La capacidad se distribuye en los paquetes comunes definidos en [General.md](General.md). `GalponConsultado` y `LoteConsultado` son modelos de lectura y sus nombres evitan confundirlos con las entidades autoritativas del Módulo 1. Los contratos recibidos se ubican en entrada; la solicitud de descuento producida por este feature se ubica en salida.
+**Structure Decision**: Entidades organizadas por negocio; casos de uso como entradas públicas de aplicación; puertos de salida implementados por adaptadores internos. Los resultados de aplicación y los DTOs HTTP permanecen separados del dominio. No se agregan listeners sin un efecto propio que deban ejecutar.
 
----
+### Contratos de los puertos
+
+| Puerto | Responsabilidad |
+| --- | --- |
+| `GalponQueryPort` | Buscar un galpón, listar todos los galpones con límite, desplazamiento y orden, contar el total y consultar los totales por `EstadoGalpon`, además de los registros inconsistentes. |
+| `LoteQueryPort` | Obtener el lote actualmente alojado por galpón, individualmente o por conjunto. Distinguir ausencia, datos incompletos y múltiples lotes actuales. |
+
+El resumen no requiere otra clase de dominio: `GalponQueryPort` entrega los conteos necesarios y `ConsultarResumenGalponesUseCase` compone `ResumenGalponesResult` en la capa de aplicación. El resultado distingue total registrado, total válido y registros inconsistentes. Los estados inválidos se contabilizan antes de construir entidades válidas; no se convierten en un estado de galpón inventado.
+
+### Contratos HTTP propuestos
+
+| Endpoint | Acceso | Resultado |
+| --- | --- | --- |
+| `GET /api/galpones/{galponId}/edad-lote` | Administrador | Días totales, semanas completas, días restantes y texto de edad. |
+| `GET /api/galpones/{galponId}` | Administrador, trabajador o usuario autorizado | Nombre, aforo, estado y datos disponibles del lote actual. |
+| `GET /api/galpones/resumen` | Administrador | Total registrado, total válido, seis conteos e inconsistencias. |
+| `GET /api/galpones` | Administrador, trabajador o usuario autorizado | Página del listado general con ID, nombre y estado de cada galpón. |
+
+Una consulta válida responde 200 incluso sin lote o con un listado vacío. Un galpón inexistente responde 404; múltiples lotes actuales o una fecha futura en la consulta exclusiva de edad responden 409; una dependencia imprescindible no disponible responde 503. Autenticación y autorización usan los errores de General.md.
+
+En el detalle, una fecha futura conserva los demás datos válidos, omite la edad e informa la inconsistencia. Los resultados parciales incluyen incidencias explícitas y no sustituyen valores faltantes por cero.
+
+### JSON común de errores
+
+Todos los endpoints utilizan `Content-Type: application/problem+json` y la estructura definida en General.md. Ejemplo para un galpón inexistente:
+
+```json
+{
+  "type": "https://avicontrol/errors/galpon-no-encontrado",
+  "title": "Galpón no encontrado",
+  "status": 404,
+  "detail": "No existe el galpón solicitado",
+  "instance": "/api/galpones/550e8400-e29b-41d4-a716-446655440000",
+  "code": "GALPON_NO_ENCONTRADO",
+  "correlationId": "c9a13035-a18a-4fbd-afb3-a3bfcd15f088",
+  "fieldErrors": []
+}
+```
+
+`status` coincide con el código HTTP; `code` es estable para clientes; `detail` puede aportar contexto sin exponer información sensible; `correlationId` permite rastrear la solicitud. Los errores de validación pueden incluir elementos en `fieldErrors` con `field`, `code` y `message`.
 
 ## Phase 1: Setup (Shared Infrastructure)
 
-**Purpose**: Preparar la estructura y configuración exclusiva de la capacidad de consulta y seguimiento de galpones.
+**Purpose**: Preparar estructura y contratos propios de la capacidad.
 
-- [ ] T001 Crear los paquetes de dominio, aplicación y adaptadores de galpones descritos en este plan.
-- [ ] T002 Registrar la capacidad de galpones como módulo funcional y declarar su interfaz pública de aplicación.
-- [ ] T003 Configurar las propiedades específicas de los topics y versiones de eventos intercambiados con el Módulo 1.
-- [ ] T004 Configurar el endpoint de consulta de respaldo y el umbral de vigencia de las proyecciones.
-- [ ] T005 Crear fixtures reutilizables de galpones, lotes, mortalidades y versiones de eventos para pruebas.
-- [ ] T006 Crear la estructura de pruebas de dominio, aplicación, REST, persistencia y eventos propia del feature.
+- [ ] T001 Contrastar las interfaces internas disponibles de galpones y lotes con los dos puertos definidos; documentar datos faltantes y responsable.
+- [ ] T002 Crear los paquetes del feature y comprobar el paquete raíz real; reutilizar configuración transversal de actor, reloj y errores.
+- [ ] T003 Acordar las autoridades de seguridad para administrador, usuario y trabajador / operario.
+- [ ] T004 Preparar fixtures de galpones vacíos, listados paginados, lotes actuales e históricos y estados inconsistentes.
 
----
+**Checkpoint**: Contratos definidos sin repetir la base técnica ni introducir infraestructura distribuida.
 
 ## Phase 2: Foundational (Blocking Prerequisites)
 
-**Purpose**: Crear el dominio, los puertos y la infraestructura base que necesitan todas las historias de usuario.
+**Purpose**: Preparar entidades y accesos compartidos por las historias.
 
-**⚠️ CRITICAL**: Ninguna user story puede comenzar hasta que esta fase esté completa.
+- [ ] T005 Implementar `Galpon`, `EstadoGalpon`, `Lote` y `Edad` en Java puro; representar los seis estados del spec y mapear `PRODUCTIVO` al valor de presentación `productiva`.
+- [ ] T006 Implementar `Lote.calcularEdad(fechaConsulta)` y validaciones de identidad y población. Detectar una fecha futura al calcular la edad sin perder los demás datos del detalle.
+- [ ] T007 Definir excepciones y los dos puertos con operaciones individuales, por conjunto, paginadas y con semántica de ausencia e inconsistencia. El listado y el resumen se representan mediante resultados de aplicación.
+- [ ] T008 Implementar `GalponQueryAdapter`, `LoteQueryAdapter` y `GalponLoteMapper` sobre interfaces públicas internas. No seleccionar el lote actual únicamente por fecha de ingreso.
+- [ ] T009 Implementar el agregado: `totalRegistrado = totalValido + inconsistentes`; la suma de los seis estados debe igualar `totalValido`.
+- [ ] T010 Registrar dependencias en `GalponBeanConfiguration` y aplicar desde infraestructura el contexto transaccional de lectura a los casos de uso.
+- [ ] T011 Verificar contratos de adaptadores, ausencia de escrituras y consistencia de lectura ante cambios concurrentes.
 
-- [ ] T007 Crear migraciones Flyway para las tablas:
-  - `galpon_projection`: `galpon_id`, `nombre`, `aforo_maximo`, `estado`, `source_version`, `source_updated_at` y `synced_at`.
-  - `lote_projection`: `lote_id`, `nombre`, `poblacion_inicial`, `poblacion_actual`, `fecha_ingreso`, `costo_total`, `galpon_id`, `source_version`, `source_updated_at` y `synced_at`.
-  - `solicitud_descuento_poblacion`: `request_id`, `mortalidad_id`, `lote_id`, `galpon_id`, `cantidad_muertes`, `estado`, `motivo_rechazo`, `created_at` y `resolved_at`.
-- [ ] T008 Crear modelos de consulta en `domain/model/consulta/`:
-  - `GalponConsultado` con UUID, nombre, aforo máximo y estado.
-  - `LoteConsultado` con UUID, nombre, población inicial, población actual, fecha de ingreso, costo total y UUID del galpón.
-  - `EdadLote` como valor calculado, no como relación almacenada dentro del galpón.
-  - `EstadoGalpon` como representación de los estados recibidos del Módulo 1.
-- [ ] T009 Crear `EstadoGalpon` con los valores `DISPONIBLE`, `VACIADO_SANITARIO`, `PRODUCTIVO`, `EN_COSECHA`, `MANTENIMIENTO` y `AISLAMIENTO`.
-- [ ] T010 Crear `SolicitudDescuentoPoblacion` y `EstadoSolicitudPoblacion` en `domain/model/poblacion/`.
-- [ ] T011 Crear excepciones de dominio en `domain/exception/galpon/`: `GalponNoEncontradoException`, `LoteVigenteNoDisponibleException`, `FechaIngresoInconsistenteException` y `ProyeccionNoDisponibleException`.
-- [ ] T012 Crear interfaces de puertos de salida en `domain/port/out/galpon/`:
-  - `GalponQueryPort` para buscar y resumir galpones consultados.
-  - `LoteQueryPort` para buscar lotes por `galponId` y obtener el lote vigente conforme a la regla funcional.
-  - `SolicitudDescuentoPoblacionPort` para persistir y resolver solicitudes.
-  - `Modulo1QueryPort` para recuperar información vigente sin acceder a tablas externas.
-  - `IntegrationEventPublisherPort` para publicar solicitudes hacia el Módulo 1.
-- [ ] T013 Crear entidades JPA y repositorios Spring Data para `galpon_projection`, `lote_projection` y `solicitud_descuento_poblacion`.
-- [ ] T014 Implementar `GalponPersistenceMapper` y `GalponProjectionAdapter`, manteniendo independientes la proyección de galpón y la proyección de lote.
-- [ ] T015 Implementar en `LoteJpaRepository` la consulta de lotes por `galponId`, ordenados por `fechaIngreso`, sin agregar una relación de colección dentro de `GalponProjectionEntity`.
-- [ ] T016 Crear los contratos de eventos entrantes `GalponCreadoV1`, `GalponActualizadoV1`, `LoteRegistradoV1`, `PoblacionLoteActualizadaV1` y `DescuentoPoblacionRechazadoV1` en `adapter/in/event/galpon/dto/`.
-- [ ] T017 Implementar `Modulo1GalponEventListener` y `SincronizarGalponYLoteUseCase` con idempotencia por `eventId` y control de orden por `sourceVersion`.
-- [ ] T018 Implementar `Modulo1QueryAdapter` para recuperar galpones y lotes cuando una proyección requerida no exista o esté desactualizada.
-- [ ] T019 Crear `ClockConfiguration`, `GalponBeanConfiguration`, autorización para `ROLE_ADMINISTRADOR` y `ROLE_USUARIO`, y manejo global de errores 400, 403, 404, 409 y 503.
+**Checkpoint**: Datos vigentes y dominio preparados sin proyecciones duplicadas.
 
-**Checkpoint**: Gradle compila el proyecto, las migraciones crean las dos proyecciones independientes, los eventos del Módulo 1 pueden sincronizarlas y no existe ningún modelo, tabla o puerto de asignación entre trabajadores y galpones.
+## Phase 3: User Story 1 — Consultar Edad del Lote por Galpón (Priority: P1)
 
----
+**Spec**: 003, historia 1.
 
-## Phase 3: User Story 1 — Consultar la Edad del Lote por Galpón (Priority: P1)
+**Goal**: El administrador obtiene la edad exacta del lote actual.
 
-**Goal**: El administrador puede consultar la edad exacta del lote vigente registrado para un galpón, expresada en semanas completas, días restantes y días totales.
+**Independent Test**: Un ingreso hace 16 días muestra `2 semanas y 3 días (17 días)`; el mismo día de ingreso muestra `1 día`.
 
-**Independent Test**: `GET /api/galpones/{galponId}/edad-lote` sobre un lote cuya fecha de ingreso fue hace 16 días retorna HTTP 200 y `2 semanas y 3 días (17 días)`. Si no existe un lote vigente para el galpón, informa esa condición sin fabricar una edad.
+### Definición del evento para User Story 1
+
+**Evento producido**: Ninguno.
+
+**Evento consumido**: Ninguno.
+
+La consulta calcula la edad a partir de la fecha vigente del lote y no representa un cambio de estado del negocio. Por esa razón no se define un evento como `EdadLoteConsultada`. Los eventos que creen, alojen o actualicen un lote pertenecen a la capacidad propietaria de lotes; una vez confirmado uno de esos procesos, esta consulta debe reflejar la nueva fecha o asociación mediante `LoteQueryPort`, sin agregar un listener en este feature.
+
+### Definición del endpoint REST para User Story 1
+
+| Elemento | Definición |
+| --- | --- |
+| Método y ruta | `GET /api/galpones/{galponId}/edad-lote` |
+| Autorización | `ROLE_ADMINISTRADOR` |
+| Entrada | `galponId`, UUID obligatorio en la ruta. No recibe body. |
+| Respuesta 200 con lote | `galponId`, `loteId` y `edad` con `diasTotales`, `semanasCompletas`, `diasRestantes` y `texto`. |
+| Respuesta 200 sin lote | `galponId`, `loteId: null`, `edad: null` y `mensaje: "El galpón no tiene lote alojado actualmente"`. |
+| Errores | 400 para UUID inválido, 401 sin autenticación, 403 sin rol, 404 si no existe el galpón, 409 para fecha futura o múltiples lotes actuales y 503 si la información imprescindible no está disponible. |
+
+Los errores utilizan `application/problem+json`. Los valores de edad son derivados y no se aceptan como parámetros del cliente.
+
+#### JSON de respuesta con lote actual
+
+```json
+{
+  "galponId": "550e8400-e29b-41d4-a716-446655440000",
+  "loteId": "2fc03a21-84c4-4c83-bb15-6607bb75cb90",
+  "edad": {
+    "diasTotales": 17,
+    "semanasCompletas": 2,
+    "diasRestantes": 3,
+    "texto": "2 semanas y 3 días (17 días)"
+  },
+  "mensaje": null
+}
+```
+
+#### JSON de respuesta sin lote actual
+
+```json
+{
+  "galponId": "550e8400-e29b-41d4-a716-446655440000",
+  "loteId": null,
+  "edad": null,
+  "mensaje": "El galpón no tiene lote alojado actualmente"
+}
+```
 
 ### Tests para User Story 1
 
-- [ ] T020 [P] [US1] Test unitario: una consulta realizada el mismo día del ingreso calcula una edad de 1 día — `CalcularEdadLoteUseCaseTest.java`.
-- [ ] T021 [P] [US1] Test unitario: 16 días transcurridos producen 17 días y el formato `2 semanas y 3 días (17 días)` — `CalcularEdadLoteUseCaseTest.java`.
-- [ ] T022 [P] [US1] Test unitario: cambios de mes, año y 29 de febrero usan días calendario — `CalcularEdadLoteUseCaseTest.java`.
-- [ ] T023 [P] [US1] Test de contrato: galpón sin lote vigente retorna el mensaje funcional definido en el spec — `GalponControllerTest.java`.
-- [ ] T024 [P] [US1] Test de contrato: fecha de ingreso futura retorna HTTP 409 y un usuario sin rol administrador recibe HTTP 403 — `GalponControllerTest.java`.
+- [ ] T012 [US1] Probar en `LoteTest` día de ingreso, 16 días transcurridos, cambios de mes y año, año bisiesto y fecha futura.
+- [ ] T013 [US1] Probar en `ConsultarEdadPorGalponUseCaseTest` galpón inexistente, ausencia de lote, múltiples lotes actuales y datos no disponibles.
+- [ ] T014 [US1] Probar en `GalponControllerTest` autorización, campos numéricos, singular/plural y mensaje exacto `El galpón no tiene lote alojado actualmente`.
 
 ### Implementación de User Story 1
 
-- [ ] T025 [US1] Implementar `CalcularEdadLoteUseCase` con `Clock` y `ChronoUnit.DAYS`, incluyendo el día de ingreso como día 1.
-- [ ] T026 [US1] Implementar `ConsultarEdadPorGalponUseCase` usando `LoteQueryPort` para localizar el lote vigente por `galponId`.
-- [ ] T027 [US1] Crear `EdadLoteResponse` y su conversión en `GalponRestMapper`.
-- [ ] T028 [US1] Implementar `GET /api/galpones/{galponId}/edad-lote` en `GalponController`, restringido a `ROLE_ADMINISTRADOR`.
+- [ ] T015 [US1] Implementar `ConsultarEdadPorGalponUseCase` con puertos de galpón y lote, actor y `Clock`; delegar cálculo a `Lote`.
+- [ ] T016 [US1] Crear `EdadLoteResult`, `EdadLoteResponse` y mapeo, diferenciando ausencia de lote de edad disponible.
+- [ ] T017 [US1] Implementar endpoint de edad con respuestas 200, 404, 409 y 503 y controles de seguridad.
 
-**Checkpoint**: US1 funciona de manera independiente y calcula correctamente la edad sin almacenar lotes dentro del galpón.
+**Checkpoint**: Edad correcta sin persistirla ni modificar entidades.
 
----
+## Phase 4: User Story 2 — Consultar Información de un Galpón (Priority: P1)
 
-## Phase 4: User Story 2 — Consultar la Información de un Galpón (Priority: P1)
+**Spec**: 007, historia 1.
 
-**Goal**: El administrador o usuario autorizado puede consultar el nombre, aforo máximo y estado de un galpón, además de la población actual y edad del lote vigente registrado para él.
+**Goal**: Administrador o usuario consulta nombre, aforo, estado, población y edad.
 
-**Independent Test**: `GET /api/galpones/{galponId}` retorna HTTP 200 con los datos del galpón y, mediante una consulta independiente por `galponId`, los datos de su lote vigente. Si no existe lote, mantiene los datos del galpón e indica que la población y la edad no están disponibles.
+**Independent Test**: Sin lote se conservan los datos del galpón y se explica la ausencia de población y edad.
+
+### Definición del evento para User Story 2
+
+**Evento producido**: Ninguno.
+
+**Evento consumido**: Ninguno.
+
+Consultar un galpón no modifica su estado ni el del lote. Los eventos de creación o actualización de galpón, alojamiento de lote y actualización de población son responsabilidad de los casos de uso que realizan esos cambios. Después de su confirmación, `GalponQueryPort` y `LoteQueryPort` deben devolver el estado vigente. Esta historia verifica esa visibilidad, pero no duplica dichos eventos ni mantiene una proyección propia.
+
+### Definición del endpoint REST para User Story 2
+
+| Elemento | Definición |
+| --- | --- |
+| Método y ruta | `GET /api/galpones/{galponId}` |
+| Autorización | `ROLE_ADMINISTRADOR`, `ROLE_TRABAJADOR` o `ROLE_USUARIO` |
+| Entrada | `galponId`, UUID obligatorio en la ruta. No recibe body. |
+| Respuesta 200 | `id`, `nombre`, `aforoMaximo`, `estado` y `loteActual`. Cuando existe, `loteActual` contiene `id`, `poblacionActual`, `fechaIngreso` y `edad`; cuando no existe es `null` y se incluye la incidencia correspondiente. |
+| Datos parciales | `incidencias` identifica fecha futura o información no disponible sin reemplazarla por valores inventados. |
+| Errores | 400 para UUID inválido, 401 sin autenticación, 403 sin rol, 404 si no existe el galpón, 409 para múltiples lotes actuales y 503 cuando no se puede recuperar información imprescindible. |
+
+El endpoint no expone entidades JPA ni acepta atributos editables porque su contrato es estrictamente de lectura.
+
+#### JSON de respuesta con lote actual
+
+```json
+{
+  "id": "550e8400-e29b-41d4-a716-446655440000",
+  "nombre": "Galpón 1",
+  "aforoMaximo": 8000,
+  "estado": "PRODUCTIVO",
+  "loteActual": {
+    "id": "2fc03a21-84c4-4c83-bb15-6607bb75cb90",
+    "poblacionActual": 7960,
+    "fechaIngreso": "2026-09-15",
+    "edad": {
+      "diasTotales": 17,
+      "semanasCompletas": 2,
+      "diasRestantes": 3,
+      "texto": "2 semanas y 3 días (17 días)"
+    }
+  },
+  "incidencias": []
+}
+```
+
+#### JSON de respuesta sin lote actual
+
+```json
+{
+  "id": "550e8400-e29b-41d4-a716-446655440000",
+  "nombre": "Galpón 2",
+  "aforoMaximo": 6000,
+  "estado": "DISPONIBLE",
+  "loteActual": null,
+  "incidencias": [
+    {
+      "codigo": "GALPON_SIN_LOTE_ACTUAL",
+      "mensaje": "El galpón no tiene lote alojado actualmente"
+    }
+  ]
+}
+```
 
 ### Tests para User Story 2
 
-- [ ] T029 [P] [US2] Test unitario de `ConsultarGalponUseCase` para un galpón con un lote vigente relacionado por llave foránea — `ConsultarGalponUseCaseTest.java`.
-- [ ] T030 [P] [US2] Test unitario para un galpón sin lote y para una fecha de ingreso inconsistente — `ConsultarGalponUseCaseTest.java`.
-- [ ] T031 [P] [US2] Test de contrato: administrador y usuario reciben HTTP 200; un rol no autorizado recibe HTTP 403 — `GalponControllerTest.java`.
-- [ ] T032 [P] [US2] Test de contrato: galpón inexistente retorna HTTP 404 y proyección no disponible retorna HTTP 503 — `GalponControllerTest.java`.
-- [ ] T033 [P] [US2] Test de integración: consulta por separado `galpon_projection` y `lote_projection` y compone la respuesta — `GalponProjectionAdapterTest.java`.
+- [ ] T018 [US2] Probar en `ConsultarGalponUseCaseTest` detalle completo, ausencia de lote, fecha futura e información incompleta sin inventar valores.
+- [ ] T019 [US2] Probar en `GalponControllerTest` acceso de administrador y usuario, rechazo de otros roles y errores por inexistencia o inconsistencia.
+- [ ] T020 [US2] Probar en `GalponLoteQueryAdaptersTest` selección de la asociación actualmente alojada y rechazo de múltiples lotes actuales.
 
 ### Implementación de User Story 2
 
-- [ ] T034 [US2] Implementar `ConsultarGalponUseCase` usando `GalponQueryPort`, `LoteQueryPort` y `CalcularEdadLoteUseCase`.
-- [ ] T035 [US2] Crear `GalponDetalleResponse` con nombre, aforo máximo, estado y, cuando exista, UUID, nombre, población actual, fecha de ingreso y edad del lote.
-- [ ] T036 [US2] Agregar el mapeo de detalle a `GalponRestMapper` sin exponer entidades JPA.
-- [ ] T037 [US2] Implementar `GET /api/galpones/{galponId}` en `GalponController` para `ROLE_ADMINISTRADOR` y `ROLE_USUARIO`.
+- [ ] T021 [US2] Implementar `ConsultarGalponUseCase` reutilizando la regla de edad del dominio, sin invocar el caso de uso restringido al administrador.
+- [ ] T022 [US2] Crear `GalponDetalleResult`, `GalponDetalleResponse` e incidencias de datos incompletos o inconsistentes.
+- [ ] T023 [US2] Implementar endpoint de detalle y autorización en controlador y aplicación.
 
-**Checkpoint**: US1 y US2 consultan galpones y lotes como recursos independientes relacionados mediante `galponId`.
+**Checkpoint**: Detalle válido con faltantes informados explícitamente.
 
----
+## Phase 5: User Story 3 — Consultar Resumen General de Galpones (Priority: P2)
 
-## Phase 5: User Story 3 — Consultar el Resumen General de Galpones (Priority: P2)
+**Spec**: 007, historia 2.
 
-**Goal**: El administrador puede visualizar el total de galpones y su distribución entre los seis estados permitidos.
+**Goal**: El administrador obtiene totales y distribución por estado.
 
-**Independent Test**: `GET /api/galpones/resumen` con doce galpones válidos retorna total 12 y conteos por estado cuya suma también es 12. Los registros sin estado válido se informan por separado.
+**Independent Test**: Doce galpones válidos producen total válido 12 y conteos que suman 12; los registros inválidos se informan por separado.
+
+### Definición del evento para User Story 3
+
+**Evento producido**: Ninguno.
+
+**Evento consumido**: Ninguno.
+
+El resumen es una agregación calculada durante la consulta y no constituye un hecho nuevo del dominio. Los cambios de estado de un galpón son publicados por el caso de uso que los ejecuta. Una consulta posterior debe incorporarlos a los conteos mediante `GalponQueryPort`; no se publica un evento `ResumenGalponesConsultado` ni se conserva el resumen como estado persistido.
+
+### Definición del endpoint REST para User Story 3
+
+| Elemento | Definición |
+| --- | --- |
+| Método y ruta | `GET /api/galpones/resumen` |
+| Autorización | `ROLE_ADMINISTRADOR` |
+| Entrada | Sin parámetros y sin body. |
+| Respuesta 200 | `totalRegistrado`, `totalValido`, `registrosInconsistentes` y `porEstado`, con claves para `DISPONIBLE`, `VACIADO_SANITARIO`, `PRODUCTIVO`, `EN_COSECHA`, `MANTENIMIENTO` y `AISLAMIENTO`, incluso cuando su valor sea cero. |
+| Invariantes | `totalRegistrado = totalValido + registrosInconsistentes` y la suma de `porEstado` es igual a `totalValido`. |
+| Errores | 401 sin autenticación, 403 sin rol, 409 si los conteos recuperados son incoherentes y 503 si la fuente de galpones no está disponible. |
+
+La ruta fija `/resumen` debe declararse sin ambigüedad frente a `/{galponId}` en el controlador.
+
+#### JSON de respuesta
+
+```json
+{
+  "totalRegistrado": 13,
+  "totalValido": 12,
+  "registrosInconsistentes": 1,
+  "porEstado": {
+    "DISPONIBLE": 2,
+    "VACIADO_SANITARIO": 1,
+    "PRODUCTIVO": 6,
+    "EN_COSECHA": 1,
+    "MANTENIMIENTO": 1,
+    "AISLAMIENTO": 1
+  }
+}
+```
+
+Cuando no existen galpones, los tres totales y los seis conteos se devuelven en cero; no se omiten claves del objeto `porEstado`.
 
 ### Tests para User Story 3
 
-- [ ] T038 [P] [US3] Test unitario: cada galpón válido se contabiliza exactamente una vez — `ConsultarResumenGalponesUseCaseTest.java`.
-- [ ] T039 [P] [US3] Test unitario: una colección vacía produce total y conteos en cero — `ConsultarResumenGalponesUseCaseTest.java`.
-- [ ] T040 [P] [US3] Test unitario: un estado ausente o desconocido no se asigna a otro estado y aumenta el conteo de inconsistencias — `ConsultarResumenGalponesUseCaseTest.java`.
-- [ ] T041 [P] [US3] Test de contrato: el administrador recibe HTTP 200 y otros roles reciben HTTP 403 — `GalponControllerTest.java`.
-- [ ] T042 [P] [US3] Test de integración de la consulta agregada por estado en PostgreSQL — `GalponProjectionAdapterTest.java`.
+- [ ] T024 [US3] Probar en `ConsultarResumenGalponesUseCaseTest` conteo único, conjunto vacío y estados ausentes o desconocidos.
+- [ ] T025 [US3] Probar en `GalponControllerTest` seis estados incluso en cero, ecuaciones de totales y acceso exclusivo del administrador.
 
 ### Implementación de User Story 3
 
-- [ ] T043 [US3] Agregar a `GalponQueryPort` la consulta agregada de totales por estado.
-- [ ] T044 [US3] Implementar `ConsultarResumenGalponesUseCase`, incluyendo conteos en cero para los seis estados y registros inconsistentes.
-- [ ] T045 [US3] Crear `ResumenGalponesResponse` y su mapeo REST.
-- [ ] T046 [US3] Implementar `GET /api/galpones/resumen` en `GalponController`, restringido a `ROLE_ADMINISTRADOR`.
+- [ ] T026 [US3] Implementar `ConsultarResumenGalponesUseCase` sobre los conteos entregados por `GalponQueryPort`, componer `ResumenGalponesResult` y validar la coherencia de sus totales.
+- [ ] T027 [US3] Crear `ResumenGalponesResult`, `ResumenGalponesResponse` y mapeo.
+- [ ] T028 [US3] Implementar endpoint de resumen sin movimientos ni publicaciones de eventos.
 
-**Checkpoint**: US3 presenta un resumen de solo lectura cuyos conteos son consistentes con las proyecciones de galpones.
+**Checkpoint**: Resumen coherente sin alterar estados.
 
----
+## Phase 6: User Story 4 — Listar Galpones Disponibles para Consulta (Priority: P2)
 
-## Phase 6: User Story 4 — Actualizar la Población Actual por Mortalidad (Priority: P1)
+**Spec**: 007, historia 3.
 
-**Goal**: Una mortalidad confirmada genera una solicitud de descuento para que el Módulo 1 actualice la población del lote y el Módulo 2 refleje el resultado en su proyección sin modificar la población inicial.
+**Goal**: El trabajador visualiza el listado general y puede seleccionar cualquier galpón para consultar su detalle.
 
-**Independent Test**: Al confirmar 40 muertes sobre un lote con 8.000 aves, se publica una única solicitud y, tras recibir la confirmación del Módulo 1, la proyección muestra 7.960 aves. Una solicitud que produciría una población negativa es rechazada y la reentrega del mismo evento no descuenta dos veces.
+**Independent Test**: Con doce galpones registrados, un trabajador autenticado obtiene los doce mediante las páginas correspondientes y puede abrir cualquiera de ellos. La consulta no requiere ni aplica asignaciones.
+
+### Definición del evento para User Story 4
+
+**Evento producido**: Ninguno.
+
+**Evento consumido**: Ninguno.
+
+El listado es una consulta del estado vigente y no representa un nuevo hecho del dominio. Los casos de uso que crean o actualizan galpones publican sus propios eventos internos; después de confirmarse, el listado debe reflejar esos cambios mediante `GalponQueryPort`. Este feature no crea listeners ni copias locales.
+
+### Definición del endpoint REST para User Story 4
+
+| Elemento | Definición |
+| --- | --- |
+| Método y ruta | `GET /api/galpones` |
+| Autorización | `ROLE_ADMINISTRADOR`, `ROLE_TRABAJADOR` o `ROLE_USUARIO` |
+| Entrada | Query params opcionales `page` (por defecto 0), `size` (por defecto 20, máximo 100) y `sort` (por defecto `nombre,asc`). No recibe body ni `trabajadorId`. |
+| Respuesta 200 | `content` con `id`, `nombre` y `estado` de cada galpón; además `page`, `size`, `totalElements`, `totalPages`, `first` y `last`. |
+| Listado vacío | Respuesta 200 con `content: []`, totales en cero y `first: true`, `last: true`. |
+| Errores | 400 para paginación u orden inválidos, 401 sin autenticación, 403 sin rol y 503 si la fuente de galpones no está disponible. |
+
+El endpoint devuelve el mismo universo de galpones para todos los roles autorizados. Al seleccionar un elemento, el cliente utiliza `GET /api/galpones/{galponId}` para consultar el detalle definido en User Story 2.
+
+#### JSON de respuesta con galpones
+
+```json
+{
+  "content": [
+    {
+      "id": "550e8400-e29b-41d4-a716-446655440001",
+      "nombre": "Galpón 1",
+      "estado": "PRODUCTIVO"
+    },
+    {
+      "id": "550e8400-e29b-41d4-a716-446655440002",
+      "nombre": "Galpón 2",
+      "estado": "DISPONIBLE"
+    }
+  ],
+  "page": 0,
+  "size": 20,
+  "totalElements": 2,
+  "totalPages": 1,
+  "first": true,
+  "last": true
+}
+```
+
+#### JSON de respuesta sin galpones
+
+```json
+{
+  "content": [],
+  "page": 0,
+  "size": 20,
+  "totalElements": 0,
+  "totalPages": 0,
+  "first": true,
+  "last": true,
+  "mensaje": "No existen galpones disponibles"
+}
+```
 
 ### Tests para User Story 4
 
-- [ ] T047 [P] [US4] Test unitario: cero muertes o una cantidad negativa se rechaza sin publicar una solicitud — `SolicitarDescuentoPoblacionUseCaseTest.java`.
-- [ ] T048 [P] [US4] Test unitario: solicitudes repetidas con el mismo `mortalidadId` son idempotentes — `SolicitarDescuentoPoblacionUseCaseTest.java`.
-- [ ] T049 [P] [US4] Test unitario: la confirmación actualiza únicamente la población actual de `LoteConsultado` y conserva la población inicial — `SolicitarDescuentoPoblacionUseCaseTest.java`.
-- [ ] T050 [P] [US4] Test unitario: el rechazo conserva el motivo y no altera la proyección — `SolicitarDescuentoPoblacionUseCaseTest.java`.
-- [ ] T051 [P] [US4] Test de integración: solicitud y publicación se registran de manera transaccional — `Modulo1GalponEventListenerTest.java`.
-- [ ] T052 [P] [US4] Test con Kafka Testcontainers: duplicados no producen efectos repetidos y `loteId` conserva el orden de eventos — `Modulo1GalponEventListenerTest.java`.
+- [ ] T029 [US4] Probar en `ConsultarListadoGalponesUseCaseTest` listado completo a través de sus páginas, página vacía y metadatos correctos.
+- [ ] T030 [US4] Probar que administrador, trabajador y usuario autorizado reciben el mismo universo de galpones, sin filtros por identidad o asignación.
+- [ ] T031 [US4] Probar límites de `page` y `size`, tamaño máximo y criterios de orden permitidos.
+- [ ] T032 [US4] Probar en `GalponLoteQueryAdaptersTest` orden estable y ausencia de una consulta adicional por cada elemento listado.
+- [ ] T033 [US4] Probar en `GalponControllerTest` el contrato de FR-014 a FR-018, el listado vacío y la selección posterior del detalle.
 
 ### Implementación de User Story 4
 
-- [ ] T053 [US4] Implementar `SolicitudDescuentoPoblacion`, sus transiciones `PENDIENTE`, `CONFIRMADA` y `RECHAZADA`, y las validaciones de cantidad positiva.
-- [ ] T054 [US4] Implementar `SolicitudDescuentoPoblacionPort` y su persistencia JPA con unicidad por `mortalidadId`.
-- [ ] T055 [US4] Implementar `SolicitarDescuentoPoblacionUseCase` para registrar la solicitud y publicar el evento en la misma transacción local.
-- [ ] T056 [US4] Crear `SolicitudDescuentoPoblacionV1` en `adapter/out/event/galpon/dto/` y publicarlo mediante `GalponIntegrationEventPublisher` usando `loteId` como clave de partición.
-- [ ] T057 [US4] Implementar `MortalidadConfirmadaEventListener` para activar el caso de uso desde el registro de mortalidad del Módulo 2.
-- [ ] T058 [US4] Consumir `PoblacionLoteActualizadaV1`, confirmar la solicitud y actualizar `lote_projection` solo si `sourceVersion` es posterior.
-- [ ] T059 [US4] Consumir `DescuentoPoblacionRechazadoV1`, marcar la solicitud como rechazada y conservar código y motivo.
+- [ ] T034 [US4] Extender `GalponQueryPort` y `GalponQueryAdapter` con listado mediante límite, desplazamiento y orden permitido, más consulta del total de elementos.
+- [ ] T035 [US4] Implementar `ConsultarListadoGalponesUseCase` validando paginación, tamaño máximo, orden y autorización por rol, sin aplicar filtros por trabajador.
+- [ ] T036 [US4] Crear `GalponListadoResult`, `ListadoGalponesResult`, `GalponListadoResponse` y `ListadoGalponesResponse` con metadatos de paginación.
+- [ ] T037 [US4] Incorporar el mapeo del listado en `GalponRestMapper` sin exponer entidades JPA.
+- [ ] T038 [US4] Implementar `GET /api/galpones` y asegurar que las rutas fijas `/resumen` y `/{galponId}/edad-lote` no sean absorbidas por `/{galponId}`.
 
-**Checkpoint**: US4 mantiene un seguimiento auditable e idempotente; el Módulo 1 continúa siendo el único que modifica autoritativamente la población del lote.
-
----
+**Checkpoint**: Cualquier trabajador autorizado puede listar y consultar cualquier galpón sin modelos ni reglas de asignación.
 
 ## Phase 7: Polish & Cross-Cutting Concerns
 
-**Purpose**: Completar la documentación, calidad, seguridad y operación de todas las historias.
+**Purpose**: Verificar contratos e integración dentro del monolito.
 
-- [ ] T060 [P] Documentar los tres endpoints, respuestas y errores mediante OpenAPI.
-- [ ] T061 [P] Documentar los topics, productores, consumidores, versiones y claves de partición acordados con el Módulo 1.
-- [ ] T062 [P] Crear una prueba de arquitectura que impida dependencias de Spring, JPA y Kafka dentro de `domain/`.
-- [ ] T063 Ejecutar todas las pruebas con `gradlew test` y corregir fallos de formato o análisis estático.
-- [ ] T064 Ejecutar pruebas end-to-end con PostgreSQL y Kafka Testcontainers, incluyendo reinicios, duplicados y eventos fuera de orden.
-- [ ] T065 Verificar el objetivo de respuesta de 1 segundo con el volumen de galpones y lotes acordado para el proyecto.
-- [ ] T066 Verificar que no existan asignaciones de trabajadores, relaciones de colección de lotes dentro de galpones ni repositorios que modifiquen las entidades autoritativas del Módulo 1.
+- [ ] T039 Documentar los cuatro endpoints, roles, datos parciales y errores en OpenAPI.
+- [ ] T040 Completar `ConsultaGalponesIntegrationTest`: ejecutar cambios desde los procesos propietarios, incluyendo población confirmada mediante el flujo de eventos interno, y verificar que una nueva consulta refleja el resultado sin descontarlo otra vez.
+- [ ] T041 Verificar ausencia de escrituras y publicaciones durante consultas, y que los adaptadores no accedan a repositorios privados ajenos.
+- [ ] T042 Extender comprobaciones arquitectónicas existentes: dominio sin frameworks, aplicación sin JPA/HTTP y dependencias internas sin ciclos.
+- [ ] T043 Ejecutar pruebas y tareas de calidad disponibles. El repositorio inspeccionado contiene `pom.xml` y `mvnw.cmd`, mientras General.md declara Gradle: resolver esta diferencia antes de fijar el comando de entrega, sin migrar el sistema de construcción dentro de este plan funcional.
+- [ ] T044 Medir el objetivo del 95 % en máximo 1 segundo y verificar consultas por conjuntos sin una llamada interna por cada galpón.
+- [ ] T045 Verificar criterios de presentación y usabilidad de los specs en la interfaz consumidora cuando esté disponible; las pruebas de API no acreditan por sí solas tiempos de interacción ni satisfacción.
 
----
+**Checkpoint**: Historias verificadas, dependencias reales integradas y diferencias documentales identificadas.
 
 ## Dependencies & Execution Order
 
 ### Phase Dependencies
 
-- **Setup (Phase 1)**: Sin dependencias; puede comenzar de inmediato.
-- **Foundational (Phase 2)**: Depende de Phase 1 y bloquea todas las user stories.
-- **US1 - Consultar edad (Phase 3)**: Depende de Phase 2; no depende de otra story.
-- **US2 - Consultar galpón (Phase 4)**: Depende de Phase 2 y reutiliza el cálculo de edad de US1.
-- **US3 - Resumen de galpones (Phase 5)**: Depende de Phase 2 y puede avanzar en paralelo con US1 y US2.
-- **US4 - Actualizar población (Phase 6)**: Depende de Phase 2 y del evento de mortalidad confirmada; puede avanzar en paralelo con las consultas.
-- **Polish (Phase 7)**: Depende de todas las user stories incluidas en la entrega.
+- **Setup**: Identificación de interfaces proveedoras y base existente.
+- **Foundational**: Depende de Setup y habilita las historias.
+- **US1, US2 y US3**: Dependen de Foundational; reutilizan la regla de edad del dominio cuando corresponde. No dependen de invocar otro caso de uso con permisos diferentes.
+- **US4**: Depende de Foundational y del listado paginado ofrecido por `GalponQueryPort`; no depende de información del trabajador más allá de su rol autorizado.
+- **Polish**: Depende de las cuatro historias y de los procesos internos que permitan verificar lecturas posteriores a cambios.
 
-### User Story Dependencies
+### Dependencias con otros planes
 
-- **US1 (P1)**: Inicia cuando termine Foundational.
-- **US2 (P1)**: Reutiliza `CalcularEdadLoteUseCase` de US1; el resto del detalle puede desarrollarse en paralelo.
-- **US3 (P2)**: Sin dependencias con otras stories después de Foundational.
-- **US4 (P1)**: No depende de las stories de consulta; su activación productiva se integra con el registro de mortalidad.
+- **Mortalidad e inventario vivo**: Cambios de población que se muestran en las consultas. El spec 019 permanece en ese plan.
+- **Gestión de galpones y lotes**: Interfaces públicas y asociación actualmente alojada.
 
 ### Dentro de cada User Story
 
-- Puerto de salida antes que caso de uso.
-- Caso de uso antes que controlador, listener o publicador.
-- DTOs y mappers junto al adaptador que los utiliza.
-- Tests escritos junto a la implementación de cada tarea.
-- Checkpoint verificado antes de considerar completada la fase.
-
----
+- Entidades y puertos antes que casos de uso; casos de uso antes que controladores.
+- Mapeos en los adaptadores; reglas de negocio en dominio.
+- Pruebas junto a implementación y checkpoint antes de cerrar la historia.
+- Coordinar cambios en controlador, mappers y pruebas compartidas; las historias no son automáticamente tareas paralelas sobre esos archivos.
 
 ## Notes
 
-- El tag `[P]` identifica tareas que pueden ejecutarse en paralelo porque no modifican los mismos archivos.
-- Los tags `[US1]` a `[US4]` relacionan cada tarea con una user story para mantener trazabilidad.
-- **Propiedad de datos**: `GalponConsultado` y `LoteConsultado` son modelos de lectura; las entidades autoritativas pertenecen al Módulo 1.
-- **Relación galpón-lote**: `GalponConsultado` no contiene lotes. `LoteConsultado` conserva `galponId` y se consulta independientemente.
-- **Sin asignaciones de trabajadores**: este plan no crea modelos, tablas, puertos, eventos, endpoints ni casos de uso de asignación entre trabajadores y galpones.
-- **Eventos**: los contratos recibidos se ubican en `adapter/in/event`; `SolicitudDescuentoPoblacionV1`, producido por este módulo, se ubica en `adapter/out/event`.
-- **Consistencia**: las consultas usan proyecciones locales; si una proyección imprescindible no existe o no puede verificarse, el sistema informa la indisponibilidad en lugar de inventar valores.
-- **Población viva**: el Módulo 2 registra y sigue la solicitud, pero el Módulo 1 valida y modifica el lote para conservar la propiedad del dato.
-- **Trazabilidad documental**: la historia de galpones asignados al trabajador todavía aparece en el SPEC-007, pero se excluye de este plan porque contradice el modelo confirmado del Módulo 1 y la decisión de que no existen tales asignaciones.
+- T001 a T045 identifican tareas; US1 a US4 identifican las historias.
+- Este documento describe componentes por implementar, no afirma que ya existan.
+- Usar eventos en un monolito no exige un listener en cada feature. Aquí no existe una reacción persistente propia que lo justifique.
+- `Galpon` y `Lote` son entidades del dominio; el límite de escritura de estas consultas sigue siendo el de los specs 003 y 007.
+- El plan no reproduce el stack de General.md; explicita decisiones y diferencias necesarias para este alcance.
