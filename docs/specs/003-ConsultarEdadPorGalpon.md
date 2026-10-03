@@ -60,13 +60,13 @@ Como administrador, quiero consultar la edad exacta del lote de aves alojado act
 
 ### Key Entities
 
-- **Galpón**: Representa el espacio en el que se aloja un lote de aves y es proporcionado por el módulo 1.
-  - **Atributos relevantes**: nombre, aforo máximo y estado.
-  - **Relaciones**: puede alojar cero o un lote de aves actualmente y diferentes lotes a lo largo del tiempo.
-- **Lote de aves**: Representa el grupo de aves cuya edad se calcula y es proporcionado por el módulo 1.
-  - **Atributos utilizados**: fecha de ingreso.
-  - **Datos derivados**: edad actual calculada por el sistema.
-  - **Relaciones**: se encuentra alojado en un único galpón durante su ciclo de crianza.
+- **Galpón**: Representa una unidad física de producción avícola y es proporcionado por el módulo 1.
+  - **Identidad y atributos**: UUID único, nombre, aforo máximo y estado.
+  - **Relación**: no recibe ni almacena directamente lotes. La relación se obtiene desde la llave foránea del lote.
+- **Lote de aves**: Representa el grupo de aves registrado para un galpón y es proporcionado por el módulo 1.
+  - **Identidad y atributos**: UUID único, nombre, población inicial, población actual, fecha de ingreso, costo total y llave foránea del galpón.
+  - **Datos derivados**: edad actual calculada en días a partir de la fecha de ingreso y la fecha de consulta.
+  - **Relación**: referencia al galpón mediante su llave foránea; puede ser histórico o estar actualmente alojado.
 
 ## Success Criteria
 

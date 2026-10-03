@@ -6,16 +6,16 @@
 
 ### User Story 1 - Registrar evento de mortalidad anormal e invocar alerta sanitaria (Priority: P1)
 
-Como trabajador u operario de granja, quiero registrar una novedad de mortalidad anormal en mi galpón asignado cuando detecte una cantidad atípica de bajas que supere el umbral porcentual del lote o una causa crítica, indicando la causa probable y mis observaciones, para que el sistema almacene el evento e invoque la generación de una alerta sanitaria inmediata.
+Como trabajador u operario de granja, quiero registrar una novedad de mortalidad anormal en un galpón cuando detecte una cantidad atípica de bajas que supere el umbral porcentual del lote o una causa crítica, indicando la causa probable y mis observaciones, para que el sistema almacene el evento e invoque la generación de una alerta sanitaria inmediata.
 
 **Why this priority**: Es la acción de bioseguridad más urgente ante sospechas epidemiológicas o muertes atípicas. Permite documentar el evento crítico con la causa probable y observaciones directas del operario, alertando sin demora al equipo veterinario y administrativo.
 
-**Independent Test**: Se puede probar seleccionando un galpón asignado con lote activo, registrando un evento de bajas que supere el umbral porcentual diario del lote (por ejemplo, 18 bajas en un lote de 5.000 aves = 0.36 % frente a un umbral del 0.10 %), indicando la causa probable/sospechosa ("Problemas digestivos / entéricos") y observaciones adicionales, verificando que el sistema guarde el registro e invoque la generación de la alerta sanitaria correspondiente.
+**Independent Test**: Se puede probar seleccionando un galpón seleccionado con lote activo, registrando un evento de bajas que supere el umbral porcentual diario del lote (por ejemplo, 18 bajas en un lote de 5.000 aves = 0.36 % frente a un umbral del 0.10 %), indicando la causa probable/sospechosa ("Problemas digestivos / entéricos") y observaciones adicionales, verificando que el sistema guarde el registro e invoque la generación de la alerta sanitaria correspondiente.
 
 **Acceptance Scenarios**:
 
 1. **Scenario**: Registro exitoso de mortalidad anormal por superación de umbral porcentual o causa atípica
-   - **Given** que un trabajador autenticado observa una situación atípica en su galpón asignado con lote activo
+   - **Given** que un trabajador autenticado observa una situación atípica en su galpón seleccionado con lote activo
    - **When** ingresa la fecha y hora del evento, la cantidad de muertes anormales, la causa probable o sospechosa y sus observaciones adicionales
    - **Then** el sistema almacena el registro de mortalidad anormal con su UUID único, porcentaje calculado, nivel de severidad y referencias de galpón y lote
    - **And** invoca el caso de uso incluido (`<<include>>`) *Generar alerta sanitaria*
@@ -25,10 +25,6 @@ Como trabajador u operario de granja, quiero registrar una novedad de mortalidad
    - **When** el trabajador intenta registrar una cantidad de muertes anormales que supera dicha población
    - **Then** el sistema rechaza el registro, informa que la cantidad supera las aves vivas y no crea el registro
 
-3. **Scenario**: Intento de registro en un galpón no asignado al trabajador
-   - **Given** que un trabajador intenta registrar una mortalidad anormal en un galpón que no tiene a su cargo
-   - **When** solicita confirmar el registro
-   - **Then** el sistema bloquea la operación y no almacena ningún registro
 
 ---
 
@@ -77,7 +73,7 @@ Como trabajador u operario de granja, quiero que el sistema calcule automáticam
 ### Functional Requirements
 
 - **FR-001**: El sistema DEBE permitir el registro de mortalidad anormal a usuarios autenticados con rol de trabajador (y administradores autorizados).
-- **FR-002**: El sistema DEBE restringir el registro de mortalidad anormal exclusivamente a los galpones que el trabajador tenga formalmente asignados a su cargo.
+- **FR-002**: El sistema DEBE restringir el registro de mortalidad anormal a cualquier galpón existente que cumpla las condiciones de la operación.
 - **FR-003**: El sistema DEBE identificar el lote activo del galpón mediante la llave foránea almacenada en la entidad Lote, seleccionando el lote con la fecha de ingreso más reciente.
 - **FR-004**: Para registrar la mortalidad anormal, el sistema DEBE exigir obligatoriamente: identificador del galpón, fecha y hora del evento o hallazgo, cantidad de muertes anormales y causa probable o clasificación sospechosa, permitiendo el ingreso complementario de observaciones adicionales del trabajador.
 - **FR-005**: El sistema DEBE validar que la cantidad de muertes anormales sea un número entero mayor que cero y menor o igual a la población actual del lote activo.
@@ -108,7 +104,7 @@ Como trabajador u operario de granja, quiero que el sistema calcule automáticam
 - **SC-002**: El 100 % de los registros de mortalidad anormal confirmados invoca exitosamente el caso de uso incluido (`<<include>>`) *Generar alerta sanitaria*.
 - **SC-003**: En el 100 % de los registros, el porcentaje de mortalidad se calcula con exactitud respecto a la población viva actual del lote.
 - **SC-004**: El 100 % de los intentos de registro con cantidades superiores a la población viva del lote o en galpones sin lote activo es rechazado por el sistema.
-- **SC-005**: El 100 % de los intentos de registro en galpones no asignados al trabajador es bloqueado por el sistema.
+- **SC-005**: El 100 % de los intentos de registro en galpones inexistentes o no disponibles al trabajador es bloqueado por el sistema.
 - **SC-006**: El 100 % de los registros de mortalidad anormal permanece inmutable en el sistema para fines de trazabilidad y auditoría sanitaria.
 
 ---
@@ -120,3 +116,6 @@ Como trabajador u operario de granja, quiero que el sistema calcule automáticam
 - La orden y ejecución de sacrificio sanitario o vaciado del galpón (cubierto en el SPEC de sacrificio sanitario).
 - La actualización directa del inventario de pollos vivos (manejada por el caso de uso de actualización de inventario vivo).
 - La creación o administración de galpones, lotes y usuarios.
+
+
+

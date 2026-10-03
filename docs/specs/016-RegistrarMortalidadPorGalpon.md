@@ -6,16 +6,16 @@
 
 ### User Story 1 - Registrar evento de mortalidad por galpón (Priority: P1)
 
-Como trabajador u operario de granja, quiero registrar las bajas de aves ocurridas en mi galpón asignado, indicando la fecha y hora del evento, la causa y la cantidad de muertes, para mantener el registro formal de mortalidad asociado al galpón y a su lote activo.
+Como trabajador u operario de granja, quiero registrar las bajas de aves ocurridas en un galpón, indicando la fecha y hora del evento, la causa y la cantidad de muertes, para mantener el registro formal de mortalidad asociado al galpón y a su lote activo.
 
 **Why this priority**: Es el registro operativo oficial de bajas en granja. Permite documentar cada evento de mortalidad con su fecha, causa y cantidad para fines de control sanitario, auditoría e invocación de los procesos de actualización de inventario.
 
-**Independent Test**: Se puede probar seleccionando un galpón asignado con lote activo, ingresando la fecha y hora del evento, la causa y la cantidad de muertes, y verificando que el sistema cree el registro de mortalidad con sus relaciones correspondientes y active la inclusión del caso de uso de actualización de inventario vivo.
+**Independent Test**: Se puede probar seleccionando un galpón seleccionado con lote activo, ingresando la fecha y hora del evento, la causa y la cantidad de muertes, y verificando que el sistema cree el registro de mortalidad con sus relaciones correspondientes y active la inclusión del caso de uso de actualización de inventario vivo.
 
 **Acceptance Scenarios**:
 
 1. **Scenario**: Registro exitoso de mortalidad en un galpón con lote activo
-   - **Given** que un trabajador autenticado selecciona un galpón asignado a su cargo con un lote activo cuya llave foránea referencia al galpón
+   - **Given** que un trabajador autenticado selecciona un galpón seleccionado con un lote activo cuya llave foránea referencia al galpón
    - **When** ingresa la fecha y hora del evento, la causa de la muerte y una cantidad válida de muertes
    - **Then** el sistema crea y almacena el registro de mortalidad con UUID único, fecha y hora del evento, causa, cantidad de muertes, identificador del lote y del galpón
    - **And** invoca el caso de uso incluido (`<<include>>`) para actualizar el inventario vivo del galpón
@@ -31,15 +31,11 @@ Como trabajador u operario de granja, quiero registrar las bajas de aves ocurrid
    - **When** el trabajador intenta registrar una cantidad de muertes que supera dicha población
    - **Then** el sistema rechaza el registro, informa que la cantidad no puede exceder las aves vivas del lote y no crea el registro
 
-4. **Scenario**: Intento de registro en un galpón no asignado al trabajador
-   - **Given** que un trabajador intenta registrar mortalidad en un galpón que no tiene asignado
-   - **When** solicita confirmar el registro
-   - **Then** el sistema deniega el acceso y no almacena ningún registro
 
-5. **Scenario**: Intento de registro en un galpón sin lote activo
-   - **Given** un galpón que no cuenta con un lote activo registrado
-   - **When** el trabajador intenta registrar un evento de mortalidad
-   - **Then** el sistema bloquea la operación e informa que el galpón no tiene un lote activo para registrar bajas
+4. **Scenario**: Intento de registro en un galpón inexistente
+   - **Given** que el identificador del galpón no existe
+   - **When** el trabajador intenta registrar mortalidad
+   - **Then** el sistema rechaza la operación e informa que el galpón no fue encontrado
 
 ---
 
@@ -93,7 +89,7 @@ Como trabajador u operario de granja, quiero que el sistema evalúe la cantidad 
 ### Functional Requirements
 
 - **FR-001**: El sistema DEBE permitir el registro de mortalidad por galpón exclusivamente a usuarios autenticados con rol de trabajador (y administradores autorizados).
-- **FR-002**: El sistema DEBE restringir el registro de mortalidad únicamente a los galpones que el trabajador tenga formalmente asignados a su cargo.
+- **FR-002**: El sistema DEBE permitir el registro de mortalidad en cualquier galpón existente que cumpla las condiciones de la operación.
 - **FR-003**: El sistema DEBE identificar el lote activo del galpón mediante la llave foránea almacenada en la entidad Lote, seleccionando el lote con la fecha de ingreso más reciente.
 - **FR-004**: Para registrar la mortalidad, el sistema DEBE exigir obligatoriamente: identificador del galpón, fecha y hora del evento/hallazgo, causa de la muerte y cantidad de muertes, permitiendo además el registro opcional de observaciones adicionales del trabajador.
 - **FR-005**: El sistema DEBE validar que la cantidad de muertes sea un número entero mayor que cero.
@@ -127,7 +123,7 @@ Como trabajador u operario de granja, quiero que el sistema evalúe la cantidad 
 - **SC-003**: El 100 % de los intentos de registrar cantidades mayores a la población viva actual es rechazado por el sistema.
 - **SC-004**: El 100 % de los registros de mortalidad queda vinculado al UUID del galpón y al UUID del lote activo referenciado por llave foránea.
 - **SC-005**: El 100 % de los eventos de mortalidad que superen el umbral establecido activa correctamente la extensión (`<<extend>>`) de mortalidad anormal.
-- **SC-006**: El 100 % de los intentos de registro en galpones no asignados o sin lote activo es bloqueado por el sistema.
+- **SC-006**: El 100 % de los intentos de registro en galpones inexistentes o no disponibles o sin lote activo es bloqueado por el sistema.
 - **SC-007**: El 100 % de los registros de mortalidad confirmados permanece inmutable en el historial del sistema.
 
 ---
@@ -139,3 +135,7 @@ Como trabajador u operario de granja, quiero que el sistema evalúe la cantidad 
 - La orden de sacrificio sanitario o vaciado del galpón (cubierto en el SPEC de sacrificio sanitario).
 - La disposición final, enterramiento o compostaje de las aves muertas.
 - La creación, edición o administración de galpones, lotes y usuarios.
+
+
+
+

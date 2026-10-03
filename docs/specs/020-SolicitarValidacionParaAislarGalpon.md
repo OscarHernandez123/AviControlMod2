@@ -6,35 +6,31 @@
 
 ### User Story 1 - Crear y enviar solicitud de validación de aislamiento (Priority: P1)
 
-Como trabajador u operario de granja, quiero registrar y enviar una solicitud de validación para aislar un galpón asignado que se encuentra en producción cuando observe síntomas o sospechas sanitarias, informando la justificación, signos clínicos y la población de aves vivas en riesgo, para que el veterinario reciba la solicitud y proceda con la evaluación correspondiente.
+Como trabajador u operario de granja, quiero registrar y enviar una solicitud de validación para aislar un galpón seleccionado que se encuentra en producción cuando observe síntomas o sospechas sanitarias, informando la justificación, signos clínicos y la población de aves vivas en riesgo, para que el veterinario reciba la solicitud y proceda con la evaluación correspondiente.
 
 **Why this priority**: Es el punto de inicio para la contención preventiva de riesgos biológicos durante la etapa de producción. Permite al trabajador alertar formalmente al veterinario sin alterar por sí mismo el estado definitivo del galpón.
 
-**Independent Test**: Se puede probar seleccionando un galpón asignado en estado "En producción" con lote activo, ingresando el motivo de la sospecha y los signos clínicos observados, y verificando que el sistema cree la solicitud en estado "Pendiente de validación", asociada al galpón y al lote, y disponible para la revisión del veterinario.
+**Independent Test**: Se puede probar seleccionando un galpón seleccionado en estado "En producción" con lote activo, ingresando el motivo de la sospecha y los signos clínicos observados, y verificando que el sistema cree la solicitud en estado "Pendiente de validación", asociada al galpón y al lote, y disponible para la revisión del veterinario.
 
 **Acceptance Scenarios**:
 
 1. **Scenario**: Creación exitosa de la solicitud de validación de aislamiento
-   - **Given** que un trabajador autenticado tiene asignado un galpón que se encuentra en estado "En producción" con un lote activo
+   - **Given** que un trabajador autenticado selecciona un galpón que se encuentra en estado "En producción" con un lote activo
    - **When** el trabajador diligencia la justificación sanitaria, los signos observados y envía la solicitud de validación
    - **Then** el sistema almacena la solicitud con UUID único, fecha/hora de emisión, motivo, signos clínicos, referencia al galpón y lote
    - **And** establece el estado de la solicitud como "Pendiente de validación"
    - **And** conserva el estado del galpón como "En producción" hasta que el veterinario resuelva la validación
 
 2. **Scenario**: Intento de solicitud en un galpón con estado diferente a "productiva"
-   - **Given** que el galpón asignado se encuentra en estado `en cosecha`, `disponible`, `mantenimiento` o `vaciado sanitario`
+   - **Given** que el galpón seleccionado se encuentra en estado `en cosecha`, `disponible`, `mantenimiento` o `vaciado sanitario`
    - **When** el trabajador intenta registrar una solicitud de validación de aislamiento
    - **Then** el sistema rechaza la solicitud, informa que el galpón debe encontrarse en estado `productiva` y no crea el registro
 
 3. **Scenario**: Intento de solicitud con justificación o síntomas vacíos
-   - **Given** un galpón asignado en estado "En producción"
+   - **Given** un galpón seleccionado en estado "En producción"
    - **When** el trabajador intenta enviar la solicitud sin ingresar el motivo de la sospecha o los signos clínicos
    - **Then** el sistema bloquea el envío, resalta los campos obligatorios requeridos y no registra la solicitud
 
-4. **Scenario**: Intento de solicitud en un galpón no asignado al trabajador
-   - **Given** que un trabajador intenta solicitar validación para un galpón que no tiene a su cargo
-   - **When** solicita enviar la petición
-   - **Then** el sistema deniega el acceso, informa la falta de asignación y no crea ninguna solicitud
 
 ---
 
@@ -82,7 +78,6 @@ Como trabajador u operario de granja, quiero que el sistema me informe si el gal
 ### Functional Requirements
 
 - **FR-001**: El sistema DEBE permitir la creación y envío de solicitudes de validación de aislamiento exclusivamente a usuarios autenticados con rol de trabajador (y administradores autorizados).
-- **FR-002**: El sistema DEBE restringir el registro de solicitudes exclusivamente a los galpones que el trabajador tenga formalmente asignados a su cargo.
 - **FR-003**: El sistema DEBE validar que el galpón seleccionado se encuentre en estado `En producción` como condición obligatoria para admitir la solicitud.
 - **FR-004**: El sistema DEBE identificar el lote activo del galpón mediante la llave foránea almacenada en la entidad Lote, seleccionando el lote con la fecha de ingreso más reciente.
 - **FR-005**: Para registrar la solicitud, el sistema DEBE exigir obligatoriamente: identificador del galpón, identificador del lote activo, fecha y hora de emisión, motivo/justificación de la sospecha sanitaria y descripción de los signos clínicos observados.
@@ -127,3 +122,6 @@ Como trabajador u operario de granja, quiero que el sistema me informe si el gal
 - La toma de muestras de laboratorio o prescripción de medicamentos para el lote.
 - La orden y ejecución de sacrificio sanitario o vaciado del galpón (cubierto en SPEC-012 *Ordenar sacrificio sanitario*).
 - La creación, edición o administración de galpones, lotes y usuarios.
+
+
+
