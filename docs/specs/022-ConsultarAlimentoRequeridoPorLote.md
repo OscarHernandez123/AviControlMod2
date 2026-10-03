@@ -5,60 +5,11 @@
 
 ## User Scenarios & Testing *(mandatory)*
 
-### Principio de Dominio: El Lote como Entidad Central de Consumo y Liquidación
-
-En la arquitectura del sistema, el **Galpón** representa la infraestructura física de alojamiento, la cual permanece en la granja y alberga a múltiples lotes sucesivos a lo largo del tiempo (un lote finaliza su ciclo, el galpón entra en descanso sanitario y posteriormente recibe un nuevo lote). 
-
-Por tanto:
-- Las curvas nutricionales, la población viva de aves, la mortalidad, las proyecciones de demanda de alimento y la liquidación contable pertenecen al **Lote de pollos** (ej. `#LDP-003`).
-- El galpón actúa como la **ubicación física de alojamiento** del lote durante su ciclo.
-- La consulta de alimento requerido y su integración con el Módulo 3 (Finanzas) se realiza por **Lote**, permitiendo auditar la historia nutricional y financiera de cada parvada de manera independiente de los lotes anteriores o futuros que hayan pasado por el mismo galpón.
-
----
-
-### Principio Rector: Inmutabilidad Progresiva y Ajustes Auditados de la Proyección
-
-La proyección de alimento requerido de un lote no es un documento estático desde su concepción ni un cálculo volátil que se sobreescribe sin control. Se rige por el principio de **inmutabilidad progresiva**:
-
-1. **Parámetros Estrictamente Inmutables en Etapa Activa:**
-   Durante el transcurso de una etapa activa, la población viva base de inicio (`poblacionInicioEtapa`), la cuota nutricional diaria (`cuotaKgAveDia`), el alimento comercial asignado (`alimentoComercial`), la presentación del bulto (`pesoNominalPorBulto`) y el costo unitario de referencia capturado (`costoUnitarioKg`) **permanecen estrictamente inmutables**. Está prohibido cambiar el alimento comercial o alterar la cuota a mitad de etapa.
-2. **Ajustes de Duración y Recálculo de Kilogramos:**
-   El único parámetro que puede modificarse durante la etapa activa es su **duración en días** (`diasProrroga` y `diasEfectivos`), estrictamente bajo las causales zootécnicas de contingencia reguladas en el [SPEC-021](file:///C:/Users/ESTUDIANTE/IdeaProjects/practicaweb/AviControlMod2/docs/specs/021-AjustarPlanNutricionalPorEtapa.md) (cuarentena sanitaria o bajo peso). Dicho ajuste recalcula automáticamente los kilogramos proyectados (`proyeccionKg = poblacionInicioEtapa * cuotaKgAveDia * diasEfectivos`), manteniendo exactamente el mismo alimento comercial y el mismo costo unitario capturado.
-3. **Historial Acumulativo de Ajustes (Sin Sobreescritura):**
-   Cada ajuste o prórroga genera un registro inmutable en el historial de ajustes (`historialAjustes`), guardando marca de tiempo (`fechaAjuste`), usuario responsable, motivo de contingencia, justificación técnica y los valores previos y nuevos de duración y kilogramos. Múltiples ajustes sucesivos se anexan de manera cronológica y **jamás sobreescriben los ajustes previos**.
-4. **Inmutabilidad Absoluta al Completar la Etapa:**
-   Una vez que el lote concluye la etapa y esta pasa a estado `COMPLETADA` (o cuando el lote finaliza su ciclo productivo), la proyección de dicha etapa adquiere **inmutabilidad absoluta**: se bloquea de forma irreversible cualquier modificación en días, kilogramos, costos o historial.
-5. **Blindaje ante Sustitución de Plan Nutricional:**
-   La sustitución del plan nutricional de un lote activo ([SPEC-021](file:///C:/Users/ESTUDIANTE/IdeaProjects/practicaweb/AviControlMod2/docs/specs/021-AjustarPlanNutricionalPorEtapa.md) US-2) jamás puede utilizarse para evadir las restricciones de la etapa activa. La etapa en curso preserva su alimento bloqueado, su costo unitario capturado, sus kilogramos y su historial acumulado; el nuevo plan aplica exclusivamente a las etapas posteriores que aún no hayan comenzado.
-
----
-
-### Principio Rector: Captura, Conservación y Naturaleza Referencial del Costo Unitario
-
-1. **Definición de `costoUnitarioKg`:**
-   El costo unitario por kilogramo (`costoUnitarioKg`) registrado en la proyección representa el **costo de referencia capturado en el momento exacto de activación de la etapa**, no el precio vigente en catálogo o en compras al momento de realizar la consulta.
-2. **Naturaleza Referencial vs. Costo Real Consumido:**
-   Este costo es un **valor de referencia presupuestaria** diseñado para que el Módulo 3 (Finanzas) estime y valore la demanda proyectada del lote. **No demuestra ni constituye el costo real del alimento físicamente consumido**, el cual es calculado por el Módulo 3 a partir de los despachos físicos diarios y la suma de $\text{kg consumidos} \times \text{precio neto histórico de compra de cada recepción}$ según el [SPEC-001](file:///C:/Users/ESTUDIANTE/IdeaProjects/practicaweb/AviControlMod2/docs/specs/001-RegistrarRecepcionDeAlimento.md) (FR-008).
-3. **Trazabilidad de la Captura:**
-   El sistema almacena obligatoriamente la fuente del costo (`fuenteCosto`, ej. número de recepción o precio de referencia de compra) y el instante exacto de captura (`fechaCapturaCosto`).
-4. **Invariabilidad ante Cambios Posteriores:**
-   Nuevas compras de alimento, fluctuaciones de precio en catálogo, recepciones posteriores y prórrogas de duración en la etapa activa **jamás alteran el costo unitario ya capturado**.
-5. **Tratamiento de Costo No Disponible al Activar la Etapa:**
-   Si al momento de activar la etapa no existe un costo de referencia disponible en el inventario o recepciones, el sistema registra el campo como nulo (`costoUnitarioKg = null`) y asocia una advertencia explícita (`advertenciaCosto`). **Está estrictamente prohibido sustituir el valor faltante por cero (`0.00`)** o por valores arbitrarios.
-6. **Completado Único Auditado durante Etapa Activa:**
-   Mientras la etapa permanezca en estado `ACTIVA`, el sistema permite a un usuario autorizado (Administrador) completar dicho costo pendiente por **una única vez** mediante una operación explícita y auditada. El valor ingresado debe corresponder al costo de referencia histórico aplicable al momento en que se activó la etapa, no tomar ciegamente el precio del día. Una vez completado, el campo queda bloqueado contra nuevas ediciones.
-7. **Cierre de Etapa con Costo Pendiente:**
-   Si la etapa finaliza y pasa a estado `COMPLETADA` manteniendo el costo en `null`, dicho estado se conserva de manera inmutable junto con su advertencia. La proyección cerrada no se altera posteriormente en este módulo.
-8. **Decisión de Negocio Pendiente (Método de Valoración de Inventario):**
-   Tras revisar el catálogo, recepciones ([SPEC-001](file:///C:/Users/ESTUDIANTE/IdeaProjects/practicaweb/AviControlMod2/docs/specs/001-RegistrarRecepcionDeAlimento.md)) y la consulta de inventario ([SPEC-023](file:///C:/Users/ESTUDIANTE/IdeaProjects/practicaweb/AviControlMod2/docs/specs/023-ConsultarInventario.md)), se constata que SPEC-001 almacena precios netos de compra por kilogramo para cada recepción individual, pero SPEC-023 consolida únicamente existencias físicas sin fijar una regla de valoración contable de inventario. En consecuencia, cuando existan recepciones coexistentes del mismo alimento comercial con precios de compra heterogéneos en bodega central, la regla exacta para determinar el `costoUnitarioKg` de referencia (ej. Costo Promedio Ponderado, PEPS/FIFO o Última Compra) queda definida explícitamente como una **Decisión de Negocio Pendiente** a concertar formalmente con los responsables de Finanzas (Módulo 3) y Logística (Módulo 1). El sistema no asume ninguna regla silenciosa.
-
----
-
 ### User Story 1 - Consultar el alimento requerido por etapa en el lote para Módulo 3 (Finanzas) (Priority: P1)
 
 Como sistema de Finanzas (Módulo 3) o administrador, quiero consultar la proyección del alimento requerido en kilogramos para un lote específico en la etapa por la que esté pasando o el consolidado de etapas al finalizar su ciclo productivo, manteniendo los requerimientos separados por etapa e incluyendo el costo unitario por kilogramo de referencia capturado para cada tipo de alimento, para efectuar la liquidación final y el control presupuestario sin sumar kilogramos globales de alimentos diferentes.
 
-**Why this priority**: Representa la conexión oficial y directa entre el Módulo 2 y el Módulo 3 (Finanzas) modelada en el diagrama de casos de uso (`Modulo2_v4.drawio`). Permite a Finanzas disponer de los requerimientos físicos de alimento en kilogramos y sus costos unitarios de referencia correspondientes por etapa para un lote determinado, facilitando la liquidación contable exacta sin mezclar insumos de diferente composición nutricional y precio.
+**Why this priority**: Representa la conexión oficial y directa entre el Módulo 2 y el Módulo 3 (Finanzas) modelada en el diagrama de casos de uso (`Modulo2_v4.drawio`). El lote de pollos constituye la unidad biológica y financiera central de consumo y liquidación (mientras el galpón actúa como su infraestructura física de alojamiento), permitiendo auditar la historia de cada parvada independientemente de los lotes anteriores o futuros que hayan pasado por el mismo galpón. Facilita a Finanzas disponer de los requerimientos físicos de alimento en kilogramos y sus costos unitarios de referencia correspondientes por etapa para un lote determinado, garantizando la liquidación contable exacta sin mezclar insumos de diferente composición nutricional y precio.
 
 **Independent Test**: Se puede probar sobre un lote que finalizó su ciclo completo (Pre-inicio de 7 días con 10.000 aves, cuota de 0.035 kg y costo capturado de $1.800/kg; Inicio de 14 días con 9.750 aves, cuota de 0.045 kg y costo capturado de $1.650/kg; y Engorde de 21 días con 9.600 aves, cuota de 0.070 kg y costo capturado de $1.500/kg), verificando que la consulta entregue cada etapa discriminada de forma separada con sus respectivos kilogramos (2.450 kg, 6.142,50 kg y 14.112 kg) y costos unitarios de referencia, sin generar una sumatoria global de kilogramos entre etapas.
 
