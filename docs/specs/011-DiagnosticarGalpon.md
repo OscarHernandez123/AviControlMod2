@@ -27,7 +27,7 @@ Como veterinario, quiero registrar el diagnóstico de un galpón en estado `aisl
 3. **Scenario**: Reintegro automático al cumplirse la fecha en diagnóstico con medicación
    - **Given** que el galpón se encuentra en estado `aislamiento` y la fecha de reintegro de su diagnóstico con medicación es el 9 de septiembre
    - **When** la fecha actual alcanza el 9 de septiembre
-   - **Then** el sistema cambia automáticamente el estado del galpón a `en producción`
+   - **Then** el sistema cambia automáticamente el estado del galpón a `productiva`
 
 4. **Scenario**: Permanencia en aislamiento antes de la fecha de reintegro
    - **Given** que el galpón se encuentra en estado `aislamiento` y todavía no se ha cumplido la fecha de reintegro
@@ -70,12 +70,12 @@ Como veterinario, quiero registrar el diagnóstico de un galpón en estado `aisl
 - **Edge case #3 - Galpón con un estado diferente al llegar la fecha de reintegro**
 
   - ¿Cómo maneja el sistema un galpón que deja de estar en `aislamiento` antes de alcanzar su fecha de reintegro?  
-    El sistema no debe sobrescribir el estado vigente del galpón. La transición automática a `en producción` solo debe realizarse si el galpón continúa en `aislamiento`.
+    El sistema no debe sobrescribir el estado vigente del galpón. La transición automática a `productiva` solo debe realizarse si el galpón continúa en `aislamiento`.
 
 - **Edge case #4 - Sistema no disponible en la fecha de reintegro**
 
   - ¿Cómo maneja el sistema una fecha de reintegro que se cumple mientras el sistema no está disponible?  
-    Al restablecerse, el sistema debe identificar los diagnósticos cuya fecha de reintegro ya se cumplió y cambiar a `en producción` los galpones que todavía se encuentren en `aislamiento`.
+    Al restablecerse, el sistema debe identificar los diagnósticos cuya fecha de reintegro ya se cumplió y cambiar a `productiva` los galpones que todavía se encuentren en `aislamiento`.
 
 
 ## Requirements
@@ -91,8 +91,8 @@ Como veterinario, quiero registrar el diagnóstico de un galpón en estado `aisl
 - **FR-007**: Cuando la enfermedad diagnosticada requiera sacrificio sanitario (`requiere sacrificio sanitario == true`), el sistema NO DEBE exigir la selección de una Medicación ni calcular fecha de reintegro a producción, y DEBE habilitar la emisión de una orden de sacrificio sanitario total (SPEC-012).
 - **FR-008**: El sistema DEBE registrar como fecha del diagnóstico la fecha calendario en la que el veterinario confirma el registro.
 - **FR-009**: Para diagnósticos con medicación, mientras la fecha actual sea anterior a la fecha de reintegro, el sistema DEBE conservar el galpón en estado `aislamiento`.
-- **FR-010**: Cuando la fecha actual sea igual o posterior a la fecha de reintegro de un diagnóstico con medicación y el galpón continúe en estado `aislamiento`, el sistema DEBE cambiar automáticamente su estado a `en producción`.
-- **FR-011**: La transición a `en producción` DEBE ejecutarse una sola vez y NO DEBE requerir una nueva acción del veterinario.
+- **FR-010**: Cuando la fecha actual sea igual o posterior a la fecha de reintegro de un diagnóstico con medicación y el galpón continúe en estado `aislamiento`, el sistema DEBE cambiar automáticamente su estado a `productiva`.
+- **FR-011**: La transición a `productiva` DEBE ejecutarse una sola vez y NO DEBE requerir una nueva acción del veterinario.
 - **FR-012**: Si el galpón tiene un estado diferente de `aislamiento` al cumplirse la fecha de reintegro, el sistema NO DEBE sobrescribir su estado vigente.
 
 ### Key Entities
@@ -111,7 +111,7 @@ Como veterinario, quiero registrar el diagnóstico de un galpón en estado `aisl
   - **Atributos utilizados**: estado.
   - **Datos derivados**: fecha de reintegro calculada y almacenada en su diagnóstico (si aplica medicación).
   - **Relaciones**: tiene un lote alojado actualmente y queda asociado con el diagnóstico.
-  - **Transición de estado**: permanece en `aislamiento` durante el tratamiento y cambia automáticamente a `en producción` cuando se cumple la fecha de reintegro; o pasa a `vaciado sanitario` si se ejecuta una orden de sacrificio sanitario.
+  - **Transición de estado**: permanece en `aislamiento` durante el tratamiento y cambia automáticamente a `productiva` cuando se cumple la fecha de reintegro; o pasa a `vaciado sanitario` si se ejecuta una orden de sacrificio sanitario.
 - **Lote**: Representa el grupo de aves alojado en el galpón al momento del diagnóstico.
   - **Relaciones**: está alojado en el galpón y queda asociado con el diagnóstico para identificar las aves evaluadas.
 
@@ -126,4 +126,4 @@ Como veterinario, quiero registrar el diagnóstico de un galpón en estado `aisl
 - **SC-005**: El 100 % de los diagnósticos con enfermedades de sacrificio sanitario total prescinde de medicación y habilita la orden de sacrificio sanitario.
 - **SC-006**: El 95 % de los diagnósticos válidos queda disponible en un máximo de 1 segundo después de la confirmación.
 - **SC-007**: El 100 % de los intentos realizados por roles distintos al veterinario es rechazado sin crear un diagnóstico.
-- **SC-008**: El 100 % de los galpones con tratamiento que continúan en `aislamiento` cambia automáticamente a `en producción` al cumplirse su fecha de reintegro.
+- **SC-008**: El 100 % de los galpones con tratamiento que continúan en `aislamiento` cambia automáticamente a `productiva` al cumplirse su fecha de reintegro.

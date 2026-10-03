@@ -95,13 +95,13 @@ Como trabajador u operario de granja, quiero que el sistema evalúe la cantidad 
 - **FR-001**: El sistema DEBE permitir el registro de mortalidad por galpón exclusivamente a usuarios autenticados con rol de trabajador (y administradores autorizados).
 - **FR-002**: El sistema DEBE restringir el registro de mortalidad únicamente a los galpones que el trabajador tenga formalmente asignados a su cargo.
 - **FR-003**: El sistema DEBE identificar el lote activo del galpón mediante la llave foránea almacenada en la entidad Lote, seleccionando el lote con la fecha de ingreso más reciente.
-- **FR-004**: Para registrar la mortalidad, el sistema DEBE exigir obligatoriamente: identificador del galpón, fecha y hora del evento, causa de la muerte y cantidad de muertes.
+- **FR-004**: Para registrar la mortalidad, el sistema DEBE exigir obligatoriamente: identificador del galpón, fecha y hora del evento/hallazgo, causa de la muerte y cantidad de muertes, permitiendo además el registro opcional de observaciones adicionales del trabajador.
 - **FR-005**: El sistema DEBE validar que la cantidad de muertes sea un número entero mayor que cero.
 - **FR-006**: El sistema DEBE validar que la cantidad de muertes sea menor o igual a la población actual de aves vivas del lote activo.
 - **FR-007**: El sistema DEBE validar que la fecha y hora del evento no sean posteriores a la fecha y hora actual del sistema, ni anteriores a la fecha de ingreso del lote.
-- **FR-008**: Al confirmar el registro, el sistema DEBE almacenar una entrada de mortalidad con UUID único, fecha y hora del evento, fecha y hora de registro, causa, cantidad de muertes, llave foránea del lote, llave foránea del galpón y usuario responsable.
+- **FR-008**: Al confirmar el registro, el sistema DEBE almacenar una entrada de mortalidad con UUID único, fecha y hora del evento, fecha y hora de registro, causa, cantidad de muertes, observaciones adicionales (si fueron ingresadas), llave foránea del lote, llave foránea del galpón y usuario responsable.
 - **FR-009**: Al confirmar el registro de mortalidad, el sistema DEBE invocar el caso de uso incluido (`<<include>>`) *Actualizar inventario vivo por galpón* comunicando la cantidad de muertes y la referencia del lote.
-- **FR-010**: El sistema DEBE evaluar si la cantidad de muertes registradas supera el umbral diario establecido para clasificar el evento como mortalidad anormal.
+- **FR-010**: El sistema DEBE evaluar si la cantidad de muertes registradas supera el umbral porcentual diario establecido respecto a la población viva actual del lote (ej. 0.10 % del lote) para clasificar el evento como mortalidad anormal.
 - **FR-011**: Cuando se detecte una mortalidad anormal, el sistema DEBE activar la extensión (`<<extend>>`) hacia el caso de uso *Registrar mortalidad anormal* / *Generar alerta sanitaria*.
 - **FR-012**: El sistema DEBE garantizar que los registros de mortalidad confirmados sean inmutables y no puedan ser eliminados ni editados directamente.
 - **FR-013**: El sistema NO DEBE permitir registrar eventos de mortalidad en galpones que no cuenten con un lote activo registrado.
@@ -113,7 +113,7 @@ Como trabajador u operario de granja, quiero que el sistema evalúe la cantidad 
 - **Lote**: Representa el grupo de aves registrado que referencia al galpón mediante llave foránea.
   - Atributos utilizados: `UUID único`, `Nombre`, `Población actual` (consultada para validación de límite), `Fecha de ingreso`, `Llave foránea del galpón`.
 - **Registro de mortalidad**: Representa el evento individual de bajas registrado por el trabajador.
-  - Atributos: `UUID único`, `Fecha y hora del evento`, `Fecha y hora de registro`, `Cantidad de muertes`, `Causa de mortalidad`, `Llave foránea del lote`, `Llave foránea del galpón`, `Usuario responsable`.
+  - Atributos: `UUID único`, `Fecha y hora del evento`, `Fecha y hora de registro`, `Cantidad de muertes`, `Causa de mortalidad`, `Observaciones adicionales (opcional)`, `Llave foránea del lote`, `Llave foránea del galpón`, `Usuario responsable`.
 - **Trabajador / Operario de granja**: Usuario autenticado responsable del cuidado del galpón y del registro de sus novedades.
 
 ---

@@ -1,4 +1,4 @@
-# Feature Specification: Registro de alimentos en bodega central
+# Feature Specification: Registrar recepción de alimento
 
 **Created**: 2026-08-28  
 
@@ -6,18 +6,18 @@
 
 ### User Story 1 - Registrar una recepción de alimento (Priority: P1)
 
-Como administrador, quiero registrar cada recepción de alimento que ingresa a la bodega central para mantener un inventario exacto, valorizado y trazable por entrega, y conservar sus precios históricos de compra para que el módulo 3 pueda calcular el costo del alimento consumido por cada lote de aves.
+Como administrador, quiero registrar cada recepción de alimento que ingresa a la bodega central para dejar formalizada y trazable cada entrega, generar su movimiento de entrada y conservar sus precios históricos de compra para que el módulo 3 pueda calcular el costo del alimento consumido por cada lote de aves.
 
-**Why this priority**: El registro de las recepciones constituye la entrada oficial del inventario. Sin sus cantidades y precios históricos de compra no es posible conocer las existencias ni valorar en el módulo 3 el alimento realmente consumido por cada lote de aves.
+**Why this priority**: El registro de cada recepción constituye la entrada oficial del alimento al inventario. Sin sus cantidades y precios históricos de compra no es posible mantener la trazabilidad de las entregas ni valorar en el módulo 3 el alimento realmente consumido por cada lote de aves.
 
-**Independent Test**: Se puede probar registrando una recepción de varios bultos y verificando que el sistema cree una entrada independiente, calcule los kilogramos nominales y el precio neto de compra por kilogramo, actualice las existencias de la bodega central y conserve ese precio asociado a la recepción para su posterior uso por el módulo 3.
+**Independent Test**: Se puede probar registrando una recepción de varios bultos y verificando que el sistema cree una recepción independiente, calcule los kilogramos nominales y el precio neto de compra por kilogramo, genere el movimiento de entrada correspondiente y conserve ese precio asociado a la recepción para su posterior uso por el módulo 3.
 
 **Acceptance Scenarios**:
 
 1. **Scenario**: Registro correcto de una recepción
    - **Given** que un administrador autenticado dispone de los datos completos de una entrega y selecciona un alimento activo del catálogo
    - **When** registra el código de lote, cantidad de bultos, peso nominal por bulto, precio neto de compra por bulto, impuesto, fecha de ingreso y fecha de vencimiento
-   - **Then** el sistema crea una recepción en la bodega central, calcula sus kilogramos nominales totales y el precio neto de compra por kilogramo, actualiza el inventario y conserva los precios históricos (precio de compra registrado cuando ingresó una recepción específica al inventario) asociados a la recepción para el módulo 3
+   - **Then** el sistema crea una recepción en la bodega central, calcula sus kilogramos nominales totales y el precio neto de compra por kilogramo, genera un movimiento confirmado de entrada y conserva los precios históricos (precio de compra registrado cuando ingresó una recepción específica al inventario) asociados a la recepción para el módulo 3
 
 2. **Scenario**: Registro de una entrega con un código de lote existente
    - **Given** que ya existe una recepción con el mismo código de lote
@@ -86,13 +86,13 @@ Como administrador, quiero editar una recepción que todavía no tenga movimient
 - **FR-002**: Cada recepción DEBE referenciar un alimento activo del catálogo y registrar código de lote, cantidad de bultos, peso nominal por bulto, precio neto de compra por bulto, impuesto, fecha de ingreso y fecha de vencimiento.
 - **FR-003**: El sistema DEBE validar los datos obligatorios y rechazar el registro cuando estén incompletos, sean inválidos o los valores calculados excedan los límites admitidos.
 - **FR-004**: El sistema DEBE calcular los kilogramos nominales totales y el precio neto de compra por kilogramo a partir de la cantidad, el peso nominal y el precio neto de compra por bulto, aplicando una regla uniforme de precisión y redondeo.
-- **FR-005**: Cada entrega DEBE crear una recepción independiente, incluso si comparte código de lote con otra, conservando sus propios datos, precios de compra, fechas y saldo.
+- **FR-005**: Cada entrega DEBE crear una recepción independiente, incluso si comparte código de lote con otra, conservando sus propios datos, precios de compra y fechas.
 - **FR-006**: Al confirmar el registro, el sistema DEBE conservar y dejar disponibles para el módulo 3 el identificador de la recepción, el alimento, el tipo de alimento, el código de lote, el precio neto de compra por bulto, el precio neto de compra por kilogramo y el impuesto.
 - **FR-007**: La modificación posterior del precio de otra recepción o del precio vigente de un tipo de alimento NO DEBE alterar el precio histórico asociado a un consumo ya registrado.
 - **FR-008**: La información suministrada DEBE permitir al módulo 3 calcular el costo del alimento mediante la suma de `kilogramos consumidos de cada recepción × precio neto histórico de compra por kilogramo`. El valor total de una recepción NO DEBE tratarse como costo de un lote de aves.
 - **FR-009**: Los cambios posteriores realizados sobre el alimento o su tipo en el catálogo NO DEBEN modificar los datos históricos de una recepción confirmada. La recepción DEBE conservar los datos comerciales necesarios como valores históricos de referencia.
 - **FR-010**: El código de lote NO DEBE utilizarse como identificador único de la recepción. Cada recepción DEBE tener un identificador propio y puede compartir el código de lote con otras recepciones.
-- **FR-011**: El sistema DEBE calcular automáticamente la existencia disponible de cada alimento consolidando los movimientos confirmados asociados con sus recepciones y dejar este resultado disponible para las consultas de inventario.
+- **FR-011**: Al confirmar una recepción, el sistema DEBE generar un movimiento de entrada por sus kilogramos nominales totales, vincularlo con la recepción y dejarlo disponible como fuente para la consulta de inventario definida en el SPEC-023.
 - **FR-012**: El sistema DEBE permitir editar una recepción exclusivamente a usuarios con rol de administrador y únicamente cuando no tenga movimientos de salida, despacho o consumo asociados.
 - **FR-013**: Durante la edición, el administrador DEBE poder corregir el alimento, el código de lote, la cantidad de bultos, el peso nominal por bulto, el precio neto de compra por bulto, el impuesto, la fecha de ingreso y la fecha de vencimiento.
 - **FR-014**: Para guardar una edición, el administrador DEBE proporcionar una observación que justifique el cambio.
@@ -125,6 +125,12 @@ Como administrador, quiero editar una recepción que todavía no tenga movimient
 ### Measurable Outcomes
 
 - **SC-001**: Al menos el 90 % de los administradores puede completar un registro de alimento válido en menos de 3 minutos.
-- **SC-002**: El 95 % de los registros confirmados muestra los cálculos, actualiza el inventario y deja sus precios históricos de compra disponibles para el módulo 3 en un máximo de 2 segundos.
+- **SC-002**: El 95 % de los registros confirmados muestra los cálculos, genera el movimiento de entrada y deja sus precios históricos de compra disponibles para el módulo 3 en un máximo de 2 segundos.
 - **SC-003**: Al menos el 90 % de los usuarios completa correctamente el registro de alimento en el primer intento durante pruebas de usabilidad.
 - **SC-004**: Al menos el 85 % de los administradores califica la experiencia de registro con 4 o más puntos sobre 5.
+
+## Out of Scope
+
+- La consulta consolidada de existencias de alimentos y medicamentos en la bodega central, cubierta por el SPEC-023 *Consultar inventario*.
+- El registro de salidas, despachos, consumos o ajustes de alimento.
+- La creación o administración del catálogo de alimentos y tipos de alimento.
