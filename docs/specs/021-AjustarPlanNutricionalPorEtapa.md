@@ -5,33 +5,6 @@
 
 ## User Scenarios & Testing *(mandatory)*
 
-### Arquitectura Conceptual: Modelo Híbrido y Principios Rectores
-
-El sistema opera bajo los siguientes principios de arquitectura y reglas de negocio:
-
-1. **Plantilla Maestra vs. Instancia Desacoplada:**
-   - **Plantilla Maestra (Catálogo Global):** El nutricionista define modelos estándar (ej. *Plan Estándar Broiler*, *Crecimiento Rápido*) con etapas base, raciones por ave (`kg/pollo/día`), duraciones base estimadas y el bulto/alimento por defecto. Solo puede existir **un único plan marcado como predeterminado (`esPredeterminado = true`) por cada tipo de ave**.
-   - **Instancia del Galpón:** Al alojar un lote, el galpón recibe su propia copia independiente del plan. Los ajustes en un galpón **jamás alteran la plantilla maestra ni a otros galpones**.
-2. **Bloqueo e Inmutabilidad en Etapa Activa y Protección de Proyecciones (Blindaje con SPEC-022):**
-   - Al activarse una etapa en un galpón, la población viva base al corte, la ración diaria, el alimento comercial seleccionado, la presentación del bulto y el costo unitario de referencia capturado ([SPEC-022](file:///C:/Users/ESTUDIANTE/IdeaProjects/practicaweb/AviControlMod2/docs/specs/022-ConsultarAlimentoRequeridoPorLote.md)) quedan **estrictamente bloqueados e inmutables para dicha etapa y NO pueden ser modificados durante su transcurso**.
-   - Esta restricción previene inconsistencias zootécnicas y garantiza la integridad de la proyección contable de requerimientos generada para el Módulo 3 (Finanzas) según el [SPEC-022](file:///C:/Users/ESTUDIANTE/IdeaProjects/practicaweb/AviControlMod2/docs/specs/022-ConsultarAlimentoRequeridoPorLote.md).
-   - Cualquier cambio de alimento comercial debe planificarse exclusivamente para las **etapas posteriores que aún no hayan comenzado**. Durante la etapa activa, el único ajuste permitido sobre el cronograma es la prórroga o modificación de su duración en días por contingencias zootécnicas (cuarentena sanitaria o bajo peso conforme a US-4), lo cual recalcula los kilogramos proyectados en SPEC-022 manteniendo invariable el costo unitario capturado.
-   - Cada ajuste de duración se registra en un historial acumulativo inmutable (`HistorialAjusteProyeccion`), el cual preserva fecha/hora, usuario, motivo, justificación y valores previos y nuevos de duración y kilogramos sin sobreescribir ajustes anteriores.
-   - Al transicionar la etapa a estado `COMPLETADA`, su proyección adquiere **inmutabilidad absoluta**, prohibiendo cualquier modificación posterior.
-3. **Cierre Matemático de Cascada y Fecha de Salida:**
-   - Al modificarse el día final de una etapa `k`, todas las etapas posteriores `i` (donde `i > k`) **conservan su duración efectiva previamente configurada** (`diasEfectivos_i`) y recalculan su cronograma en cascada:
-     $$\text{DiaInicio}_i = \text{DiaFin}_{i-1} + 1$$
-     $$\text{DiaFin}_i = \text{DiaInicio}_i + \text{diasEfectivos}_i - 1$$
-   - La última etapa del ciclo ("Finalización/Engorde") recalcula su `DiaFin`, el cual actualiza automáticamente la **fecha proyectada de salida/sacrificio** del lote y emite una notificación de advertencia zootécnica.
-4. **Sustitución de Plan No Destructiva (Inmutabilidad Histórica y Blindaje de Etapa Activa):**
-   - La sustitución de un plan en un lote activo **mantiene estrictamente inmutables las etapas ya transcurridas** (con sus raciones, fechas y consumos históricos registrados).
-   - La sustitución de plan **jamás permite evadir las restricciones de la etapa activa**: la etapa en curso conserva inmutables su alimento asignado, su cuota, su costo unitario capturado, sus días y su historial de ajustes. El nuevo plan se acopla para regir exclusivamente a partir de las **etapas futuras que aún no hayan comenzado**.
-5. **Matriz de Excepciones en la Asignación Automática:**
-   - Si no existe un plan predeterminado activo para el tipo de ave, el sistema marca el galpón en estado `"Pendiente de Asignación Nutricional"` y emite una alerta prioritaria al nutricionista sin bloquear el alojamiento.
-   - Si el lote ingresa con una edad superior al inicio estándar (ej. día 14 de vida), las etapas previas se registran como `"Omitidas"` y se activa directamente la etapa que cubra la edad de recepción.
-
----
-
 ### User Story 1 - Creación y Configuración de Plantillas Maestras de Plan Nutricional (Priority: P1)
 
 Como nutricionista de la granja, quiero crear y gestionar plantillas maestras de planes nutricionales en el catálogo global, definiendo sus etapas de crianza (Pre-inicio, Inicio, Crecimiento, Finalización/Engorde) con sus días de duración estimados, su dosificación de ración diaria (`kg/pollo/día`), su alimento sugerido y su condición de plan predeterminado por tipo de ave, para estandarizar las curvas de alimentación que se aplicarán a los lotes de la granja.
