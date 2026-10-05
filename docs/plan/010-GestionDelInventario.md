@@ -24,7 +24,7 @@ La consulta de inventario presenta alimentos y medicamentos en secciones separad
 
 **Scale/Scope**: Tres historias del spec 023, libro de movimientos para dos familias de productos, vencimientos, FEFO, resumen de bodega y cobertura de requerimientos.
 
-**Dependencias funcionales**: Recepciones del Plan 002; catálogo de alimentos y medicamentos; requerimientos nutricionales del Plan 004; consumos de medicamentos del Plan 006; consumo y costo del Módulo 3.
+**Dependencias funcionales**: Recepciones del Plan 002; catálogo de alimentos y medicamentos; requerimientos nutricionales y suministros diarios del Plan 004 (SPEC-014); consumos de medicamentos del Plan 006; consumo y costo del Módulo 3.
 
 ### Decisiones específicas
 
@@ -40,6 +40,7 @@ La consulta de inventario presenta alimentos y medicamentos en secciones separad
 10. **Eventos**: Se consumen recepciones confirmadas y consumos de otros planes. Los movimientos confirmados publican eventos para consumidores; los consumidores son idempotentes.
 11. **Seguridad**: Todos los endpoints de este plan requieren ROLE_ADMINISTRADOR.
 12. **Persistencia**: Este plan crea tablas de bodega, movimientos y eventos procesados. No crea tablas de recepción.
+13. **Suministro diario de alimento**: Plan 004 solicita la salida al registrar alimento realmente suministrado a un lote. Esta capacidad valida y descuenta las recepciones compatibles mediante FEFO, guarda una operación de salida idempotente y devuelve su referencia y los movimientos generados. La llamada participa en la transacción local que confirma el suministro; no se confirma una deducción parcial.
 
 ### Alcance documental
 
@@ -160,6 +161,7 @@ ExistenciaAlimento, ExistenciaMedicamento y CoberturaRequerimientoAlimento son r
 | --- | --- |
 | BodegaCentralRepositoryPort | Leer capacidad y ocupación de la bodega. |
 | MovimientoAlimentoRepositoryPort | Crear entradas, salidas, vencimientos y ajustes; consultar saldos y FEFO de alimento. |
+| SalidaAlimentoCommand | Comando interno | Registrar una salida atómica solicitada por Plan 004, con clave de idempotencia, producto, cantidad, actor y referencia al suministro; devolver la operación y sus movimientos por recepción. |
 | MovimientoMedicamentoRepositoryPort | Crear entradas, consumos, vencimientos y ajustes; consultar saldos por unidad base. |
 | RecepcionQueryPort | Confirmar recepción existente, fechas, producto y estado. |
 | AlimentoCatalogoQueryPort | Obtener nombre normalizado, tipo y peso nominal. |
@@ -202,6 +204,7 @@ Las consultas son de solo lectura y responden 200 incluso con inventario vacío.
 - [ ] T004 Acordar con Plan 004 la demanda de alimento y su clave de agrupación.
 - [ ] T005 Acordar eventos de movimiento, vencimiento y disponibilidad, con consumidores idempotentes.
 - [ ] T006 Preparar fixtures de múltiples recepciones, vencimientos, anulaciones, salidas, consumos y unidades incompatibles.
+- [ ] T007 Acordar con Plan 004 el contrato de salida de alimento para suministros diarios, la propagación de su clave idempotente y la atomicidad de suministro más inventario.
 
 **Checkpoint**: Contratos y responsabilidades de inventario definidos.
 
