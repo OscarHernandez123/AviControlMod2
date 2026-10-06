@@ -28,9 +28,9 @@ Como trabajador u operario de granja, quiero consultar qué alimento le correspo
    - **And** muestra su equivalencia de 30 bultos (`1.200 kg ÷ 40 kg/bulto`)
 
 3. **Scenario**: Determinación automática de la etapa según la edad del lote
-   - **Given** un lote activo con fecha de ingreso hace 18 días (edad = 18 días) y un plan nutricional donde el rango de 11 a 24 días corresponde a la etapa de "Crecimiento" (o "Engorde", según aplique)
+   - **Given** un lote activo con fecha de ingreso hace 18 días (edad = 18 días) y un plan nutricional donde dicho rango corresponde a la etapa de crianza "Inicio" (bajo el enum `EtapaCrianza`: `PRE_INICIO`, `INICIO`, `ENGORDE`)
    - **When** el trabajador consulta el galpón
-   - **Then** el sistema identifica automáticamente la etapa en que se encuentra el lote y asigna el tipo de alimento configurado para dicha etapa
+   - **Then** el sistema identifica automáticamente la etapa de crianza (`etapaCrianza`) en que se encuentra el lote y asigna el tipo de alimento configurado para dicha etapa
 
 4. **Scenario**: Consulta de disponibilidad en bodega central en kilogramos y bultos
    - **Given** que en la bodega central existen 4.000 kg netos de alimento vigente compatible con la etapa del galpón, con presentación de 40 kg por bulto
@@ -208,7 +208,7 @@ Como trabajador u operario de granja, quiero registrar cada cantidad de alimento
 - **FR-004**: El sistema DEBE identificar el lote activo del galpón mediante la llave foránea que referencia al galpón consultado, seleccionando el lote con la fecha de ingreso más reciente.
 - **FR-005**: Para el lote activo, el sistema DEBE utilizar sus atributos: UUID único, Nombre, Población actual (aves vivas) y Fecha de ingreso.
 - **FR-006**: El sistema DEBE calcular la edad del lote en días a partir de la diferencia entre la fecha actual del sistema y la fecha de ingreso del lote.
-- **FR-007**: El sistema DEBE determinar la etapa en que se encuentra el lote y el tipo de alimento aplicable comparando la edad en días del lote contra los rangos de días establecidos en el plan nutricional.
+- **FR-007**: El sistema DEBE determinar la etapa de crianza (`etapaCrianza`: enum `EtapaCrianza`: `PRE_INICIO`, `INICIO`, `ENGORDE`) en que se encuentra el lote y el tipo de alimento aplicable comparando la edad en días del lote contra los rangos de días establecidos en el plan nutricional.
 - **FR-008**: El sistema DEBE obtener la ración individual diaria programada en gramos por ave (`gr/ave`) correspondiente a la etapa y edad del lote.
 - **FR-009**: El sistema DEBE calcular el consumo total necesario para el día en kilogramos netos mediante la fórmula: `(Población actual de aves vivas × Ración individual en gr/ave) ÷ 1.000`.
 - **FR-010**: El sistema DEBE convertir el consumo diario requerido a bultos dividiendo el total de kilogramos entre el peso nominal por bulto del tipo de alimento asignado.
@@ -239,8 +239,8 @@ Como trabajador u operario de granja, quiero registrar cada cantidad de alimento
   - Atributos utilizados: `UUID único`, `Nombre`, `Aforo máximo`, `Estado`.
 - **Lote**: Representa el grupo de aves registrado para un galpón mediante llave foránea.
   - Atributos utilizados: `UUID único`, `Nombre`, `Población actual` (aves vivas), `Fecha de ingreso` (para calcular la edad en días), `Llave foránea del galpón`.
-- **Plan nutricional**: Definición establecida por el nutricionista que asocia rangos de días de edad del lote con una etapa (ej. iniciación, crecimiento, engorde, finalización), un tipo de alimento y una ración diaria en `gr/ave`.
-- **Tipo de alimento**: Clasificación del alimento asociada a una etapa, que define el nombre y el peso nominal por bulto utilizado para la conversión.
+- **Plan nutricional**: Definición establecida por el nutricionista que asocia rangos de días de edad del lote con una etapa de crianza (`etapaCrianza`: enum `EtapaCrianza`: `PRE_INICIO`, `INICIO`, `ENGORDE`), un tipo de alimento y una ración diaria en `gr/ave`.
+- **Tipo de alimento**: Clasificación del alimento asociada a la etapa de crianza (`etapaCrianza`), que define el nombre y el peso nominal por bulto utilizado para la conversión.
 - **Consumo diario requerido**: Cantidad total calculada para el lote en la fecha actual, expresada simultáneamente en kilogramos netos y en bultos equivalentes.
 - **Saldo pendiente del día**: Diferencia calculada en kilogramos y bultos entre el consumo requerido y el alimento suministrado en la fecha.
 - **Bodega central**: Inventario principal del cual se consulta la disponibilidad de existencias netas en kilogramos y bultos compatibles con la etapa del galpón.

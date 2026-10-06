@@ -364,7 +364,7 @@ La cobertura es solo lectura y nunca genera un movimiento.
 | --- | --- |
 | Método y ruta | GET /api/inventario/alimentos/{alimentoId}/requerimiento |
 | Autorización | ROLE_ADMINISTRADOR |
-| Respuesta 200 | Alimento, etapa, stock actual, demanda exacta y estado de cobertura. |
+| Respuesta 200 | Alimento, etapaCrianza, stock actual, demanda exacta y estado de cobertura. |
 | Estados | CUMPLE, COBERTURA_PARCIAL, SIN_COBERTURA, SIN_REQUERIMIENTO. |
 | Errores | 404 por alimento no encontrado, 409 por clave/unidad incompatible y 503 por demanda no disponible. |
 
@@ -375,7 +375,7 @@ La cobertura es solo lectura y nunca genera un movimiento.
       "alimentoId": "uuid",
       "alimento": "Alimento A",
       "tipoAlimento": "INICIO",
-      "etapa": "INICIO",
+      "etapaCrianza": "INICIO",
       "stockActualKg": 1000,
       "demandaKg": 1250,
       "estado": "COBERTURA_PARCIAL"

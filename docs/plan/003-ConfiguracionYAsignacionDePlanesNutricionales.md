@@ -329,7 +329,7 @@ Todos los errores retornan `Content-Type: application/problem+json` conforme a [
 
 **⚠️ CRITICAL**: Ninguna historia de usuario puede implementarse hasta culminar esta fase.
 
-- [ ] T005 Implementar en Java puro los enums `TipoAve`, `EtapaCrianza`, `EstadoPlanGalpon`, `EstadoEtapa` y `MotivoAjusteEtapa`.
+- [ ] T005 Implementar en Java puro los enums `TipoAve`, `EtapaCrianza` (`PRE_INICIO`, `INICIO`, `ENGORDE`), `EstadoPlanGalpon`, `EstadoEtapa` y `MotivoAjusteEtapa`.
 - [ ] T006 Implementar el Value Object `RacionDiaria` con validación de valor estrictamente positivo (`> 0.0000`), precisión de hasta 4 decimales y operaciones aritméticas de demanda.
 - [ ] T007 Implementar las entidades `PlanNutricionalPlantilla` y `PlanNutricionalEtapaPlantilla` con validación estricta de contigüidad (`DiaInicio_i = DiaFin_{i-1} + 1`).
 - [ ] T008 Implementar las entidades `PlanNutricionalGalpon`, `CalendarioEtapaGalpon` e `HistorialAjusteEtapa` con sus reglas de transición de estado, blindaje de etapa activa e inmutabilidad de etapa completada.
@@ -413,7 +413,7 @@ Todos los errores retornan `Content-Type: application/problem+json` conforme a [
     },
     {
       "id": "a1b2c3d4-0003-4000-8000-000000000003",
-      "etapaCrianza": "FINALIZACION_ENGORDE",
+      "etapaCrianza": "ENGORDE",
       "diaInicioBase": 22,
       "diaFinBase": 45,
       "duracionDiasBase": 24,
@@ -511,7 +511,7 @@ Todos los errores retornan `Content-Type: application/problem+json` conforme a [
     },
     {
       "id": "e003-4562-b3fc-2c963f66afa3",
-      "etapaCrianza": "FINALIZACION_ENGORDE",
+      "etapaCrianza": "ENGORDE",
       "diaInicio": 22,
       "diaFin": 45,
       "diasEfectivos": 24,
@@ -678,7 +678,7 @@ Todos los errores retornan `Content-Type: application/problem+json` conforme a [
   },
   "etapasPosterioresDesplazadas": [
     {
-      "etapaCrianza": "FINALIZACION_ENGORDE",
+      "etapaCrianza": "ENGORDE",
       "diaInicio": 27,
       "diaFin": 50,
       "diasEfectivos": 24,

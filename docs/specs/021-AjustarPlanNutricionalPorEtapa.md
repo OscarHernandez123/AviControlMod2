@@ -7,7 +7,7 @@
 
 ### User Story 1 - Creación y Configuración de Plantillas Maestras de Plan Nutricional (Priority: P1)
 
-Como nutricionista de la granja, quiero crear y gestionar plantillas maestras de planes nutricionales en el catálogo global, definiendo sus etapas de crianza (Pre-inicio, Inicio, Crecimiento, Finalización/Engorde) con sus días de duración estimados, su dosificación de ración diaria (`kg/pollo/día`), su alimento sugerido y su condición de plan predeterminado por tipo de ave, para estandarizar las curvas de alimentación que se aplicarán a los lotes de la granja.
+Como nutricionista de la granja, quiero crear y gestionar plantillas maestras de planes nutricionales en el catálogo global, definiendo sus etapas de crianza mediante el enum `EtapaCrianza` (`PRE_INICIO`, `INICIO`, `ENGORDE`) con sus días de duración estimados, su dosificación de ración diaria (`kg/pollo/día`), su alimento sugerido y su condición de plan predeterminado por tipo de ave, para estandarizar las curvas de alimentación que se aplicarán a los lotes de la granja.
 
 **Why this priority**: Es la base del catálogo nutricional. Permite centralizar las curvas de alimentación estándar y garantizar que el sistema siempre cuente con una referencia predeterminada unívoca por tipo de ave.
 
@@ -68,7 +68,7 @@ Como nutricionista o administrador, quiero que al ingresar un lote a un galpón 
    - **When** el nutricionista abre el modal de asignación y sustituye el plan actual por "Plan Crecimiento Rápido"
    - **Then** el sistema conserva estrictamente inmutables las etapas transcurridas "Pre-inicio" e "Inicio" (con sus proyecciones históricas y consumos)
    - **And** mantiene inmutable el alimento asignado, la cuota, el costo unitario capturado y el historial de ajustes de la etapa activa vigente ("Engorde"), impidiendo evadir su bloqueo
-   - **And** programa las pautas del nuevo plan exclusivamente para las etapas posteriores que aún no hayan comenzado (si existieran fases subsiguientes como "Finalización tardía").
+   - **And** programa las pautas del nuevo plan exclusivamente para las etapas posteriores que aún no hayan comenzado.
 
 ---
 
@@ -223,7 +223,7 @@ Como nutricionista, quiero ajustar manualmente los días de duración de una eta
 ### Functional Requirements
 
 - **FR-001**: El sistema DEBE permitir a los usuarios con rol de Nutricionista crear, consultar y actualizar plantillas maestras de planes nutricionales en el catálogo global de la granja (ej. Plan Estándar Broiler, Crecimiento Rápido).
-- **FR-002**: Cada plantilla maestra DEBE contener la definición estructurada de sus etapas de crianza (Pre-inicio, Inicio, Crecimiento, Finalización/Engorde), estableciendo para cada una: rango de días base contiguos, ración diaria por ave en kilogramos (`kg/pollo/día`), tipo de alimento y bulto sugerido por defecto.
+- **FR-002**: Cada plantilla maestra DEBE contener la definición estructurada de sus etapas de crianza utilizando el atributo `etapaCrianza` tipificado bajo el enum `EtapaCrianza` (`PRE_INICIO`, `INICIO`, `ENGORDE`), estableciendo para cada una: rango de días base contiguos, ración diaria por ave en kilogramos (`kg/pollo/día`), tipo de alimento y bulto sugerido por defecto.
 - **FR-003**: El sistema DEBE garantizar que para cada tipo de ave (ej. Broiler, Ponedora) exista a lo sumo UN ÚNICO plan nutricional marcado como predeterminado (`esPredeterminado = true`). Al marcar un plan como predeterminado, el sistema DEBE retirar automáticamente dicha marca de cualquier otro plan del mismo tipo de ave.
 - **FR-004**: Al confirmar el ingreso de un nuevo lote a un galpón, el sistema DEBE asignar automáticamente una instancia desacoplada del plan nutricional predeterminado del tipo de ave correspondiente.
 - **FR-005**: Si no existe un plan predeterminado activo para el tipo de ave del lote entrante, el sistema DEBE registrar el alojamiento, marcar el galpón en estado `"Pendiente de Asignación Nutricional"`, emitir una alerta prioritaria en la bandeja del nutricionista y fijar la demanda proyectada en 0.0 hasta su asignación manual.
@@ -258,22 +258,22 @@ Como nutricionista, quiero ajustar manualmente los días de duración de una eta
   - *Atributos*: ID, nombre (ej. Plan Estándar Broiler), descripcion, tipoAve, esPredeterminado (booleano, único por tipo de ave), activo, fechaCreacion, usuarioNutricionista.
   - *Relaciones*: contiene una lista de `PlanNutricionalEtapaPlantilla`.
 - **PlanNutricionalEtapaPlantilla**: Configuración base de una etapa dentro de la plantilla maestra.
-  - *Atributos*: ID, plantillaId, etapaCrianza (Pre-inicio, Inicio, Crecimiento, Finalización/Engorde), racionKgPolloDia, duracionDiasBase, tipoAlimentoId, alimentoSugeridoId.
+  - *Atributos*: ID, plantillaId, etapaCrianza (enum `EtapaCrianza`: `PRE_INICIO`, `INICIO`, `ENGORDE`), racionKgPolloDia, duracionDiasBase, tipoAlimentoId, alimentoSugeridoId.
 - **PlanNutricionalGalpon**: Instancia activa del plan asignada y desacoplada para un galpón y lote específicos.
   - *Atributos*: ID, galponId, loteId, plantillaOrigenId, estado (ACTIVO, PENDIENTE_ASIGNACION, FINALIZADO), fechaAsignacion, usuarioAsignador.
   - *Relaciones*: contiene la lista de `CalendarioEtapaGalpon`.
 - **CalendarioEtapaGalpon**: Configuración de la etapa para un galpón específico.
-  - *Atributos*: ID, planGalponId, etapaCrianza, diaInicio, diaFin, diasBase, diasProrroga, diasEfectivos, estadoEtapa (`OMITIDA`, `ACTIVA`, `COMPLETADA`), alimentoBloqueado (booleano), racionKgPolloDia, alimentoId, pesoNetoKgPorBulto, justificacionAjuste, usuarioAjuste, fechaActivacionEtapa, fechaActualizacion.
+  - *Atributos*: ID, planGalponId, etapaCrianza (enum `EtapaCrianza`: `PRE_INICIO`, `INICIO`, `ENGORDE`), diaInicio, diaFin, diasBase, diasProrroga, diasEfectivos, estadoEtapa (`OMITIDA`, `ACTIVA`, `COMPLETADA`), alimentoBloqueado (booleano), racionKgPolloDia, alimentoId, pesoNetoKgPorBulto, justificacionAjuste, usuarioAjuste, fechaActivacionEtapa, fechaActualizacion.
   - *Relaciones*: referencia a `Alimento`, a `TipoAlimento` y se sincroniza con `ProyeccionAlimentoEtapa` ([SPEC-022](file:///C:/Users/ESTUDIANTE/IdeaProjects/practicaweb/AviControlMod2/docs/specs/022-ConsultarAlimentoRequeridoPorLote.md)).
 - **TipoAlimento**: Clasificación zootécnica vinculada a la etapa productiva (consistente con SPEC-001).
-  - *Atributos*: ID, nombre (ej. Pre-iniciador, Iniciador, Engorde), etapaAsociada, descripcionNutricional, estado.
+  - *Atributos*: ID, nombre (ej. Pre-iniciador, Iniciador, Engorde), etapaCrianza (enum `EtapaCrianza`: `PRE_INICIO`, `INICIO`, `ENGORDE`), descripcionNutricional, estado.
 - **Alimento**: Producto comercial específico del catálogo de insumos (consistente con SPEC-001).
   - *Atributos*: ID, nombreComercial, marca, descripcion, duracionRecomendadaEtapaDias (entero opcional), pesoNominalPorBulto, estado.
   - *Relaciones*: pertenece a un `TipoAlimento` y se vincula con recepciones de bodega central.
 - **Galpon**: Representa el galpón físico y el lote alojado.
   - *Atributos*: ID, nombre, capacidad, loteActivoId, poblacionAvesActivas, edadDiasLote, fechaProyectadaSalida.
 - **ProyeccionConsumoGalpon**: Modelo de cálculo en tiempo de consulta.
-  - *Atributos*: galpon, etapaActual, poblacionAves, alimentoSeleccionado, demandaDiariaKg, demandaDiariaBultos, stockDisponibleBultos, diasCoberturaRestantes.
+  - *Atributos*: galpon, etapaCrianzaActual (enum `EtapaCrianza`), poblacionAves, alimentoSeleccionado, demandaDiariaKg, demandaDiariaBultos, stockDisponibleBultos, diasCoberturaRestantes.
 
 ---
 
