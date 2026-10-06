@@ -13,11 +13,11 @@
 
 Implementar la capacidad unificada de requerimientos y seguimiento de alimentación de AviControl Módulo 2. Este plan integra la dimensión operativa diaria de campo para operarios de granja ([SPEC-014](../specs/014-ConsultarAlimentoPorGalponPorDia.md)) con la dimensión táctica y financiera de proyecciones por lote e integración con el Módulo 3 (Finanzas) y balance logístico de compras ([SPEC-022](../specs/022-ConsultarAlimentoRequeridoPorLote.md)).
 
-En el plano operativo diario (SPEC-014), el trabajador consulta la cuota del día para su galpón seleccionado, deduciendo la etapa a partir de la edad del lote y el plan nutricional activo ([Plan 003](003-ConfiguracionYAsignacionDePlanesNutricionales.md)), calculando el consumo necesario en kilogramos netos y bultos equivalentes, contrastando con el suministro acumulado y verificando las existencias en bodega central ([SPEC-023](../specs/023-ConsultarInventario.md)) con alertas de déficit y cambios de dieta. Asimismo, provee el panel y tarjeta métrica consolidada para el dashboard ("Inicio de trabajador").
+En el plano operativo diario (SPEC-014), el trabajador registra las cantidades de alimento realmente suministradas a un lote y consulta la cuota del día para un galpón seleccionado. Cada suministro queda persistido por fecha, lote, galpón, alimento y actor, y solicita al Plan 010 una salida de inventario trazable por recepción y confirmada atómicamente. La consulta suma los suministros confirmados, calcula el saldo pendiente y verifica las existencias de bodega central ([SPEC-023](../specs/023-ConsultarInventario.md)) con alertas de déficit y cambios de dieta. Asimismo, provee el panel y tarjeta métrica consolidada para el dashboard ("Inicio de trabajador").
 
 En el plano estratégico y financiero (SPEC-022), el sistema gestiona las proyecciones formales de alimento requerido por lote (`ProyeccionAlimentoEtapa`), gobernadas por el principio de **inmutabilidad progresiva**: al activarse una etapa se capturan la población viva al corte, la ración diaria, el alimento comercial asignado (blindado por Plan 003) y el costo unitario de referencia histórico (`costoUnitarioKg`). La consulta para el Módulo 3 entrega los requerimientos estrictamente discriminados por etapa con su costo unitario sin mezclar insumos heterogéneos, permitiendo además al administrador balancear la demanda activa consolidada contra el stock de bodega central para determinar el déficit real de compras sin apartar físicamente bultos.
 
-Todas las consultas operan en modo estrictamente de **solo lectura**, garantizando cero deducciones o reservas físicas en bodega central. La capacidad reacciona a eventos de activación y prórroga de etapas provenientes del Plan 003 para alimentar y ajustar de forma atómica e inmutable el historial de proyecciones.
+Las consultas y proyecciones operan en modo estrictamente de **solo lectura**, sin deducciones ni reservas físicas en bodega central. El registro de un suministro confirmado sí genera una salida real de inventario mediante el puerto del Plan 010. La capacidad también reacciona a eventos de activación y prórroga de etapas provenientes del Plan 003 para alimentar y ajustar de forma atómica e inmutable el historial de proyecciones.
 
 ## Technical Context
 
@@ -34,22 +34,22 @@ Todas las consultas operan en modo estrictamente de **solo lectura**, garantizan
 - Blindaje de insumo y costo en etapa activa (`ACTIVA`): el alimento comercial, cuota diaria, población base y costo unitario capturado no pueden ser alterados. El único cambio admitido es el recálculo de kilogramos por ajuste de duración auditado en Plan 003.
 - Tratamiento de costo no disponible: si al activar la etapa no existe costo de referencia en recepciones activas, se persiste `costoUnitarioKg = null` con advertencia descriptiva; está estrictamente prohibido registrar cero (`0.00`). Se admite completado único auditado por el Administrador mientras la etapa esté activa.
 - Separación estricta por etapa: la respuesta al Módulo 3 jamás suma kilogramos globales de alimentos diferentes.
-- Operación libre de movimientos de almacén: ninguna consulta o proyección genera reservas físicas, deducciones de stock o movimientos de inventario en bodega central.
+- Las consultas y proyecciones no generan reservas físicas, deducciones de stock ni movimientos. El registro de suministro solicita una salida real al Plan 010, sin acceder directamente a sus repositorios.
 - Manejo numérico con `BigDecimal` y redondeo `HALF_UP`: kilogramos a 2 decimales, montos monetarios a 2 decimales y raciones hasta 4 decimales.
 
-**Scale/Scope**: Seis historias de usuario, siete endpoints REST, dos entidades persistidas propias (`ProyeccionAlimentoEtapa` e `HistorialAjusteProyeccion`), Value Objects de consumo y costo, puertos de consulta hacia Galpón/Lote, Plan Nutricional, Inventario y Recepciones, y listeners de eventos de Spring Modulith.
+**Scale/Scope**: Siete historias de usuario, seis endpoints REST, tres entidades persistidas propias (`SuministroDiario`, `ProyeccionAlimentoEtapa` e `HistorialAjusteProyeccion`), Value Objects de consumo y costo, puertos de consulta hacia Galpón/Lote, Plan Nutricional, Inventario y Recepciones, un puerto de salida de inventario para suministros y listeners de eventos de Spring Modulith.
 
 **Dependencias funcionales**:
 - Galpones, lotes, fecha de ingreso, edad y población viva actual desde Módulo 1 (Plan 001).
 - Plan nutricional activo, etapas, cuotas diarias, alimentos comerciales y eventos de prórroga desde Plan 003 ([003-ConfiguracionYAsignacionDePlanesNutricionales.md](003-ConfiguracionYAsignacionDePlanesNutricionales.md)).
 - Stock disponible en bodega central desde Plan 002 ([SPEC-023](../specs/023-ConsultarInventario.md)).
 - Precio neto histórico de compra de recepciones activas desde Plan 002 ([SPEC-001](../specs/001-RegistrarRecepcionDeAlimento.md)).
-- Suministros físicos parciales del día desde la capacidad de despacho diario ([SPEC-014](../specs/014-ConsultarAlimentoPorGalponPorDia.md)).
+- Suministros físicos parciales del día desde `SuministroDiario`, persistido por esta capacidad según [SPEC-014](../specs/014-ConsultarAlimentoPorGalponPorDia.md). No existe una capacidad de despacho independiente.
 - Consumo por parte del Módulo 3 (Finanzas) para presupuestación y liquidación del lote.
 
 ### Decisiones específicas
 
-1. **Unificación de Capacidad de Requerimientos**: Aunque SPEC-014 atiende la operativa diaria del galpón y SPEC-022 atiende la proyección consolidada del lote, ambos comparten las fórmulas zootécnicas de consumo, el peso nominal por bulto, el cruce contra bodega central y la dependencia del plan nutricional. Se consolidan en el paquete `alimentacion` bajo la misma capacidad arquitectónica.
+1. **Unificación de Capacidad de Requerimientos**: Aunque SPEC-014 atiende la operativa diaria del galpón y SPEC-022 atiende la proyección consolidada del lote, ambos comparten las fórmulas zootécnicas de consumo, el peso nominal por bulto, el cruce contra bodega central y la dependencia del plan nutricional. Se consolidan en el paquete `alimentacion` bajo la misma capacidad arquitectónica. Plan 003 almacena y publica la ración como kg/ave/día; para SPEC-014, este plan la convierte a gr/ave/día multiplicando por 1.000 antes de calcular el consumo diario. Las proyecciones financieras mantienen su cuota en kg/ave/día.
 2. **El Lote como Eje Contable y el Galpón como Eje Operativo**:
    - Para el trabajador de campo (014), el acceso es por `galponId`, obteniendo el lote activo actualmente alojado.
    - Para Finanzas y liquidación (022), el acceso es estrictamente por `loteId`. Las proyecciones pertenecen al lote y conservan su historia independiente de si el galpón recibe lotes posteriores.
@@ -65,20 +65,21 @@ Todas las consultas operan en modo estrictamente de **solo lectura**, garantizan
    - El Administrador puede invocar `POST /api/proyecciones/{id}/completar-costo` una única vez durante el estado `ACTIVA` para registrar el costo histórico de activación. Una vez completado, queda bloqueado.
    - Si la etapa se completa con costo nulo, se archiva de forma inmutable con su advertencia.
 6. **Decisión de Negocio Pendiente (Valoración de Inventario)**: Cuando coexistan recepciones heterogéneas del mismo alimento con precios de compra dispares, la regla de selección del costo de referencia (Promedio Ponderado, FIFO/PEPS o Última Compra) se documenta como pendiente a concertar con Finanzas. El sistema consulta la recepción activa de referencia disponible sin asumir heurísticas ocultas.
-7. **Ausencia de Asignación Rígida de Trabajadores**: Conforme a General.md y Plan 001, no existen entidades de asignación fija operario-galpón. El resumen consolidado de inicio de trabajador (SPEC-014 US-3) opera sobre los galpones activos de la granja que el usuario seleccione o tenga habilitados para consulta en su contexto operativo.
+7. **Ausencia de Asignación Rígida de Trabajadores**: Conforme a General.md y Plan 001, no existen entidades de asignación fija operario-galpón. El resumen consolidado de inicio de trabajador (SPEC-014 US-3) opera sobre los galpones que el usuario seleccione para esa consulta.
 8. **Consumo Diario y Saldo Pendiente de la Jornada**:
    - `consumoTotalKg = (poblacionActual * racionGrAveDia) / 1000`.
    - `consumoTotalBultos = consumoTotalKg / pesoNominalPorBulto`.
-   - `saldoPendienteKg = max(0, consumoTotalKg - suministroAcumuladoDia)`.
+   - `saldoPendienteKg = max(0, consumoTotalKg - suministroAcumuladoDia)`, donde el acumulado incluye solo suministros confirmados del mismo lote, alimento y fecha de negocio.
    - Si la población es 0 o el galpón no tiene lote activo, el consumo y saldo son `0.00`.
 9. **Exclusión de Existencias Vencidas o Incompatibles**: Al cruzar contra bodega central, se consultan existencias netas de recepciones vigentes (no vencidas y no anuladas) que pertenezcan estrictamente al producto comercial o `TipoAlimento` asignado a la etapa.
 10. **Balance de Abastecimiento sin Reserva Física**: La consulta para administración suma la demanda proyectada de las etapas en curso de todos los lotes activos y la compara con el stock disponible de bodega central (`balanceKg = stockDisponibleKg - demandaConsolidadaKg`). No bloquea ni descuenta inventario; genera el indicador `REABASTECIMIENTO_NECESARIO` y bultos sugeridos a comprar si el balance es negativo.
 11. **Manejo de Errores y Estados**: Galpón o lote inexistente responde 404; parámetros inválidos 400; conflicto de inmutabilidad 409; fallos de servicios imprescindibles 503. Todo bajo `application/problem+json` (RFC 9457).
-12. **Consistencia Transaccional y Eventos**: Las proyecciones se persisten en base de datos PostgreSQL propia. El listener de eventos de activación (`EtapaNutricionalActivada`) ejecuta la creación de la proyección en la misma transacción o de forma desacoplada con idempotencia sobre el par `(loteId, etapaCrianza)`.
+12. **Registro operativo de suministro**: Cada suministro real crea un `SuministroDiario` asociado al lote, galpón, alimento, fecha de negocio `America/Bogota`, instante de registro y actor. El caso de uso solicita al Plan 010 una salida FEFO; suministro y salida se confirman o revierten juntos en una transacción local de la aplicación modular. Un saldo insuficiente no deja suministro confirmado ni descuento parcial. La consulta diaria permanece de solo lectura.
+13. **Consistencia Transaccional y Eventos**: Los suministros y proyecciones se persisten en base de datos PostgreSQL propia. El listener de eventos de activación (`EtapaNutricionalActivada`) ejecuta la creación de la proyección en la misma transacción o de forma desacoplada con idempotencia sobre el par `(loteId, nombreEtapa)`.
 
 ### Alcance documental
 
-- **SPEC-014**: Define la consulta diaria por galpón, cálculo de raciones, conversión a bultos, saldo pendiente, alertas operativas y pantalla consolidada de inicio del operario.
+- **SPEC-014**: Define el registro de suministros diarios, la consulta por galpón, cálculo de raciones, conversión a bultos, saldo pendiente, alertas operativas y pantalla consolidada de inicio del operario.
 - **SPEC-022**: Define el servicio de proyecciones para Finanzas, segregación por etapa, inmutabilidad progresiva, captura de costo unitario, historial acumulativo de ajustes y balance de compras.
 - **Plan 003**: Es propietario del catálogo de planes nutricionales, la asignación a galpones, el bloqueo de alimento y los ajustes de duración en cascada. Plan 004 es consumidor de esos datos y escucha sus eventos.
 - **Plan 002 (SPEC-001 / SPEC-023)**: Provee los precios de recepciones y las existencias físicas disponibles en bodega central. Plan 004 no crea tablas de inventario ni de recepciones.
@@ -107,6 +108,7 @@ Estructura de clases de la capacidad de requerimientos y seguimiento de alimenta
 src/main/java/com/avicontrol/
 ├── domain/
 │   ├── model/alimentacion/
+│   │   ├── SuministroDiario.java
 │   │   ├── ProyeccionAlimentoEtapa.java
 │   │   ├── HistorialAjusteProyeccion.java
 │   │   ├── RequerimientoDiarioGalpon.java
@@ -133,15 +135,18 @@ src/main/java/com/avicontrol/
 │   │   └── GalponSinLoteActivoException.java
 │   └── port/out/alimentacion/
 │       ├── ProyeccionAlimentoRepositoryPort.java
+│       ├── SuministroDiarioRepositoryPort.java
 │       ├── GalponQueryPort.java
 │       ├── LoteQueryPort.java
 │       ├── PlanNutricionalQueryPort.java
 │       ├── StockBodegaQueryPort.java
 │       ├── CostoAlimentoReferenciaQueryPort.java
 │       ├── SuministroDiarioQueryPort.java
+│       ├── RegistrarSalidaInventarioPort.java
 │       └── AlimentacionEventPublisherPort.java
 ├── application/alimentacion/
 │   ├── ConsultarAlimentoGalponDiaUseCase.java
+│   ├── RegistrarSuministroDiarioUseCase.java
 │   ├── ConsultarResumenAlimentoTrabajadorUseCase.java
 │   ├── ConsultarRequerimientoLoteFinanzasUseCase.java
 │   ├── RegistrarProyeccionEtapaUseCase.java
@@ -173,14 +178,17 @@ src/main/java/com/avicontrol/
     ├── adapter/out/persistence/alimentacion/
     │   ├── entity/
     │   │   ├── ProyeccionAlimentoEtapaEntity.java
-    │   │   └── HistorialAjusteProyeccionEntity.java
+    │   │   ├── HistorialAjusteProyeccionEntity.java
+    │   │   └── SuministroDiarioEntity.java
     │   ├── repository/
     │   │   ├── SpringDataProyeccionAlimentoJpaRepository.java
-    │   │   └── SpringDataHistorialAjusteProyeccionJpaRepository.java
+    │   │   ├── SpringDataHistorialAjusteProyeccionJpaRepository.java
+    │   │   └── SpringDataSuministroDiarioJpaRepository.java
     │   ├── mapper/AlimentacionPersistenceMapper.java
     │   └── AlimentacionPersistenceAdapter.java
     ├── adapter/out/internal/alimentacion/
     │   ├── SuministroDiarioQueryAdapter.java
+    │   ├── RegistrarSalidaInventarioAdapter.java
     │   └── CostoAlimentoReferenciaQueryAdapter.java
     └── config/
         └── AlimentacionBeanConfiguration.java
@@ -191,6 +199,7 @@ src/test/java/com/avicontrol/
 │   ├── ConsumoDiarioTest.java
 │   └── CostoUnitarioCapturadoTest.java
 ├── application/alimentacion/
+│   ├── RegistrarSuministroDiarioUseCaseTest.java
 │   ├── ConsultarAlimentoGalponDiaUseCaseTest.java
 │   ├── ConsultarResumenAlimentoTrabajadorUseCaseTest.java
 │   ├── ConsultarRequerimientoLoteFinanzasUseCaseTest.java
@@ -242,6 +251,24 @@ ProyeccionAlimentoEtapa (1) ───< (0..*) HistorialAjusteProyeccion
   fechaActualizacion: Instant
 ```
 
+```text
+Lote (1) ───< (0..*) SuministroDiario >─── (1) Galpon
+                                  ├── (1) Alimento
+                                  ├── (1) Usuario responsable
+                                  └── (1..*) movimientos de salida por recepción (Plan 010)
+
+SuministroDiario
+  id: UUID
+  loteId: UUID
+  galponId: UUID
+  alimentoId: UUID
+  fechaSuministro: LocalDate (America/Bogota)
+  cantidadKg: BigDecimal
+  registradoEn: Instant
+  registradoPor: UUID
+  claveIdempotencia: String (unique)
+```
+
 #### Modelos de cálculo en tiempo de consulta (Value Objects y Results):
 
 1. **`ConsumoDiario`**: Encapsula el cálculo operativo:
@@ -269,10 +296,12 @@ ProyeccionAlimentoEtapa (1) ───< (0..*) HistorialAjusteProyeccion
 | `ProyeccionAlimentoRepositoryPort` | Salida (Persistencia) | Guardar y buscar proyecciones por lote y etapa, listar proyecciones activas de todos los lotes y anexar auditorías al historial. |
 | `GalponQueryPort` | Salida (Consulta interna) | Consultar identidad, nombre, aforo y estado del galpón. |
 | `LoteQueryPort` | Salida (Consulta interna) | Consultar lote activo, código, población viva actual, fecha de ingreso y edad en días. |
-| `PlanNutricionalQueryPort` | Salida (Consulta interna) | Consultar etapa actual, ración diaria, tipo de alimento, alimento comercial asignado, peso nominal del bulto y si el alimento está bloqueado. |
+| `PlanNutricionalQueryPort` | Salida (Consulta interna) | Consultar etapa actual, ración diaria en kg/ave/día proveniente del Plan 003, tipo de alimento, alimento comercial asignado, peso nominal del bulto y si el alimento está bloqueado. La consulta operativa convierte la ración a gr/ave/día; las proyecciones conservan kg/ave/día. |
 | `StockBodegaQueryPort` | Salida (Consulta interna) | Consultar existencias netas disponibles en bodega central (en kg y bultos) de alimentos compatibles no vencidos (SPEC-023). |
 | `CostoAlimentoReferenciaQueryPort` | Salida (Consulta interna) | Consultar el precio de compra neto de referencia vigente de la recepción activa del alimento en bodega central (SPEC-001). |
 | `SuministroDiarioQueryPort` | Salida (Consulta interna) | Consultar los kilogramos y bultos de alimento ya servidos físicamente en el galpón durante la jornada actual. |
+| `SuministroDiarioRepositoryPort` | Salida (Persistencia) | Guardar y consultar suministros confirmados por lote, alimento y fecha de negocio. |
+| `RegistrarSalidaInventarioPort` | Salida (Comando interno) | Solicitar al Plan 010 el descuento del suministro por recepciones FEFO y recibir la referencia de la salida confirmada. |
 | `AlimentacionEventPublisherPort` | Salida (Eventos) | Publicar eventos de dominio internos mediante Spring Modulith. |
 
 ---
@@ -282,6 +311,7 @@ ProyeccionAlimentoEtapa (1) ───< (0..*) HistorialAjusteProyeccion
 | Endpoint | Método | Acceso | Descripción |
 | --- | --- | --- | --- |
 | `/api/galpones/{galponId}/alimento-diario` | `GET` | `ROLE_TRABAJADOR`, `ROLE_ADMINISTRADOR` | Consulta operativa del día para un galpón: cuota en kg y bultos, saldo pendiente, stock en bodega y alertas (SPEC-014 US-1 y US-2). |
+| `/api/galpones/{galponId}/suministros-alimento` | `POST` | `ROLE_TRABAJADOR`, `ROLE_ADMINISTRADOR` | Registra alimento realmente suministrado al lote activo y solicita la salida atómica del inventario por FEFO (SPEC-014 US-4). |
 | `/api/trabajador/resumen-alimento-diario` | `GET` | `ROLE_TRABAJADOR`, `ROLE_ADMINISTRADOR` | Resumen consolidado para dashboard de inicio: sumatoria total de kg y bultos requeridos hoy y tabla de galpones con disponibilidad de bodega (SPEC-014 US-3). |
 | `/api/lotes/{loteId}/alimento-requerido` | `GET` | `ROLE_ADMINISTRADOR`, `ROLE_NUTRICIONISTA` | Consulta oficial de requerimientos de alimento para Módulo 3 (Finanzas): entregado discriminado por etapa con costo unitario de referencia (SPEC-022 US-1). |
 | `/api/proyecciones/{id}/completar-costo` | `POST` | `ROLE_ADMINISTRADOR` | Registro único auditado de costo de referencia para una proyección activa que inició con costo `null` (SPEC-022 US-2). |
@@ -331,9 +361,9 @@ Todos los endpoints retornan `Content-Type: application/problem+json` conforme a
 - [ ] T006 Implementar la entidad `ProyeccionAlimentoEtapa` con su fórmula matemática de kilogramos requeridos, control de estado (`ACTIVA`, `COMPLETADA`) y reglas de inmutabilidad.
 - [ ] T007 Implementar la entidad inmutable `HistorialAjusteProyeccion` para auditar prórrogas de duración y variaciones de kilogramos.
 - [ ] T008 Definir las excepciones de dominio específicas: `ProyeccionNoEncontradaException`, `ProyeccionCompletadaInmutableException`, `CostoYaCompletadoException`, etc.
-- [ ] T009 Definir los puertos de salida: `ProyeccionAlimentoRepositoryPort`, `GalponQueryPort`, `LoteQueryPort`, `PlanNutricionalQueryPort`, `StockBodegaQueryPort`, `CostoAlimentoReferenciaQueryPort` y `SuministroDiarioQueryPort`.
-- [ ] T010 Crear migración Flyway `V8__crear_proyeccion_alimento.sql` (siguiente versión disponible tras la migración V7 del Plan 003) para tablas `proyeccion_alimento_etapa` e `historial_ajuste_proyeccion`, con índices por `lote_id`, `galpon_id` y restricción única sobre `(lote_id, nombre_etapa)`.
-- [ ] T011 Implementar entidades JPA, repositorios Spring Data y `AlimentacionPersistenceAdapter` con mappers bidireccionales dominio-JPA.
+- [ ] T009 Definir los puertos de salida: `ProyeccionAlimentoRepositoryPort`, `SuministroDiarioRepositoryPort`, `RegistrarSalidaInventarioPort`, `GalponQueryPort`, `LoteQueryPort`, `PlanNutricionalQueryPort`, `StockBodegaQueryPort`, `CostoAlimentoReferenciaQueryPort` y `SuministroDiarioQueryPort`.
+- [ ] T010 Crear migración Flyway `V8__crear_alimentacion.sql` (siguiente versión disponible tras la migración V7 del Plan 003) para tablas `suministro_diario`, `proyeccion_alimento_etapa` e `historial_ajuste_proyeccion`, con índices por `lote_id`, `galpon_id` y restricciones de unicidad idempotente.
+- [ ] T011 Implementar entidades JPA, repositorios Spring Data y `AlimentacionPersistenceAdapter` para suministros, proyecciones e historiales con mappers bidireccionales dominio-JPA.
 - [ ] T012 Implementar `AlimentoCatalogoQueryAdapter`, `StockBodegaQueryAdapter` y `CostoAlimentoReferenciaQueryAdapter` resolviendo las llamadas a interfaces públicas de inventario y compras.
 - [ ] T013 Registrar beans y transacciones en `AlimentacionBeanConfiguration`.
 
@@ -739,15 +769,46 @@ Los campos de alertas se incorporan dinámicamente en la lista `alertas` de `Req
 
 ---
 
-## Phase 9: Polish & Cross-Cutting Concerns
+## Phase 9: User Story 7 — Registrar el Suministro Diario de Alimento (Priority: P1)
+
+**Spec**: 014, historia 4.
+
+**Goal**: Registrar el alimento realmente suministrado al lote activo, mantener trazabilidad por jornada y descontar las existencias centrales a través del Plan 010.
+
+**Independent Test**: Un suministro parcial crea un registro diario y la salida FEFO correspondiente; una consulta diaria posterior muestra el acumulado actualizado. Si el stock no alcanza o el inventario falla, no queda suministro confirmado ni descuento parcial.
+
+### Definición del endpoint REST
+
+| Elemento | Definición |
+| --- | --- |
+| Método y ruta | `POST /api/galpones/{galponId}/suministros-alimento` |
+| Autorización | `ROLE_TRABAJADOR`, `ROLE_ADMINISTRADOR` |
+| Entrada | `alimentoId`, `cantidadKg` positiva y clave idempotente de la operación. Lote, fecha de negocio y actor se obtienen del contexto vigente. |
+| Respuesta 201 | Suministro confirmado, cantidad en kg y bultos, fecha de negocio y referencia de la operación de salida de inventario. |
+| Errores | 400 por cantidad inválida, 403 por rol, 404 por galpón/lote inexistente, 409 por alimento incompatible o stock insuficiente y 503 por inventario no disponible. |
+
+El caso de uso persiste el suministro y solicita la salida al Plan 010 dentro de una transacción local. Los movimientos descuentan las recepciones aplicables por FEFO. No se accede directamente a los repositorios del inventario. Las consultas del Plan 004 siguen siendo de solo lectura.
+
+### Tests e implementación
+
+- [ ] T058 Probar registro positivo asociado al lote activo, alimento de etapa, fecha `America/Bogota` y actor autenticado.
+- [ ] T059 Probar salida FEFO distribuida entre varias recepciones y que sus cantidades sumen exactamente el suministro.
+- [ ] T060 Probar atomicidad, clave idempotente, stock insuficiente, fallo del Plan 010 y rechazo de alimento incompatible.
+- [ ] T061 Implementar `RegistrarSuministroDiarioUseCase`, persistencia, endpoint, DTOs y adaptador al `RegistrarSalidaInventarioPort`.
+
+**Checkpoint**: El suministro diario queda persistido y su impacto de inventario es completo, trazable e idempotente.
+
+---
+
+## Phase 10: Polish & Cross-Cutting Concerns
 
 **Purpose**: Verificaciones transversales, documentación OpenAPI, pruebas de integración y consistencia arquitectónica.
 
-- [ ] T053 Documentar los endpoints de requerimientos diarios, dashboard de operario, proyecciones para Finanzas y balance de abastecimiento en OpenAPI 3.
-- [ ] T054 Implementar `RequerimientosAlimentacionIntegrationTest` con Testcontainers y PostgreSQL real: verificar el flujo completo desde activación de etapa por evento, consulta de cuota diaria, prórroga de etapa auditada y entrega para liquidación del Módulo 3.
-- [ ] T055 Verificar reglas de arquitectura con ArchUnit: asegurar que `domain/model/alimentacion` no dependa de Spring, JPA ni Jackson.
-- [ ] T056 Verificar cumplimiento de metas de rendimiento: respuestas inferiores a 1 segundo para consultas operativas y por lote, e inferiores a 2 segundos para balances consolidados.
-- [ ] T057 Documentar la Decisión de Negocio Pendiente sobre la política de valoración de inventario (Promedio Ponderado vs FIFO/PEPS) en el glosario de acuerdos de integración con el Módulo 3.
+- [ ] T062 Documentar los endpoints de consulta y registro de suministro, dashboard de operario, proyecciones para Finanzas y balance de abastecimiento en OpenAPI 3.
+- [ ] T063 Implementar `RequerimientosAlimentacionIntegrationTest` con Testcontainers y PostgreSQL real: verificar el flujo completo desde activación de etapa por evento, registro y consulta de suministro, prórroga de etapa auditada y entrega para liquidación del Módulo 3.
+- [ ] T064 Verificar reglas de arquitectura con ArchUnit: asegurar que `domain/model/alimentacion` no dependa de Spring, JPA ni Jackson.
+- [ ] T065 Verificar cumplimiento de metas de rendimiento: respuestas inferiores a 1 segundo para consultas operativas y por lote, e inferiores a 2 segundos para balances consolidados.
+- [ ] T066 Documentar la Decisión de Negocio Pendiente sobre la política de valoración de inventario (Promedio Ponderado vs FIFO/PEPS) en el glosario de acuerdos de integración con el Módulo 3.
 
 **Checkpoint**: Capacidad de requerimientos y seguimiento de alimentación completamente integrada y verificada.
 
@@ -759,9 +820,9 @@ Los campos de alertas se incorporan dinámicamente en la lista `alertas` de `Req
 
 - **Setup (Fase 1)**: Base inicial, no posee dependencias.
 - **Foundational (Fase 2)**: Depende de Setup. Bloquea todas las historias de usuario.
-- **US1, US2, US3 (Fases 3, 4 y 5 - Operativa diaria)**: Dependen de Foundational y de la existencia de planes nutricionales activos en Plan 003. Pueden avanzar en paralelo.
+- **US1, US2, US3, US7 (Fases 3, 4, 5 y 9 - Operativa diaria)**: Dependen de Foundational y de la existencia de planes nutricionales activos en Plan 003. US1 depende además del puerto de consulta de suministros; US7 proporciona la persistencia que US1 consulta y depende de la salida de inventario del Plan 010.
 - **US4, US5, US6 (Fases 6, 7 y 8 - Proyecciones y Finanzas)**: Dependen de Foundational y de los eventos emitidos por Plan 003 (`EtapaNutricionalActivada`, `DuracionEtapaAjustada`).
-- **Polish (Fase 9)**: Depende de la finalización de todas las historias de usuario.
+- **Polish (Fase 10)**: Depende de la finalización de todas las historias de usuario.
 
 ### Dependencias con otros planes
 
@@ -781,7 +842,7 @@ Los campos de alertas se incorporan dinámicamente en la lista `alertas` de `Req
 
 ## Notes
 
-- T001 a T057 identifican las tareas de implementación de este plan.
+- T001 a T066 identifican las tareas de implementación de este plan.
 - Este plan concilia la operativa diaria en el galpón con el control presupuestario y financiero por lote, evitando la duplicación de cálculos zootécnicos.
 - La segregación estricta de requerimientos por etapa en la respuesta para el Módulo 3 responde a la directriz fundamental de evitar sumatorias monetarias de insumos nutricionales heterogéneos.
 - El principio de inmutabilidad progresiva protege la trazabilidad legal y contable de la granja avícola.

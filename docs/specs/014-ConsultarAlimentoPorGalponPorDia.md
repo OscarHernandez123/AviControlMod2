@@ -1,4 +1,4 @@
-# Feature Specification: Consultar alimento por galpón por día
+# Feature Specification: Gestionar suministro y consultar alimento diario por galpón
 
 **Created**: 2026-09-05  
 
@@ -10,12 +10,12 @@ Como trabajador u operario de granja, quiero consultar qué alimento le correspo
 
 **Why this priority**: Es la tarea operativa fundamental del día que asegura la correcta nutrición de las aves, determinando el tipo de alimento y la cantidad precisa según la población viva actual y la edad del lote, facilitando el manejo práctico en kilogramos y bultos.
 
-**Independent Test**: Se puede probar seleccionando un galpón seleccionado con lote activo y plan nutricional vigente, verificando que el sistema calcule la edad en días del lote, identifique la etapa correspondiente del plan nutricional, calcule el consumo diario en kilogramos y bultos (`población actual × ración individual ÷ 1.000 = kg`; `kg ÷ peso nominal del bulto = bultos`), y consulte la existencia disponible en bodega central en ambas unidades.
+**Independent Test**: Se puede probar seleccionando un galpón con lote activo y plan nutricional vigente, verificando que el sistema calcule la edad en días del lote, identifique la etapa correspondiente del plan nutricional, calcule el consumo diario en kilogramos y bultos (`población actual × ración individual ÷ 1.000 = kg`; `kg ÷ peso nominal del bulto = bultos`), y consulte la existencia disponible en bodega central en ambas unidades.
 
 **Acceptance Scenarios**:
 
 1. **Scenario**: Consulta exitosa de alimento para galpón con lote activo
-   - **Given** que un trabajador autenticado selecciona un galpón seleccionado con un lote activo cuya llave foránea referencia al galpón
+   - **Given** que un trabajador autenticado selecciona un galpón con un lote activo cuya llave foránea referencia al galpón
    - **When** ingresa a la consulta de alimento por galpón por día para la fecha actual
    - **Then** el sistema presenta los datos del galpón (nombre, aforo máximo, estado) y del lote (nombre, población actual, edad en días)
    - **And** presenta la etapa en que se encuentra deducida por la edad del lote y el tipo de alimento asignado
@@ -77,17 +77,17 @@ Como trabajador u operario de granja, quiero que el sistema me alerte visualment
 
 ---
 
-### User Story 3 - Visualizar el resumen consolidado de alimento diario requerido para todos los galpones seleccionados (Priority: P2)
+### User Story 3 - Visualizar el resumen consolidado de alimento diario requerido para los galpones seleccionados en la consulta (Priority: P2)
 
-Como trabajador u operario de granja, quiero visualizar en mi pantalla de inicio la sumatoria consolidada del alimento diario requerido para todos los galpones que consulto (expresada en kilogramos y bultos), junto con el estado global de disponibilidad en bodega central y una tabla de detalle por galpón seleccionado, para conocer de inmediato el volumen total de alimento que debo gestionar en la jornada y verificar que la bodega central cuenta con stock suficiente.
+Como trabajador u operario de granja, quiero visualizar en mi pantalla de inicio la sumatoria consolidada del alimento diario requerido para los galpones que selecciono para la consulta (expresada en kilogramos y bultos), junto con el estado global de disponibilidad en bodega central y una tabla de detalle por galpón, para conocer de inmediato el volumen total de alimento que debo gestionar en la jornada y verificar que la bodega central cuenta con stock suficiente.
 
-**Why this priority**: Es la vista general de alimentación en el dashboard operativo ("Inicio de trabajador") que le permite al operario saber de un vistazo cuánto alimento requiere en total el conjunto de sus galpones seleccionados antes de iniciar la distribución y confirmar si la bodega central está abastecida, sin tener que consultar y sumar manualmente galpón por galpón.
+**Why this priority**: Es la vista general de alimentación en el dashboard operativo ("Inicio de trabajador") que le permite al operario saber de un vistazo cuánto alimento requiere en total el conjunto de galpones seleccionados para esa consulta antes de iniciar la distribución y confirmar si la bodega central está abastecida, sin tener que consultar y sumar manualmente galpón por galpón.
 
-**Independent Test**: Se puede probar autenticándose como un trabajador que selecciona 3 galpones con lotes activos:
+**Independent Test**: Se puede probar autenticándose como un trabajador que selecciona 3 galpones con lotes activos para esa consulta:
 - Galpón 1: lote en Engorde con cuota diaria de 450 kg (9 bultos de 50 kg) de alimento "Engorde Stage 2" y stock suficiente en bodega.
 - Galpón 3: lote en Engorde con cuota diaria de 430 kg (8.6 bultos de 50 kg) de alimento "Engorde Stage 2" y stock suficiente en bodega.
 - Galpón 5: lote en Finalización con cuota diaria de 370 kg (7.4 bultos de 50 kg) de alimento "Engorde Finisher" y stock suficiente en bodega.
-Verificar que la tarjeta métrica superior "Alimento Diario Requerido" calcule y presente exactamente `1.250 kg` y `25 Bultos (Bodega Central OK)`, y que la tabla de detalle "Consulta de Alimento Diario (Spec 014)" liste los 3 galpones con sus respectivas columnas `GALPÓN`, `TIPO ALIMENTO`, `CUOTA KG`, `BULTOS (50KG)` y `ESTADO BODEGA` (Suficiente), excluyendo galpones no seleccionados.
+Verificar que la tarjeta métrica superior "Alimento Diario Requerido" calcule y presente exactamente `1.250 kg` y `25 Bultos (Bodega Central OK)`, y que la tabla de detalle "Consulta de Alimento Diario (Spec 014)" liste los 3 galpones seleccionados en esa consulta con sus respectivas columnas `GALPÓN`, `TIPO ALIMENTO`, `CUOTA KG`, `BULTOS (50KG)` y `ESTADO BODEGA` (Suficiente), excluyendo los que no se incluyeron en la consulta.
 
 **Acceptance Scenarios**:
 
@@ -107,7 +107,7 @@ Verificar que la tarjeta métrica superior "Alimento Diario Requerido" calcule y
      - Cuota diaria requerida en kilogramos (`CUOTA KG`)
      - Cuota diaria requerida en bultos (`BULTOS`) según el peso nominal del bulto (ej. 50 kg)
      - Estado de disponibilidad en bodega central para ese tipo de alimento (`ESTADO BODEGA`: `Suficiente` o `Insuficiente`)
-   - **And** restringe el listado estrictamente a los galpones seleccionados al trabajador
+   - **And** limita el resultado a los galpones incluidos por el trabajador en esa consulta, sin requerir una asignación persistente trabajador-galpón
 
 3. **Scenario**: Alerta global cuando la bodega central tiene déficit para alguno de los alimentos requeridos
    - **Given** que para al menos uno de los galpones seleccionados el stock en bodega central es inferior a la cuota diaria requerida
@@ -116,9 +116,57 @@ Verificar que la tarjeta métrica superior "Alimento Diario Requerido" calcule y
    - **And** resalta en la tabla la fila del galpón afectado indicando `Insuficiente` en la columna de estado de bodega
 
 4. **Scenario**: Trabajador sin galpones seleccionados o con galpones sin aves activas
-   - **Given** que el trabajador no tiene galpones seleccionados o sus galpones no cuentan con lotes con aves vivas
+   - **Given** que el trabajador no selecciona galpones para la consulta o los galpones seleccionados no cuentan con lotes con aves vivas
    - **When** accede a su pantalla de inicio
    - **Then** el sistema muestra `0 kg` y `0 Bultos` en la tarjeta métrica de alimento requerido y presenta la tabla vacía con un mensaje informativo indicando la ausencia de cuotas de alimento activas
+
+---
+
+### User Story 4 - Registrar el suministro diario de alimento a un lote (Priority: P1)
+
+Como trabajador u operario de granja, quiero registrar cada cantidad de alimento que suministro al lote de un galpón durante la jornada, para mantener actualizado el saldo pendiente del día y descontar del inventario central el alimento que salió efectivamente hacia el galpón.
+
+**Why this priority**: La consulta diaria necesita el total realmente suministrado para calcular el saldo pendiente. Registrar solo el requerimiento no permite conocer cuánto alimento ya se entregó y servido. El suministro confirmado también representa una salida real de inventario y debe conservar su trazabilidad por recepción.
+
+**Independent Test**: Registrar un suministro parcial para un galpón con lote activo y plan vigente. Verificar que se guarde asociado al lote, galpón, alimento, fecha y trabajador; que se descuente la cantidad de existencias disponibles mediante movimientos de salida asignados por FEFO; y que una consulta posterior muestre el acumulado del día y el saldo pendiente actualizados. Si el inventario no puede confirmar la salida completa, no debe quedar un suministro parcial confirmado.
+
+**Acceptance Scenarios**:
+
+1. **Scenario**: Registro exitoso de un suministro parcial
+   - **Given** que el trabajador autenticado selecciona un galpón con lote activo y plan nutricional vigente
+   - **And** que el alimento corresponde al alimento comercial asignado a la etapa vigente y existe stock suficiente
+   - **When** registra una cantidad positiva realmente suministrada durante la jornada
+   - **Then** el sistema guarda el suministro con UUID, lote, galpón, alimento, fecha y hora, cantidad en kg, trabajador responsable y fecha de registro
+   - **And** confirma en la misma operación la salida correspondiente del inventario central
+   - **And** la consulta diaria posterior incluye esa cantidad en el suministro acumulado y recalcula el saldo pendiente
+
+2. **Scenario**: Suministro distribuido entre varias recepciones
+   - **Given** que la cantidad solicitada se cubre con saldos de varias recepciones vigentes del mismo alimento
+   - **When** el trabajador confirma el suministro
+   - **Then** el inventario descuenta la cantidad completa de las recepciones aplicables siguiendo FEFO
+   - **And** el suministro queda relacionado con todos los movimientos de salida que lo componen
+
+3. **Scenario**: Stock insuficiente o fallo al confirmar la salida
+   - **Given** que las existencias compatibles y vigentes son inferiores a la cantidad que se desea suministrar, o que el inventario no está disponible
+   - **When** el trabajador intenta confirmar el suministro
+   - **Then** el sistema rechaza la operación sin confirmar el suministro ni descontar una parte de las existencias
+   - **And** informa la cantidad disponible cuando pueda determinarla
+
+4. **Scenario**: Datos de suministro inválidos o alimento no correspondiente
+   - **Given** un galpón sin lote activo, sin plan vigente o cuyo alimento de la etapa no coincide con el alimento del suministro
+   - **When** se intenta registrar el suministro con cantidad no positiva o datos incompatibles
+   - **Then** el sistema rechaza la operación y no modifica el suministro diario ni el inventario
+
+5. **Scenario**: Consulta del acumulado de la jornada
+   - **Given** uno o varios suministros confirmados para el lote en la fecha de negocio actual
+   - **When** el trabajador consulta el alimento diario del galpón
+   - **Then** el sistema suma únicamente suministros confirmados de ese lote, alimento y fecha
+   - **And** calcula el saldo pendiente como el máximo entre cero y el requerimiento diario menos el total suministrado
+
+6. **Scenario**: Usuario sin autorización
+   - **Given** un usuario sin rol autorizado para registrar suministro
+   - **When** intenta registrar alimento para un galpón
+   - **Then** el sistema rechaza la operación sin crear suministro ni movimiento de inventario
 
 ---
 
@@ -137,10 +185,16 @@ Verificar que la tarjeta métrica superior "Alimento Diario Requerido" calcule y
   - El sistema los excluye automáticamente del cómputo de existencias disponibles para la consulta del galpón.
 
 - **¿Qué sucede si el trabajador intenta consultar un galpón inexistente?**
-  - El sistema bloquea el acceso a dicho galpón y permite visualizar únicamente los galpones seleccionados disponibles para consulta.
+  - El sistema responde que el galpón no existe. No hay asignación persistente trabajador-galpón; el trabajador puede seleccionar cualquier galpón existente permitido por el Módulo 1.
 
 - **¿La consulta permite modificar existencias o datos de galpón/lote?**
-  - No, la consulta es estrictamente de solo lectura y no altera existencias de inventario, registros de galpón ni datos del lote.
+  - No. La consulta es estrictamente de solo lectura. El registro de suministro es una operación separada que crea el registro operativo y solicita al Plan 010 una salida de inventario confirmada; no modifica directamente galpones ni lotes.
+- **¿Qué ocurre si la salida del inventario se confirma solo parcialmente?**
+  - La operación debe ser atómica: no se confirma el suministro ni se conserva un descuento parcial.
+- **¿Se pueden corregir o eliminar suministros confirmados?**
+  - Los specs no definen una edición o eliminación. Mientras se acuerda el procedimiento de corrección, los registros confirmados deben conservarse y cualquier reversión debe registrarse mediante movimientos compensatorios, sin borrar la trazabilidad.
+- **¿Qué ocurre si llega dos veces la misma solicitud de registro por un reintento de red?**
+  - La clave de idempotencia devuelve el suministro confirmado originalmente y evita duplicar el registro o la salida de inventario. Si la clave se reutiliza con datos distintos, el sistema rechaza la solicitud.
 
 ---
 
@@ -149,7 +203,7 @@ Verificar que la tarjeta métrica superior "Alimento Diario Requerido" calcule y
 ### Functional Requirements
 
 - **FR-001**: El sistema DEBE permitir la consulta de alimento por galpón por día a usuarios autenticados con rol de trabajador / operario de granja y administradores.
-- **FR-002**: El sistema DEBE restringir la selección y visualización de galpones para el trabajador exclusivamente a aquellos que tenga disponibles para consulta.
+- **FR-002**: El sistema NO DEBE requerir ni inferir una asignación persistente entre trabajadores y galpones. Un trabajador autenticado puede seleccionar cualquier galpón existente; cada consulta consolidada incluye únicamente los galpones que el trabajador seleccionó para esa consulta. La autorización se basa en el rol autenticado y las reglas de seguridad comunes del sistema.
 - **FR-003**: Para el galpón consultado, el sistema DEBE obtener y presentar sus atributos: UUID, Nombre, Aforo máximo y Estado.
 - **FR-004**: El sistema DEBE identificar el lote activo del galpón mediante la llave foránea que referencia al galpón consultado, seleccionando el lote con la fecha de ingreso más reciente.
 - **FR-005**: Para el lote activo, el sistema DEBE utilizar sus atributos: UUID único, Nombre, Población actual (aves vivas) y Fecha de ingreso.
@@ -165,11 +219,19 @@ Verificar que la tarjeta métrica superior "Alimento Diario Requerido" calcule y
 - **FR-015**: El sistema DEBE emitir una alerta visual de desabastecimiento si la disponibilidad en bodega central para la etapa es menor al consumo necesario del día.
 - **FR-016**: El sistema DEBE emitir una alerta visual de cumplimiento pendiente mientras exista un saldo de alimento pendiente por suministrar en la jornada.
 - **FR-017**: El sistema DEBE emitir una alerta visual si en la fecha actual se registra un cambio en el tipo de alimento, en la ración diaria o en la etapa en que se encuentra el galpón.
-- **FR-018**: La funcionalidad de consulta de alimento por galpón por día DEBE operar estrictamente en modo de solo lectura, sin alterar inventarios, parámetros nutricionales ni registros de galpones o lotes.
-- **FR-019**: El sistema DEBE calcular y presentar en la pantalla de inicio del trabajador la tarjeta métrica consolidada "Alimento Diario Requerido", mostrando la sumatoria total en kilogramos netos y en bultos equivalentes del alimento requerido en la fecha actual para todos los galpones disponibles para consulta.
-- **FR-020**: El sistema DEBE presentar en la pantalla de inicio del trabajador el panel / tabla consolidado "Consulta de Alimento Diario (Spec 014)", listando exclusivamente los galpones seleccionados al trabajador y detallando por cada uno: nombre del galpón, tipo de alimento requerido hoy (según etapa y edad del lote), cuota requerida en kilogramos (`CUOTA KG`), cuota requerida en bultos (`BULTOS`) según el peso nominal del bulto (ej. 50 kg), y el estado de disponibilidad en bodega central (`ESTADO BODEGA`: `Suficiente` o `Insuficiente`).
+- **FR-018**: La operación de consulta de alimento por galpón por día DEBE operar estrictamente en modo de solo lectura, sin alterar suministros, inventarios, parámetros nutricionales ni registros de galpones o lotes.
+- **FR-019**: El sistema DEBE calcular y presentar en la pantalla de inicio del trabajador la tarjeta métrica consolidada "Alimento Diario Requerido", mostrando la sumatoria total en kilogramos netos y en bultos equivalentes del alimento requerido en la fecha actual para los galpones seleccionados en esa consulta.
+- **FR-020**: El sistema DEBE presentar en la pantalla de inicio del trabajador el panel / tabla consolidado "Consulta de Alimento Diario (Spec 014)", listando los galpones seleccionados para esa consulta y detallando por cada uno: nombre del galpón, tipo de alimento requerido hoy (según etapa y edad del lote), cuota requerida en kilogramos (`CUOTA KG`), cuota requerida en bultos (`BULTOS`) según el peso nominal del bulto (ej. 50 kg), y el estado de disponibilidad en bodega central (`ESTADO BODEGA`: `Suficiente` o `Insuficiente`). El sistema NO DEBE requerir una asignación persistente de galpones a trabajadores.
 - **FR-021**: El sistema DEBE evaluar la suficiencia en bodega central para cada tipo de alimento requerido en los galpones seleccionados; si el stock disponible en bodega cubre o supera la cuota diaria requerida, el estado individual DEBE mostrarse como `Suficiente` y el indicador global como favorable (`Bodega Central OK` o `Bodega Central Disponible`), y si es inferior, DEBE mostrarse como `Insuficiente` reflejando la alerta correspondiente.
 - **FR-022**: La conversión de cuota diaria a bultos en la vista consolidada DEBE calcularse dividiendo la cuota en kilogramos entre el peso nominal por bulto configurado para el tipo de alimento (ej. 50 kg/bulto).
+- **FR-023**: El sistema DEBE permitir a usuarios autenticados con rol `ROLE_TRABAJADOR` y administradores autorizados registrar cada suministro físico realizado a un lote durante una jornada.
+- **FR-024**: Cada suministro DEBE conservar UUID, galpón, lote, alimento comercial suministrado, fecha de negocio, fecha y hora de registro, cantidad suministrada en kg y usuario responsable. La fecha de negocio DEBE corresponder a la fecha actual en la zona `America/Bogota`; la fecha y hora de registro corresponden al instante confirmado por el sistema. El galpón, lote y alimento deben obtenerse o validarse contra el lote activo y su etapa nutricional vigente.
+- **FR-025**: El sistema DEBE rechazar cantidades no positivas, alimento incompatible con la etapa vigente, lote inactivo o inexistente, y cualquier suministro que no pueda respaldarse con existencias vigentes suficientes.
+- **FR-026**: La confirmación del suministro y los movimientos de salida del inventario central DEBEN confirmarse o revertirse dentro de una transacción local de la aplicación modular. Una falla o saldo insuficiente NO DEBE dejar un suministro confirmado ni un descuento parcial. No se requiere una transacción distribuida entre módulos.
+- **FR-027**: El Plan 010 DEBE crear los movimientos de salida por recepción, con trazabilidad de cada recepción afectada y aplicación de FEFO. El Plan 004/Spec 014 no debe modificar directamente las tablas de movimientos o saldos del inventario.
+- **FR-028**: La consulta diaria DEBE calcular el suministro acumulado a partir de los suministros confirmados correspondientes al mismo lote, alimento y fecha de negocio. Los registros de jornadas o alimentos diferentes no deben mezclarse.
+- **FR-029**: Los suministros confirmados NO DEBEN borrarse ni editarse de forma destructiva. Una corrección posterior debe conservar auditoría y revertir el efecto de inventario mediante movimientos compensatorios, hasta que se defina un flujo específico de corrección.
+- **FR-030**: El registro de suministro DEBE aceptar una clave de idempotencia generada por el cliente. La repetición de una solicitud con la misma clave y contenido DEBE devolver el resultado previamente confirmado sin crear otro suministro ni descontar inventario por segunda vez; la misma clave con contenido diferente DEBE rechazarse como conflicto.
 
 ### Key Entities 
 
@@ -183,6 +245,7 @@ Verificar que la tarjeta métrica superior "Alimento Diario Requerido" calcule y
 - **Saldo pendiente del día**: Diferencia calculada en kilogramos y bultos entre el consumo requerido y el alimento suministrado en la fecha.
 - **Bodega central**: Inventario principal del cual se consulta la disponibilidad de existencias netas en kilogramos y bultos compatibles con la etapa del galpón.
 - **Alerta de alimentación**: Indicador visual emitido ante déficit de existencias en bodega central, saldo pendiente de entrega o inconsistencias en la asignación nutricional.
+- **Suministro diario de alimento**: Registro persistente de una cantidad realmente suministrada a un lote en una fecha de negocio. Se asocia con galpón, lote, alimento comercial, usuario responsable, clave de idempotencia y la operación con movimientos de salida de inventario que respaldan la cantidad confirmada.
 - **Resumen consolidado de alimento diario del trabajador**: Agrupación y sumatoria de requerimientos nutricionales del día correspondientes a todos los galpones seleccionados a un operario.
   - *Atributos calculados*: Total de kilogramos diarios requeridos, Total de bultos equivalentes, Estado consolidado de bodega central (`Bodega Central OK` / `Bodega Central Disponible`), y Lista de filas de galpones seleccionados (`Galpón`, `Tipo Alimento`, `Cuota Kg`, `Bultos`, `Estado Bodega`).
 
@@ -192,7 +255,7 @@ Verificar que la tarjeta métrica superior "Alimento Diario Requerido" calcule y
 
 ### Measurable Outcomes
 
-- **SC-001**: El 100 % de las consultas realizadas por un trabajador muestra únicamente los galpones seleccionados con su nombre, aforo y estado.
+- **SC-001**: El 100 % de las consultas realizadas por un trabajador muestra únicamente los galpones incluidos en esa consulta, con su nombre, aforo y estado, sin depender de una asignación trabajador-galpón persistida.
 - **SC-002**: El 100 % de las consultas a un galpón con lote activo identifica correctamente el lote más reciente por fecha de ingreso mediante su llave foránea.
 - **SC-003**: En el 100 % de los casos, la etapa en que se encuentra y el tipo de alimento se determinan con exactitud a partir del rango de edad en días del lote activo.
 - **SC-004**: En el 100 % de las consultas, el consumo total diario se presenta en kilogramos y bultos utilizando el peso nominal por bulto del alimento asignado.
@@ -201,7 +264,11 @@ Verificar que la tarjeta métrica superior "Alimento Diario Requerido" calcule y
 - **SC-007**: El 100 % de las modificaciones de ración, alimento o etapa realizadas en el día genera una alerta visual inmediata para el trabajador.
 - **SC-008**: El 100 % de las operaciones de consulta se ejecuta sin modificar ningún dato en la base de datos (garantía de solo lectura).
 - **SC-009**: El 100 % de las pantallas de inicio de trabajadores calcula la sumatoria de alimento diario requerido (kg y bultos) con exactitud matemática coincidente con la suma de las cuotas de sus galpones seleccionados.
-- **SC-010**: El 100 % de las consultas al panel de consulta de alimento diario muestra únicamente los galpones seleccionados al trabajador autenticado, discriminando con precisión el tipo de alimento, cuota en kg, cuota en bultos y el estado de stock en bodega central.
+- **SC-010**: El 100 % de las consultas al panel de alimento diario muestra únicamente los galpones seleccionados para esa consulta por el trabajador autenticado, discriminando con precisión el tipo de alimento, cuota en kg, cuota en bultos y el estado de stock en bodega central.
+- **SC-011**: El 100 % de los suministros confirmados queda asociado al galpón, lote, alimento, fecha y usuario responsable, y cuenta con movimientos de salida de inventario que suman exactamente la cantidad suministrada.
+- **SC-012**: El 100 % de los intentos con existencias insuficientes o fallo del inventario evita tanto el registro del suministro confirmado como cualquier descuento parcial.
+- **SC-013**: El 100 % de las consultas diarias calcula el acumulado y saldo pendiente usando únicamente los suministros confirmados del lote y alimento para la fecha consultada.
+- **SC-014**: El 100 % de los reintentos de una solicitud confirmada con la misma clave de idempotencia evita crear suministros o salidas de inventario duplicados.
 
 ---
 
@@ -210,8 +277,9 @@ Verificar que la tarjeta métrica superior "Alimento Diario Requerido" calcule y
 - El registro o ingreso de recepciones de alimento en la bodega central (cubierto en SPEC-001).
 - La consulta y listado maestro de galpones y lotes (cubierto en SPEC de consultar galpón-lote).
 - La configuración o ajuste de planes nutricionales y rangos de edades por parte del nutricionista.
-- El registro operativo de suministros físicos de alimento servido en el galpón o la captura de mortalidad de aves.
+- La captura de mortalidad de aves.
 - El traslado físico, remisión o despacho de bultos desde bodega central hacia sub-bodegas.
+- La consulta diaria no registra ni modifica suministros. La captura del suministro físico confirmado al lote sí está dentro del alcance de esta especificación y genera una salida de inventario mediante el Plan 010.
 - La creación, edición o administración de usuarios, galpones y lotes.
 
 
