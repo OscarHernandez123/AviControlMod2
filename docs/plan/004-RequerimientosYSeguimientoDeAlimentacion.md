@@ -74,7 +74,7 @@ Todas las consultas operan en modo estrictamente de **solo lectura**, garantizan
 9. **Exclusión de Existencias Vencidas o Incompatibles**: Al cruzar contra bodega central, se consultan existencias netas de recepciones vigentes (no vencidas y no anuladas) que pertenezcan estrictamente al producto comercial o `TipoAlimento` asignado a la etapa.
 10. **Balance de Abastecimiento sin Reserva Física**: La consulta para administración suma la demanda proyectada de las etapas en curso de todos los lotes activos y la compara con el stock disponible de bodega central (`balanceKg = stockDisponibleKg - demandaConsolidadaKg`). No bloquea ni descuenta inventario; genera el indicador `REABASTECIMIENTO_NECESARIO` y bultos sugeridos a comprar si el balance es negativo.
 11. **Manejo de Errores y Estados**: Galpón o lote inexistente responde 404; parámetros inválidos 400; conflicto de inmutabilidad 409; fallos de servicios imprescindibles 503. Todo bajo `application/problem+json` (RFC 9457).
-12. **Consistencia Transaccional y Eventos**: Las proyecciones se persisten en base de datos PostgreSQL propia. El listener de eventos de activación (`EtapaNutricionalActivada`) ejecuta la creación de la proyección en la misma transacción o de forma desacoplada con idempotencia sobre el par `(loteId, nombreEtapa)`.
+12. **Consistencia Transaccional y Eventos**: Las proyecciones se persisten en base de datos PostgreSQL propia. El listener de eventos de activación (`EtapaNutricionalActivada`) ejecuta la creación de la proyección en la misma transacción o de forma desacoplada con idempotencia sobre el par `(loteId, etapaCrianza)`.
 
 ### Alcance documental
 
@@ -220,7 +220,7 @@ ProyeccionAlimentoEtapa (1) ───< (0..*) HistorialAjusteProyeccion
   id: UUID                                id: UUID
   loteId: UUID                            proyeccionEtapaId: UUID
   galponId: UUID                          fechaAjuste: Instant
-  nombreEtapa: String                     usuarioAjuste: UUID
+  etapaCrianza: EtapaCrianza              usuarioAjuste: UUID
   tipoAlimentoId: UUID                    motivoAjuste: MotivoAjusteEtapa
   tipoAlimentoNombre: String              justificacionAjuste: String
   alimentoId: UUID                        diasBaseAnterior: Integer
@@ -554,7 +554,7 @@ Los campos de alertas se incorporan dinámicamente en la lista `alertas` de `Req
 | Método y ruta | `GET /api/lotes/{loteId}/alimento-requerido` |
 | Autorización | `ROLE_ADMINISTRADOR`, `ROLE_NUTRICIONISTA` |
 | Entrada | `loteId` (UUID en ruta). |
-| Respuesta 200 | `ConsolidadoRequerimientoLoteResponse`: loteId, galponId, estadoCiclo (`EN_PROGRESO`, `FINALIZADO`), fechaConsulta, lista `etapas` (nombreEtapa, tipoAlimento, proyeccionKg, costoUnitarioKg, fuenteCosto, fechaCapturaCosto, advertenciaCosto, diasBase, diasProrroga, diasEfectivos, estadoEtapa, poblacionInicioEtapa, historialAjustes). **Sin sumatoria agregada de kilogramos**. |
+| Respuesta 200 | `ConsolidadoRequerimientoLoteResponse`: loteId, galponId, estadoCiclo (`EN_PROGRESO`, `FINALIZADO`), fechaConsulta, lista `etapas` (etapaCrianza, tipoAlimento, proyeccionKg, costoUnitarioKg, fuenteCosto, fechaCapturaCosto, advertenciaCosto, diasBase, diasProrroga, diasEfectivos, estadoEtapa, poblacionInicioEtapa, historialAjustes). **Sin sumatoria agregada de kilogramos**. |
 | Errores | 400 por UUID inválido, 401 sin autenticación, 403 sin rol, 404 si el lote no existe. |
 
 #### JSON de respuesta (`GET /api/lotes/{loteId}/alimento-requerido`)
@@ -568,7 +568,7 @@ Los campos de alertas se incorporan dinámicamente en la lista `alertas` de `Req
   "etapas": [
     {
       "etapaId": "b1c2d3e4-0001-4000-8000-000000000001",
-      "nombreEtapa": "PRE_INICIO",
+      "etapaCrianza": "PRE_INICIO",
       "tipoAlimento": "Pre-iniciador",
       "alimentoComercial": "Pre-iniciador Fuerte 40kg",
       "poblacionInicioEtapa": 10000,
@@ -586,7 +586,7 @@ Los campos de alertas se incorporan dinámicamente en la lista `alertas` de `Req
     },
     {
       "etapaId": "b1c2d3e4-0002-4000-8000-000000000002",
-      "nombreEtapa": "INICIO",
+      "etapaCrianza": "INICIO",
       "tipoAlimento": "Iniciador",
       "alimentoComercial": "Iniciador Pollito 40kg",
       "poblacionInicioEtapa": 9750,
@@ -647,7 +647,7 @@ Los campos de alertas se incorporan dinámicamente en la lista `alertas` de `Req
   - `EtapaNutricionalActivada(planGalponId, galponId, loteId, etapaCrianza, diaInicio, diaFin, racionKgPolloDia, alimentoId, occurredAt)`
   - `DuracionEtapaAjustada(planGalponId, etapaId, diasProrroga, diasEfectivosNuevos, motivo, justificacion, occurredAt)`
 - **Eventos producidos**:
-  - `ProyeccionAlimentoRegistrada(proyeccionId, loteId, nombreEtapa, proyeccionKg, costoUnitarioKg, occurredAt)`
+  - `ProyeccionAlimentoRegistrada(proyeccionId, loteId, etapaCrianza, proyeccionKg, costoUnitarioKg, occurredAt)`
   - `CostoUnitarioProyeccionCompletado(proyeccionId, loteId, costoUnitarioKg, usuarioId, occurredAt)`
 
 ### Definición del endpoint REST para User Story 5 (Completado Único)
