@@ -1,0 +1,278 @@
+# Implementation Plan: Gestión de Medicamentos y Consumo de Medicamentos
+
+**Date:** 02/10/2026  
+**Arquitectura y tecnologías:** `General.md`  
+**Specs:**
+- `008-RegistrarMedicacion.md`
+- `015-ConsultarMedicacionPorGalponPorDia.md`
+- `013-RegistrarConsumoMedicamento.md`
+
+---
+
+## 1. Summary
+
+Implementar el registro y edición de medicaciones, la consulta diaria de tratamientos por galpón y el registro del consumo real de medicamentos. El plan permite que el veterinario defina una medicación asociada a una enfermedad y a un medicamento del inventario, que el trabajador consulte las indicaciones vigentes y que el veterinario registre la cantidad realmente aplicada.
+
+La medicación prescrita y el consumo real son conceptos diferentes. Registrar una medicación no descuenta inventario. Registrar un consumo sí descuenta existencias, distribuye la cantidad entre recepciones disponibles mediante FIFO y conserva el precio neto histórico de cada recepción para el costeo posterior del Módulo 3.
+
+`Galpon` y `Lote` continúan siendo entidades propietarias del Módulo 1. Diagnóstico y enfermedad pertenecen a las capacidades sanitarias relacionadas. Medicamento, recepción, existencias, unidad base y precio de compra pertenecen al inventario del Plan 002. Este plan consulta esas capacidades mediante puertos internos y no crea copias autoritativas.
+
+---
+
+## 2. Technical Context
+
+- **Performance Goals:** El 95 % de los registros de medicación y consumo queda disponible en máximo 2 segundos después de su confirmación. Las consultas diarias responden en máximo 2 segundos sin realizar escrituras. La distribución de un consumo entre recepciones se ejecuta en una única transacción local.
+- **Constraints:** Solo el veterinario registra o edita medicaciones y registra consumos. La consulta diaria es de solo lectura. La medicación debe referenciar una enfermedad disponible y un medicamento existente en inventario. El consumo obtiene diagnóstico, lote, galpón, medicación y medicamento desde el diagnóstico; el veterinario no puede sustituir manualmente el medicamento durante el consumo.
+- **Scale/Scope:** Cinco historias de usuario, catálogo de medicaciones, consultas diarias individuales y consolidadas, normalización de unidades, distribución FEFO/FIFO entre recepciones, descuento de inventario, detalle histórico por recepción, eventos y adaptadores internos.
+- **Dependencias funcionales:** Enfermedades y diagnósticos del Plan 005; `Galpon` y `Lote` del Módulo 1; medicamento, recepción, existencias, unidad base y precio del Plan 002; cálculo de costos del Módulo 3; autenticación, actor, reloj y errores de `General.md`.
+
+---
+
+## 3. Decisiones Específicas
+
+1. **Medicación:** Entidad propia con `enfermedadId`, `medicamentoId`, `dosis`, `diasTotales` y `descripcion`. Todos son obligatorios. Medicamento y enfermedad deben volver a validarse al confirmar.
+2. **Edición histórica:** Editar una medicación solo afecta diagnósticos futuros. Un diagnóstico conserva la dosis, duración, medicamento y demás valores utilizados al registrarse.
+3. **Inventario:** Registrar o editar una medicación no cambia existencias. Solo `RegistrarConsumoMedicamentoUseCase` descuenta recepciones.
+4. **Consumo:** `ConsumoMedicamento` pertenece a un diagnóstico y obtiene de él `galponId`, `loteId` y `medicamentoId`. Esos datos no se reciben como selección editable del cliente.
+5. **Unidades:** El consumo acepta una unidad compatible con la unidad base del medicamento. La normalización debe utilizar el contrato del inventario; magnitudes incompatibles se rechazan.
+6. **Recepciones (FIFO):** El descuento usa primero la recepción con vencimiento más próximo entre las disponibles del mismo medicamento. Si una no alcanza, continúa con las siguientes. Cada porción genera un `DetalleConsumo` con cantidad, recepción y precio neto histórico por unidad base.
+7. **Atomicidad:** Si las existencias dejan de ser suficientes, una recepción vence o se anula antes de confirmar, se recalcula la distribución. Si no puede cubrirse el total, se rechaza sin descuentos parciales.
+8. **Consultas diarias:** La consulta toma la fecha actual del `Clock` compartido y devuelve los tratamientos vigentes de esa fecha. No modifica diagnóstico, consumo ni inventario.
+9. **Galpones y trabajadores:** No se consulta una asignación trabajador-galpón. La consulta individual recibe `galponId` y el resumen devuelve el universo permitido por el rol.
+10. **Eventos:** Las escrituras publican eventos después de confirmar la transacción local. Los consumidores son idempotentes por `eventId`. Las consultas no publican eventos.
+11. **Persistencia:** Se crean tablas para medicaciones, consumos y detalles. Las versiones de migración utilizan la siguiente versión disponible del repositorio y no se fijan números que puedan colisionar con el Plan 002.
+12. **Consistencia:** La confirmación de consumo vuelve a consultar diagnóstico, medicamento y recepciones dentro de la transacción. No se usan existencias capturadas previamente por la interfaz.
+13. **Costeo:** El consumo deja disponibles para Módulo 3 `loteId`, `galponId`, fecha, cantidad normalizada, recepción y precio neto histórico. No calcula la liquidación final del lote en este plan.
+
+---
+
+## 4. Project Structure
+
+Documentation (this feature)
+docs/
+├── specs/
+│   ├── 008-RegistrarMedicacion.md
+│   ├── 015-ConsultarMedicacionPorGalponPorDia.md
+│   └── 013-RegistrarConsumoMedicamento.md
+└── plan/
+    └── 006-GestionDeMedicamentosYConsumoDeMedicamentos.md
+
+Source Code (repository root)
+src/main/java/com/avicontrol/
+├── domain/
+│   ├── model/medicamento/
+│   │   ├── Medicacion.java
+│   │   ├── ConsumoMedicamento.java
+│   │   ├── DetalleConsumo.java
+│   │   └── EstadoConsumo.java
+│   ├── exception/medicamento/
+│   │   ├── MedicacionInvalidaException.java
+│   │   ├── MedicacionNoEncontradaException.java
+│   │   ├── MedicamentoNoDisponibleException.java
+│   │   ├── UnidadIncompatibleException.java
+│   │   ├── ExistenciasInsuficientesException.java
+│   │   └── DiagnosticoNoEncontradoException.java
+│   └── port/out/medicamento/
+│       ├── MedicacionRepositoryPort.java
+│       ├── ConsumoMedicamentoRepositoryPort.java
+│       ├── EnfermedadQueryPort.java
+│       ├── DiagnosticoQueryPort.java
+│       ├── GalponQueryPort.java
+│       ├── LoteQueryPort.java
+│       ├── InventarioMedicamentoPort.java
+│       └── IntegrationEventPublisherPort.java
+├── application/medicamento/
+│   ├── RegistrarMedicacionUseCase.java
+│   ├── EditarMedicacionUseCase.java
+│   ├── ConsultarMedicacionDiariaUseCase.java
+│   ├── ConsultarResumenMedicacionDiariaUseCase.java
+│   ├── RegistrarConsumoMedicamentoUseCase.java
+│   └── result/
+│       ├── MedicacionResult.java
+│       ├── MedicacionDiariaResult.java
+│       ├── ResumenMedicacionDiariaResult.java
+│       └── ConsumoMedicamentoResult.java
+└── infrastructure/
+    ├── adapter/in/rest/medicamento/
+    │   ├── MedicacionController.java
+    │   ├── MedicacionDiariaController.java
+    │   └── ConsumoMedicamentoController.java
+    ├── adapter/out/internal/medicamento/
+    │   ├── EnfermedadQueryAdapter.java
+    │   ├── DiagnosticoQueryAdapter.java
+    │   ├── GalponQueryAdapter.java
+    │   ├── LoteQueryAdapter.java
+    │   └── InventarioMedicamentoAdapter.java
+    ├── adapter/out/persistence/medicamento/
+    │   ├── MedicacionPersistenceAdapter.java
+    │   └── ConsumoMedicamentoPersistenceAdapter.java
+    └── config/
+        └── MedicamentoBeanConfiguration.java
+
+src/test/java/com/avicontrol/
+├── domain/model/medicamento/
+├── application/medicamento/
+├── infrastructure/adapter/in/rest/medicamento/
+├── infrastructure/adapter/out/internal/medicamento/
+└── integration/MedicamentoIntegrationTest.java
+
+5. Entidades Clave (Modelado DDD)
+
++---------------------------------------------------------------------------------+
+|                                 <<Aggregate Root>>                              |
+|                                    Medicacion                                   |
++---------------------------------------------------------------------------------+
+| - id: UUID                                                                      |
+| - enfermedadId: UUID                                 (Ref. Spec 009)            |
+| - medicamentoId: UUID                                (Ref. Inventario Plan 002) |
+| - dosis: String                                      (Valor y unidad)           |
+| - diasTratamiento: Integer                           (Entero > 0)               |
+| - descripcion: String                                (Pautas de administración) |
+| - activa: Boolean                                                               |
+| - version: Integer                                   (@Version Optimistic Lock) |
++---------------------------------------------------------------------------------+
+
++---------------------------------------------------------------------------------+
+|                                 <<Aggregate Root>>                              |
+|                            ConsumoMedicamentoPorLote                            |
++---------------------------------------------------------------------------------+
+| - id: UUID                                                                      |
+| - diagnosticoId: UUID                                (Ref. Spec 011)            |
+| - loteId: UUID                                       (Ref. Externa Módulo 1)    |
+| - galponId: UUID                                     (Ref. Externa Módulo 1)    |
+| - medicamentoId: UUID                                (Derivado de Spec 008)     |
+| - cantidadIngresada: BigDecimal                                                 |
+| - unidadIngresada: String                                                       |
+| - cantidadNormalizada: BigDecimal                    (En unidad base)           |
+| - unidadBase: String                                                            |
+| - fechaAplicacion: LocalDate                                                    |
+| - registradoEn: Instant                              (UTC al confirmar)         |
+| - version: Integer                                   (@Version Optimistic Lock) |
++---------------------------------------------------------------------------------+
+                                   │
+                                   │ 1..N
+                                   ▼
++---------------------------------------------------------------------------------+
+|                                 DetalleConsumo                                  |
++---------------------------------------------------------------------------------+
+| - id: UUID                                                                      |
+| - consumoId: UUID                                    (FK al agregado)           |
+| - recepcionId: UUID                                  (Ref. Inventario Bodega)   |
+| - cantidadDescontada: BigDecimal                     (En unidad base)           |
+| - precioHistoricoUnidadBase: BigDecimal              (Tarifa compra del lote)   |
+| - moneda: String                                     (COP / USD)                |
++---------------------------------------------------------------------------------+
+
+## 6. Contratos de Puertos
+
+| Puerto | Responsabilidad |
+| :--- | :--- |
+| `MedicacionRepositoryPort` | Crear, buscar, editar y listar medicaciones disponibles. |
+| `ConsumoMedicamentoRepositoryPort` | Guardar consumos y detalles, consultar consumos para costeo y evitar duplicados. |
+| `EnfermedadQueryPort` | Confirmar que la enfermedad existe y está disponible en estado activa. |
+| `DiagnosticoQueryPort` | Obtener diagnóstico, lote, galpón, medicación y medicamento que originan el consumo. |
+| `GalponQueryPort` | Consultar datos actuales para las respuestas diarias. |
+| `LoteQueryPort` | Consultar lote activo, población y edad para las respuestas diarias. |
+| `InventarioMedicamentoPort` | Confirmar medicamento, unidad base, disponibilidad, recepciones ordenadas por vencimiento (FIFO), normalizar unidades y descontar existencias con precio histórico. |
+| `IntegrationEventPublisherPort` | Publicar eventos versionados para Plan 002, Módulo 3 y otros consumidores. |
+
+## 7. Contratos HTTP y Comunicación REST
+
+La arquitectura expone endpoints REST bajo el prefijo `/api/v1` (o `/api/`) orientados a JSON utilizando `application/problem+json` para el manejo estándar de errores.
+
+| Endpoint | Método | Acceso | Propósito y Comunicación |
+| :--- | :--- | :--- | :--- |
+| `/api/medicaciones` | POST | `ROLE_VETERINARIO` | Registra una medicación asociada a enfermedad e inventario. |
+| `/api/medicaciones/{medicacionId}` | PUT | `ROLE_VETERINARIO` | Edita una medicación para diagnósticos futuros. |
+| `/api/galpones/{galponId}/medicacion-diaria` | GET | `ROLE_TRABAJADOR` o Admin | Consulta tratamientos vigentes para la fecha actual en un galpón. |
+| `/api/medicacion-diaria` | GET | `ROLE_TRABAJADOR` o Admin | Consulta el resumen consolidado de medicación diaria permitido por el rol. |
+| `/api/diagnosticos/{diagnosticoId}/consumos-medicamento` | POST | `ROLE_VETERINARIO` | Registra el consumo real de medicamento. |
+
+### Formato estándar de errores HTTP
+
+Ante un conflicto de negocio (ej. existencias insuficientes, unidad incompatible, diagnóstico inexistente), la API responde con el código HTTP correspondiente (`409 Conflict`, `400 Bad Request`, `403 Forbidden`, `404 Not Found`) estructurado bajo el estándar *problem details*:
+
+```json
+{
+  "type": "https://avicontrol/errors/consumo-medicamento-no-permitido",
+  "title": "Consumo de medicamento no permitido",
+  "status": 409,
+  "detail": "Las existencias disponibles no cubren la cantidad solicitada",
+  "instance": "/api/diagnosticos/{diagnosticoId}/consumos-medicamento",
+  "code": "EXISTENCIAS_INSUFICIENTES",
+  "correlationId": "uuid",
+  "fieldErrors": []
+}
+
+## 8. Plan de Ejecución por Fases (Tareas)
+
+### Phase 1: Setup (Shared Infrastructure)
+
+- **T001** — Contrastar los estados del tratamiento y la forma de obtener el diagnóstico vigente con el Plan 005.
+- **T002** — Confirmar que no existe asignación trabajador-galpón y registrar la aclaración correspondiente.
+- **T003** — Acordar roles y permisos técnicos (`ROLE_VETERINARIO`, `ROLE_TRABAJADOR`, administrador autorizado).
+- **T004** — Acordar con Plan 002 la unidad base, conversiones, ordenamiento FIFO por vencimiento, precio neto histórico y operación transaccional de descuento.
+- **T005** — Acordar con Módulo 3 el contrato de consumo y detalle requerido para calcular costos.
+- **T006** — Documentar la dosis como instrucción textual estructurada ya que no se requieren calendarios complejos de días alternos en esta versión.
+- **T007** — Preparar fixtures de enfermedad, diagnóstico tratable, diagnóstico de sacrificio, recepciones con vencimientos y precios diferentes, y galpones sin tratamiento.
+
+### Phase 2: Foundational (Blocking Prerequisites)
+
+- **T008** — Implementar la entidad de dominio `Medicacion` con validación de enfermedad, medicamento, dosis, días positivos y descripción.
+- **T009** — Implementar `ConsumoMedicamento` y `DetalleConsumo` con cantidades normalizadas y precio histórico.
+- **T010** — Definir excepciones de dominio y puertos de diagnóstico, enfermedad, galpón, lote e inventario.
+- **T011** — Crear migraciones Flyway secuenciales para medicaciones, consumos, detalles y eventos procesados.
+- **T012** — Implementar adaptadores internos sin acceder a repositorios JPA privados de otros módulos.
+- **T013** — Configurar transacciones locales (`@Transactional`), outbox e idempotencia.
+- **T014** — Verificar invariantes: cantidad normalizada positiva, suma de detalles igual al consumo normalizado y ningún detalle con recepción vencida o anulada.
+
+### Phase 3: User Story 1 — Registrar una Medicación (Priority: P1)
+
+- **T015** — Probar validaciones de campos obligatorios, espacios, días positivos y rol veterinario.
+- **T016** — Probar validación de enfermedad y medicamento disponibles.
+- **T017** — Probar que registrar una medicación no modifica existencias en inventario.
+- **T018** — Implementar `RegistrarMedicacionUseCase`, persistencia, evento `MedicacionRegistrada` y endpoint.
+
+### Phase 4: User Story 2 — Editar una Medicación (Priority: P2)
+
+- **T019** — Probar edición válida y restricciones de rol.
+- **T020** — Probar que diagnósticos existentes conservan valores históricos inmutables.
+- **T021** — Implementar `EditarMedicacionUseCase`, control de versión optimista, evento `MedicacionActualizada` y endpoint.
+
+### Phase 5: User Story 3 — Consultar Medicación Diaria por Galpón (Priority: P1)
+
+- **T022** — Probar tratamiento activo, tratamiento finalizado, ausencia de diagnóstico y lote sin población.
+- **T023** — Probar cálculo de día actual frente a días totales y diagnóstico concurrente.
+- **T024** — Probar que la consulta opera estrictamente en solo lectura sin escribir ni descontar inventario.
+- **T025** — Implementar `ConsultarMedicacionDiariaUseCase`, resultados, DTOs y endpoint.
+
+### Phase 6: User Story 4 — Consultar Resumen Consolidado Diario (Priority: P2)
+
+- **T026** — Probar uno, varios y cero tratamientos, con conteos y tarjetas correctas en pantalla de inicio.
+- **T027** — Probar que no se aplica filtro por asignación inexistente y que se respetan permisos por rol.
+- **T028** — Probar que múltiples tratamientos del mismo galpón aparecen desglosados y separados.
+- **T029** — Implementar `ConsultarResumenMedicacionDiariaUseCase` y endpoint consolidado.
+
+### Phase 7: User Story 5 — Registrar Consumo Real de Medicamento (Priority: P1)
+
+- **T030** — Probar autorización, diagnóstico existente y obtención automática de galpón, lote y medicamento.
+- **T031** — Probar normalización de unidades compatibles y rechazo de unidades incompatibles.
+- **T032** — Probar distribución FIFO por fecha de vencimiento en una y varias recepciones.
+- **T033** — Probar vencimiento, anulación, falta de existencias y ausencia de descuentos parciales.
+- **T034** — Probar precios históricos diferentes sin promediar y suma de detalles igual a cantidad normalizada.
+- **T035** — Implementar `RegistrarConsumoMedicamentoUseCase`, persistencia, descuento transaccional, evento `ConsumoMedicamentoRegistrado` y endpoint.
+- **T036** — Verificar contrato de datos crudos para el costeo del Módulo 3.
+
+### Phase 8: Polish & Cross-Cutting Concerns
+
+- **T037** — Documentar endpoints, roles, unidades, mensajes y errores en OpenAPI.
+- **T038** — Completar `MedicamentoIntegrationTest` con registro, edición, consulta diaria y consumo.
+- **T039** — Verificar que registrar o editar medicación no descuente existencias ni modifique diagnósticos existentes [cite: 5].
+- **T040** — Verificar que una consulta diaria no escriba diagnósticos, consumos ni inventario.
+- **T041** — Verificar atomicidad del descuento y ausencia de consumos parciales ante concurrencia.
+- **T042** — Verificar idempotencia de eventos generados (`ConsumoMedicamentoRegistrado`) y eventos de inventario.
+- **T043** — Verificar que Módulo 3 pueda calcular costo como suma de cantidad descontada por precio histórico de cada recepción.
+- **T044** — Verificar que Plan 005 consuma `MedicacionQueryPort` y no duplique el catálogo [cite: 6].
+- **T045** — Extender comprobaciones arquitectónicas con ArchUnit (dominio sin frameworks, aplicación sin JPA/HTTP y adaptadores sin acceso a repositorios privados).
+- **T046** — Ejecutar suite completa de pruebas unitarias y de integración mediante Gradle Wrapper.
+- **T047** — Medir objetivos de respuesta (< 2s) y garantizar que el resumen optimice consultas por conjunto.
