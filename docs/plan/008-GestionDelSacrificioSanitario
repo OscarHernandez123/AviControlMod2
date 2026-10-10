@@ -1,0 +1,297 @@
+# Implementation Plan: Gestión del Sacrificio Sanitario
+
+> [!IMPORTANT]
+> **Date:** 02/10/2026  
+> **Arquitectura y tecnologías:** `General.md`  
+> **Specs:** `012-OrdenarSacrificioSanitario.md`
+
+---
+
+## 1. Summary
+
+Implementar el caso de uso **Ordenar sacrificio sanitario** correspondiente al Spec 012, el cual opera exclusivamente bajo el rol de `VETERINARIO` y actúa como una extensión (`<<extend>>`) del diagnóstico clínico mortal (Spec 011 con `requiereSacrificioSanitario == true`).
+
+El ciclo de vida de la orden de sacrificio sanitario comprende **dos etapas secuenciales y obligatorias**:
+
+> [!NOTE]
+> **1️⃣ Emisión de la orden**
+> El veterinario emite la orden asociada al diagnóstico letal, al galpón en aislamiento y al lote activo. La orden se registra en estado `PENDIENTE` sin alterar todavía la población ni el estado operativo del galpón en el Módulo 1.
+
+> [!WARNING]
+> **2️⃣ Confirmación de ejecución**
+> Al materializarse el procedimiento en campo, el veterinario confirma la ejecución. Esto desencadena de forma atómica:
+> - La actualización de la población del lote a cero (`0`).
+> - La transición del estado del galpón de `aislamiento` a `vaciado_sanitario` en el Módulo 1.
+> - El cierre de la orden a `EJECUTADA`.
+> - La generación del evento asíncrono.
+> - La auditoría legal.
+
+El plan preserva la **inmutabilidad** de los registros, **prohíbe el borrado físico** (`DELETE`), garantiza **idempotencia** mediante cabeceras `X-Idempotency-Key` y control optimista (`@Version`), e **inhibe cualquier intento de reintegro automático** por parte del scheduler del Spec 011 mientras la orden permanezca pendiente.
+
+---
+
+## 2. Technical Context
+
+> [!TIP]  Performance Goals
+> Las operaciones de emisión y confirmación de la orden de sacrificio, junto con su persistencia atómica, responden en menos de **1 segundo (p95)**. Las peticiones idénticas reintentadas mediante caché responden en menos de **100 ms**.
+
+> [!CAUTION]  Constraints
+> - Solo el usuario con rol `VETERINARIO` puede emitir y confirmar órdenes de sacrificio.
+> - La precondición estricta exige un diagnóstico clínico vigente con patología letal (`requiereSacrificioSanitario == true`).
+> - El galpón debe estar en estado `aislamiento` con población mayor a cero.
+> - El alcance de la orden es **total** (100 % de la población del lote); no se permiten sacrificios parciales ni ingresos numéricos manuales.
+
+> [!NOTE]  Scale/Scope
+> Un agregado raíz (`OrdenSacrificioSanitario`), dos operaciones principales de escritura (emisión y confirmación), eventos de integración versionados hacia Kafka mediante outbox, adaptadores de persistencia relacional en PostgreSQL y un adaptador de integración síncrona con el Módulo 1.
+
+> [!IMPORTANT]  Dependencias funcionales
+> Diagnósticos y patologías del Plan 005 (Specs 009 y 011); control operativo de galpones y lotes del Módulo 1; autenticación, actor, reloj, transacciones y formato de errores definidos en `General.md`.
+
+---
+
+## 3. Decisiones Específicas
+
+> [!NOTE]  Orden de Sacrificio Sanitario
+> Entidad raíz de agregado (`OrdenSacrificioSanitario`) propia del subsistema sanitario con:
+> - `id` (UUID)
+> - `diagnosticoId`
+> - `galponId`
+> - `loteId`
+> - `veterinarioId`
+> - `alcance` (fijo en `TOTAL`)
+> - `estado` (`PENDIENTE`, `EJECUTADA`)
+> - Fechas de emisión y ejecución
+> - Observaciones
+> - Control de concurrencia optimista (`@Version`)
+
+> [!CAUTION] 🩺 Precondición Clínica Estricta
+> La emisión valida síncronamente contra el puerto de diagnósticos y el catálogo nosológico que la enfermedad diagnosticada posea el indicador `requiereSacrificioSanitario == true`. Si el indicador es falso, se rechaza de inmediato con `HTTP 409 Conflict` (`EnfermedadNoRequiereSacrificioException`).
+
+> [!TIP]  Desacoplamiento Emisión vs. Ejecución
+> - **Emisión:** No modifica datos en el Módulo 1; solo registra la directriz legal en estado `PENDIENTE`.
+> - **Ejecución:** Materializa los cambios en el Módulo 1 (población a `0` y estado a `vaciado_sanitario`) únicamente al confirmarse.
+
+> [!WARNING]  Inhibición de Reintegros
+> El componente `DiagnosticoReintegroScheduler` (Spec 011) debe consultar la existencia de órdenes de sacrificio en estado `PENDIENTE` para omitir y bloquear cualquier transición automática de reintegro a producción sobre el galpón en cuarentena.
+
+> [!IMPORTANT]  Atomicidad e Integridad Transaccional
+> La confirmación agrupa:
+> - La actualización del Módulo 1.
+> - El cambio de estado de la orden.
+> - El registro en la tabla outbox (`san_outbox`).
+> - El asiento de auditoría (`san_auditoria`).
+>
+> Todo en una **única transacción local** (`@Transactional`). No se usan transacciones distribuidas 2PC.
+
+> [!NOTE]  Idempotencia y Concurrencia
+> Se implementa control optimista vía `@Version` y soporte de cabeceras técnicas `X-Idempotency-Key` retenidas durante **24 horas** para evitar duplicados ante reintentos de red.
+
+> [!CAUTION]  Prohibición de Borrado Físico
+> No se permite ninguna sentencia `DELETE` SQL sobre las tablas de órdenes de sacrificio ni de auditoría.
+
+---
+
+## 4. Project Structure
+
+Documentation (this feature)
+docs/
+├── specs/
+│   └── 012-OrdenarSacrificioSanitario.md[cite: 8, 18, 30]
+└── plan/
+    └── 008-GestionDelSacrificioSanitario.md
+
+Source Code (repository root)
+src/main/java/com/avicontrol/
+├── domain/
+│   ├── model/sanitario/
+│   │   └── sacrificio/
+│   │       ├── OrdenSacrificioSanitario.java
+│   │       ├── EstadoOrden.java
+│   │       └── AlcanceOrden.java
+│   ├── exception/sanitario/
+│   │   ├── EnfermedadNoRequiereSacrificioException.java
+│   │   ├── OrdenYaEjecutadaException.java
+│   │   └── EstadoGalponIncompatibleException.java
+│   └── port/out/sanitario/
+│       ├── OrdenSacrificioRepositoryPort.java
+│       ├── DiagnosticoQueryPort.java
+│       ├── GalponQueryPort.java
+│       ├── LoteQueryPort.java
+│       ├── CambiarEstadoOperativoGalponPort.java
+│       ├── ActualizarPoblacionLotePort.java
+│       └── IntegrationEventPublisherPort.java
+├── application/sanitario/
+│   ├── EmitirOrdenSacrificioUseCase.java
+│   ├── ConfirmarEjecucionSacrificioUseCase.java
+│   └── result/
+│       └── OrdenSacrificioResult.java
+└── infrastructure/
+    ├── adapter/in/rest/sanitario/
+    │   └── OrdenSacrificioController.java
+    ├── adapter/out/internal/sanitario/
+    │   ├── DiagnosticoQueryAdapter.java
+    │   ├── GalponModulo1Adapter.java
+    │   └── LoteModulo1Adapter.java
+    ├── adapter/out/persistence/sanitario/
+    │   ├── OrdenSacrificioPersistenceAdapter.java
+    │   └── SpringDataOrdenSacrificioRepository.java
+    └── config/
+        └── SacrificioSanitarioBeanConfiguration.java
+
+src/test/java/com/avicontrol/
+├── domain/model/sanitario/sacrificio/
+├── application/sanitario/
+├── infrastructure/adapter/in/rest/sanitario/
+└── integration/SacrificioSanitarioIntegrationTest.java
+
+5. Entidades Clave (Modelado DDD)
+
++---------------------------------------------------------------------------------+
+|                                 <<Aggregate Root>>                              |
+|                              OrdenSacrificioSanitario                           |
++---------------------------------------------------------------------------------+
+| - id: UUID                                                                      |
+| - diagnosticoId: UUID                                (Ref. Spec 011)|
+| - galponId: UUID                                     (Ref. Externa Módulo 1)[cite: 8, 18, 30]|
+| - loteId: UUID                                       (Ref. Externa Módulo 1)[cite: 8, 18, 30]|
+| - veterinarioId: UUID                                      |
+| - alcance: AlcanceOrden                              (TOTAL)     |
+| - estado: EstadoOrden                                (PENDIENTE, EJECUTADA)|
+| - fechaEmision: Instant                                          |
+| - fechaEjecucion: Instant [0..1]                     (Nullable)  |
+| - observacionesEmision: String                                   |
+| - observacionesEjecucion: String [0..1]              (Nullable)  |
+| - version: Integer                                   (@Version)|
++---------------------------------------------------------------------------------+
+
+## 5. Entidades Clave (Modelado DDD)
+
+> [!NOTE] 🧬 Agregado Raíz
+> **`OrdenSacrificioSanitario`** — Agregado raíz que encapsula el ciclo de vida de la directriz de erradicación biológica total.
+
+> [!IMPORTANT] 🗄️ Tablas Relacionales
+> | Tabla | Propósito |
+> | :--- | :--- |
+> | `san_ordenes_sacrificio` | Tabla relacional propietaria del subsistema de sanidad para la persistencia de las órdenes. |
+> | `san_outbox` | Tabla de transaccionalidad local para la publicación garantizada de eventos hacia Kafka. |
+> | `san_auditoria` | Bitácora inmutable *append-only* de trazabilidad legal profesional. |
+
+---
+
+## 6. Contratos de Puertos
+
+> [!TIP] 🔌 Puertos de Salida del Subsistema Sanitario
+
+| Puerto | Responsabilidad |
+| :--- | :--- |
+| `OrdenSacrificioRepositoryPort` | Persistir nuevas órdenes, buscar por identificador, listar por estado o galpón, y actualizar el agregado con control de concurrencia optimista. |
+| `DiagnosticoQueryPort` | Consultar la existencia y validez del diagnóstico clínico (Spec 011) y verificar que la enfermedad asociada cumpla con `requiereSacrificioSanitario == true`. |
+| `GalponQueryPort` | Consultar el estado operativo vigente del galpón en el Módulo 1 (verificando que permanezca en `aislamiento`). |
+| `LoteQueryPort` | Consultar la población actual del lote activo en el Módulo 1. |
+| `CambiarEstadoOperativoGalponPort` | Solicitar la transición del galpón de `aislamiento` a `vaciado_sanitario` en el Módulo 1. |
+| `ActualizarPoblacionLotePort` | Ordenar al Módulo 1 fijar la población actual del lote exactamente en cero (`0`). |
+| `IntegrationEventPublisherPort` | Publicar eventos de integración versionados (`OrdenSacrificioEmitidaIntegrationEvent` y `SacrificioEjecutadoIntegrationEvent`) a través del outbox. |
+
+---
+
+## 7. Contratos HTTP y Comunicación REST
+
+> [!NOTE]
+> Endpoints expuestos bajo el prefijo `/api/v1/sanitary/sacrificios`, orientados a JSON y estructurados con `application/problem+json` para el manejo de errores conforme a **RFC 9457**.
+
+### Endpoints
+
+| Endpoint | Método | Acceso | Propósito y Descripción |
+| :--- | :--- | :--- | :--- |
+| `/api/v1/sanitary/sacrificios` | `POST` | `ROLE_VETERINARIO` | Emite una nueva orden de sacrificio sanitario en estado `PENDIENTE`. |
+| `/api/v1/sanitary/sacrificios/{id}/confirmar` | `PATCH` | `ROLE_VETERINARIO` | Confirma la ejecución material del sacrificio: actualiza población a `0`, cambia galpón a `vaciado_sanitario` y cierra la orden a `EJECUTADA`. |
+| `/api/v1/sanitary/sacrificios/{id}` | `GET` | `ROLE_VETERINARIO` | Consulta el detalle de una orden de sacrificio específica. |
+
+### Formato Estándar de Errores HTTP
+
+> [!CAUTION]
+> Ante violaciones de reglas de negocio (ej. enfermedad no letal, galpón no aislado, orden ya ejecutada), la API responde con el código HTTP correspondiente (`409 Conflict`, `400 Bad Request`, `403 Forbidden`, `404 Not Found`).
+
+{
+  "type": "https://avicontrol/errors/enfermedad-no-requiere-sacrificio",
+  "title": "Operación sanitaria no permitida",
+  "status": 409,
+  "detail": "La enfermedad diagnosticada no requiere sacrificio sanitario obligatorio",
+  "instance": "/api/v1/sanitary/sacrificios",
+  "code": "ENFERMEDAD_NO_REQUIERE_SACRIFICIO",
+  "correlationId": "uuid-correlacion",
+  "fieldErrors": []
+}
+
+## 8. Plan de Ejecución por Fases (Tareas)
+
+> [!IMPORTANT]  Phase 1: Setup (Shared Infrastructure)
+> **Objetivo:** Acordar contratos, dependencias y reglas transversales con Módulo 1 y Plan 005.
+
+- **T001** — Contrastar y confirmar con el Módulo 1 los contratos de consulta de población y los métodos para mutar el estado del galpón a `vaciado_sanitario` y la población del lote a cero.
+- **T002** — Acordar con el Plan 005 (Spec 011) el punto de extensión (`<<extend>>`) y la lógica de inhibición del scheduler de reintegro ante órdenes pendientes.
+- **T003** — Validar restricciones de seguridad para asegurar que únicamente usuarios con rol `VETERINARIO` puedan invocar los endpoints de emisión y confirmación `[cite: 1, 8, 18, 30]`.
+- **T004** — Acordar esquemas, nombres y tópicos Kafka para los eventos de integración (`sanitary.sacrifice.issued.v1` y `sanitary.sacrifice.executed.v1`).
+- **T005** — Crear fixtures de prueba con diagnósticos de patologías letales (ej. Newcastle velogénico), galpones en aislamiento y lotes con población activa.
+- **T006** — Alinear configuración de transacciones locales, outbox, manejo de excepciones y reloj UTC con `General.md`.
+
+---
+
+> [!TIP]  Phase 2: Foundational (Blocking Prerequisites)
+> **Objetivo:** Construir el dominio, la persistencia y los puertos compartidos por todas las historias.
+
+- **T007** — Implementar la entidad de dominio `OrdenSacrificioSanitario`, sus value objects y enums (`EstadoOrden`, `AlcanceOrden`) en Java puro.
+- **T008** — Definir excepciones de dominio específicas (`EnfermedadNoRequiereSacrificioException`, `OrdenYaEjecutadaException`, `EstadoGalponIncompatibleException`).
+- **T009** — Definir puertos de salida para repositorio, consultas externas y publicación de eventos.
+- **T010** — Crear la migración Flyway para la tabla `san_ordenes_sacrificio`, índices y restricciones de unicidad correspondientes utilizando la siguiente versión disponible.
+- **T011** — Implementar adaptadores de persistencia relacional con Spring Data JPA y control de concurrencia optimista (`@Version`).
+- **T012** — Implementar adaptadores de consulta e integración con el Módulo 1 mediante puertos públicos sin acoplamientos a repositorios privados ajenos.
+- **T013** — Configurar el mecanismo de idempotencia mediante la retención de cabeceras `X-Idempotency-Key` durante 24 horas.
+
+---
+
+> [!NOTE]  Phase 3: User Story 1 — Emisión de la Orden de Sacrificio Sanitario Total (Priority: P1)
+> **Objetivo:** El veterinario emite la orden en estado `PENDIENTE` sin alterar el Módulo 1.
+
+- **T014** — Probar validaciones de dominio: obligatoriedad de diagnóstico mortal (`requiereSacrificioSanitario == true`), galpón en aislamiento y población > 0 `[cite: 4, 8, 18, 30]`.
+- **T015** — Probar que la emisión crea la orden en estado `PENDIENTE` sin alterar la población del lote ni el estado del galpón en el Módulo 1.
+- **T016** — Probar la atomicidad del guardado local junto con el outbox (`san_outbox`) y el registro de auditoría (`san_auditoria`).
+- **T017** — Implementar el caso de uso `EmitirOrdenSacrificioUseCase`.
+- **T018** — Crear DTOs de solicitud/respuesta, mappers y adaptadores REST para el endpoint `POST /api/v1/sanitary/sacrificios`.
+
+---
+
+> [!WARNING]  Phase 4: User Story 2 — Confirmación de la Ejecución del Sacrificio Sanitario (Priority: P2)
+> **Objetivo:** El veterinario confirma la ejecución material y se muta el Módulo 1 de forma atómica.
+
+- **T019** — Probar validaciones previas a la confirmación: orden en `PENDIENTE`, galpón aún en `aislamiento` y población viva existente.
+- **T020** — Probar la mutación atómica: población del lote fijada a cero, estado del galpón transicionado a `vaciado_sanitario` y orden cerrada a `EJECUTADA`.
+- **T021** — Probar el comportamiento del rollback transaccional completo ante caídas o timeouts del Módulo 1 `[cite: 18, 30]`.
+- **T022** — Implementar el caso de uso `ConfirmarEjecucionSacrificioUseCase` `[cite: 18, 30]`.
+- **T023** — Crear DTOs, mappers y adaptadores REST para el endpoint `PATCH /api/v1/sanitary/sacrificios/{id}/confirmar` `[cite: 18, 30]`.
+
+---
+
+> [!CAUTION]  Phase 5: User Story 3 — Idempotencia y Blindaje Transaccional (Priority: P3)
+> **Objetivo:** Garantizar idempotencia, inhibición de reintegros y prohibición de borrado físico.
+
+- **T024** — Probar retransmisiones bajo la misma cabecera `X-Idempotency-Key` tanto en emisión como en confirmación, verificando respuestas cacheadas sin duplicar mutaciones ni eventos.
+- **T025** — Probar la inhibición de reintegros automáticos por parte del `DiagnosticoReintegroScheduler` cuando exista una orden de sacrificio `PENDIENTE`.
+- **T026** — Verificar la prohibición estricta de sentencias `DELETE` SQL sobre las tablas del módulo `[cite: 1, 18, 30]`.
+
+---
+
+> [!NOTE]  Phase 6: Polish & Cross-Cutting Concerns
+> **Objetivo:** Documentar, integrar y auditar la calidad final del subsistema.
+
+- **T027** — Documentar endpoints, roles, códigos de error y esquemas en OpenAPI 3 `[cite: 18, 30]`.
+- **T028** — Completar pruebas de integración de punta a punta (`SacrificioSanitarioIntegrationTest`) abarcando el flujo completo de emisión, confirmación, outbox e inhibición de reintegros.
+- **T029** — Ejecutar pruebas estáticas de arquitectura con ArchUnit para asegurar el aislamiento de las capas hexagonales `[cite: 18, 30]`.
+- **T030** — Ejecutar la suite completa de pruebas unitarias, de integración y de calidad mediante Gradle Wrapper `[cite: 18, 30]`.
+
+---
+
+> [!TIP]
+> **Checkpoint final:** Al completar las 6 fases, el ciclo de vida de la orden de sacrificio queda cerrado: emisión → confirmación → mutación atómica → eventos → auditoría.  
+> **Siguiente paso:** Validar con el equipo que los contratos de `DiagnosticoQueryPort`, `GalponQueryPort`, `LoteQueryPort`, `CambiarEstadoOperativoGalponPort` y `ActualizarPoblacionLotePort` estén congelados antes de iniciar la Fase 2.
+
