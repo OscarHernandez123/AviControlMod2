@@ -236,35 +236,3 @@ Adicionalmente, un proceso en segundo plano (`DiagnosticoReintegroScheduler`) ev
 * **Automatización del Reintegro**: El componente `DiagnosticoReintegroScheduler` opera como un comando de aplicación interno desacoplado del API HTTP, ejecutándose periódicamente mediante `@Scheduled(cron = "0 0 1 * * ?")` o intervalos configurables vía `application.yml`.
 * **Notificación al Cliente Frontend**: El payload `DiagnosticoResponse` retorna los atributos calculados `fechaReintegro` y el booleano `habilitaSacrificio`, permitiendo a la interfaz de usuario redirigir al veterinario a la pantalla del `Spec 012` si la patología es mortal o retornar a la bandeja de monitoreo.
 
-## UI Component Mapping (Prototipo ↔ Spec)
-
-Esta sección documenta la correspondencia estricta entre los controles del prototipo visual oficial (`docs/prototype/Veterinario/011-DiagnosticarGalpon.png`) y los requerimientos funcionales del sistema. Todo componente visual debe responder a un FR y ningún comportamiento fuera de este catálogo está permitido.
-
-### Pantalla: Diagnóstico clínico del galpón aislado
-- **Prototipo de Referencia**: `docs/prototype/Veterinario/011-DiagnosticarGalpon.png`
-- **Actor Exclusivo**: `VETERINARIO` (FR-001)
-
-| Componente UI | Tipo | FR Asociado | Comportamiento Técnico y Validación |
-| :--- | :--- | :--- | :--- |
-| **Stat Cards de Resumen** | Metric Cards (4) | FR-002, FR-009 | Muestran: galpones en aislamiento, diagnósticos activos, reintegros pendientes, diagnósticos por enfermedad |
-| **Barra de Filtros** | Filter Bar | FR-002, FR-009 | Búsqueda por galpón/código/lote y filtros por estado de aislamiento y fecha de reintegro |
-| **Tabla de Galpones Aislados** | Data Grid | FR-002, FR-003, FR-009 | Lista galpón, lote, fecha de aislamiento, estado y acceso a diagnóstico |
-| **Botón "Diagnosticar"** | Button (Primary) | FR-001, FR-002 | Abre el panel lateral de diagnóstico solo para galpones en `aislamiento` |
-| **Panel "Registrar diagnóstico clínico"** | Side Panel | FR-001, FR-003, FR-004, FR-005, FR-006, FR-007, FR-008 | Reúne la información clínica y la validación del diagnóstico |
-| **Dropdown "Enfermedad"** | Select | FR-004 | Solo enfermedades activas; valida `requiereSacrificioSanitario` |
-| **Dropdown "Medicación"** | Select | FR-005, FR-006 | Solo medicaciones activas; habilitado solo en rama terapéutica |
-| **Badge "Requiere sacrificio sanitario"** | Status Badge | FR-007 | Informa al veterinario si la enfermedad obliga a sacrificio total |
-| **Campo "Fecha de reintegro estimada"** | Read-only Field | FR-006, FR-011 | Se calcula automáticamente según `fechaDiagnostico + diasTratamiento` |
-| **Textarea "Observaciones"** | Textarea | FR-014 | Registra la justificación clínica y la evidencia del expediente |
-| **Botón "Confirmar diagnóstico"** | Button (Primary) | FR-006, FR-007, FR-013, FR-014 | Ejecuta la transacción atómica de diagnóstico + outbox + auditoría |
-| **Botón "Cancelar"** | Button (Secondary) | FR-001 | Cierra el panel sin crear diagnóstico |
-
-### Elementos Prohibidos en la Pantalla (Guardrails Sanitarios)
-- ❌ **Botón "Eliminar" / "Borrar"**: Terminantemente prohibido (`FR-015`). No existe eliminación física de diagnósticos ni auditoría.
-- ❌ **Diagnóstico sobre galpón no aislado**: Prohibido (`FR-002`); la acción solo se habilita con galpón en `aislamiento`.
-- ❌ **Campos huérfanos**: Prohibido añadir campos que no pertenezcan al dominio funcional de diagnóstico del galpón.
-
-### Estados Operativos del Formulario
-- **Validación inline**: Rechazo inmediato si no se selecciona enfermedad, si la rama terapéutica omite medicación o si el galpón no mantiene `aislamiento`.
-- **Transacción en progreso**: Bloqueo de controles de envío durante el commit atómico (`san_diagnosticos` + `san_outbox` + `san_auditoria`).
-- **Colisión de Concurrencia**: Modal informativo ante HTTP 409 (`OptimisticLockException` o duplicidad por diagnóstico activo) solicitando recarga de datos.

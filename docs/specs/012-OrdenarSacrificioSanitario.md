@@ -300,37 +300,3 @@ El ciclo de vida del procedimiento se estructura en **dos etapas obligatorias y 
 * **Separación Emisión vs. Ejecución**: La emisión es un acto clínico que formaliza la instrucción legal. La ejecución es el acto material en campo. Este desacoplamiento en dos tiempos previene que contingencias logísticas alteren prematuramente los inventarios biológicos de la granja.
 * **Inhibición de Reintegros Automáticos**: Si un lote con orden de sacrificio `PENDIENTE` tuviese registros residuales en el scheduler del `Spec 011`, dicho componente omite cualquier intento de reintegro automático mientras la orden no sea cerrada[cite: 4, 7].
 * **Notificación al Cliente Frontend**: El payload `OrdenSacrificioResponse` expone los atributos `estado` (`PENDIENTE` / `EJECUTADA`) y `fechaEjecucion` (nullable), permitiendo a la interfaz de usuario mostrar el estado del procedimiento y habilitar el botón de confirmación únicamente cuando la orden esté pendiente.
-
-## UI Component Mapping (Prototipo ↔ Spec)
-
-Esta sección documenta la correspondencia estricta entre los controles del prototipo visual oficial (`docs/prototype/Veterinario/012-OrdenarSacrificioSanitario.png`) y los requerimientos funcionales del sistema. Todo componente visual debe responder a un FR y ningún comportamiento fuera de este catálogo está permitido.
-
-### Pantalla: Orden de sacrificio sanitario
-- **Prototipo de Referencia**: `docs/prototype/Veterinario/012-OrdenarSacrificioSanitario.png`
-- **Actor Exclusivo**: `VETERINARIO` (FR-001)
-
-| Componente UI | Tipo | FR Asociado | Comportamiento Técnico y Validación |
-| :--- | :--- | :--- | :--- |
-| **Stat Cards de Resumen** | Metric Cards (4) | FR-003, FR-004, FR-006, FR-007 | Muestran: diagnósticos letales, órdenes pendientes, lotes con población, galpones en aislamiento |
-| **Barra de Filtros** | Filter Bar | FR-003, FR-004 | Búsqueda por galpón, lote, diagnóstico y estado de orden |
-| **Tabla de Diagnósticos Letales** | Data Grid | FR-002, FR-003, FR-005 | Lista diagnóstico, galpón, lote, población y estado operativo |
-| **Botón "Emitir orden"** | Button (Primary) | FR-001, FR-002, FR-003, FR-006 | Abre el panel de emisión para diagnósticos mortales elegibles |
-| **Panel "Emitir orden de sacrificio"** | Side Panel | FR-001, FR-002, FR-005, FR-006, FR-013 | Contiene el formulario y la transacción inicial de emisión |
-| **Textarea "Observaciones de bioseguridad"** | Textarea | FR-006, FR-013 | Requiere justificación técnica con longitud mínima declarada por la regla de negocio |
-| **Botón "Confirmar emisión"** | Button (Primary) | FR-006, FR-011, FR-012 | Ejecuta la creación de la orden y persiste evento + auditoría |
-| **Badge "PENDIENTE"** | Status Badge | FR-006, FR-007 | Refleja que la orden fue emitida pero aún no ejecutada |
-| **Botón "Confirmar ejecución"** | Button (Primary) | FR-007, FR-008, FR-009, FR-010, FR-011, FR-014, FR-015 | Ejecuta la mutación final de población y galpón en un único commit idempotente; prohíbe cualquier borrado físico |
-| **Textarea "Observaciones de ejecución"** | Textarea | FR-010, FR-013 | Registra la evidencia del procedimiento material |
-| **Badge "EJECUTADA"** | Status Badge | FR-010 | Refleja cierre concluyente y estado final del procedimiento |
-| **Botón "Cancelar"** | Button (Secondary) | FR-001 | Cierra el panel sin mutar la orden |
-
-### Elementos Prohibidos en la Pantalla (Guardrails Sanitarios)
-- ❌ **Botón "Eliminar" / "Borrar"**: Terminantemente prohibido (`FR-014`). No existe eliminación física de órdenes ni auditoría.
-- ❌ **Sacrificio parcial**: Prohibido (`FR-016`); la UI no acepta cantidades ni fracciones del lote.
-- ❌ **Campos huérfanos**: Prohibido añadir campos que no pertenezcan al dominio funcional de sacrificio sanitario.
-
-### Estados Operativos del Formulario
-- **Validación inline**: Resaltado de campos obligatorios y bloqueo si el diagnóstico no requiere sacrificio, el galpón no está aislado o la población es cero.
-- **Transacción en progreso**: Bloqueo de controles de envío durante el commit atómico (`san_ordenes_sacrificio` + `san_outbox` + `san_auditoria`).
-- **Colisión de Concurrencia**: Modal informativo ante HTTP 409 (`OptimisticLockException` o `OrdenYaEjecutadaException`) solicitando recarga de datos.
-- **Idempotencia de reintentos**: Si el cliente reenvía la misma petición con la misma `X-Idempotency-Key` (ventana de 24 h), la UI presenta la respuesta original sin abrir un nuevo diálogo de confirmación.
