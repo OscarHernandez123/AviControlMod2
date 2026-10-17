@@ -2,33 +2,7 @@
 
 **Created**: 2026-09-05  
 **Last Updated**: 2026-09-22  
-**Spec**: `docs/specs/013-RegistrarConsumoMedicamento.md`  
-**Módulo**: 2 – Sanidad y Bioseguridad  
-**Actor Principal**: `VETERINARIO`
-**Precondición Obligatoria**: Diagnóstico clínico activo con pauta terapéutica vigente (`Spec 011` completado con `requiereSacrificioSanitario == false`)  
-**Relación UML / Integración**: Inclusión directa desde el flujo de tratamiento clínico y comunicación asíncrona hacia el **Módulo 3** (Costos de Producción)
-
----
-
-## 1. Summary
-
-El módulo **Registrar consumo de medicamento por lote** permite al Médico Veterinario asentar la cantidad de medicamento realmente dosificada y aplicada en campo a una parvada que se encuentra bajo prescripción terapéutica activa (`Spec 011`, fundamentado en `Spec 008`).
-
-El sistema obtiene de forma inmutable el medicamento, el galpón y el lote a partir del diagnóstico clínico. Convierte la cantidad suministrada a la unidad base del producto farmacéutico, descuenta las existencias físicas de las recepciones de bodega disponibles mediante el algoritmo **FIFO por fecha de vencimiento** y preserva de forma atómica el precio histórico de cada lote de compra afectado.
-
-**La información resultante se publica de forma garantizada hacia el Módulo 3 (Costos de Producción)** mediante el broker Kafka. **El Módulo 2 no calcula costos contables totales**: su responsabilidad concluye en registrar la trazabilidad biológica del fármaco, descontar el inventario físico y despachar los datos crudos consolidados hacia los módulos correspondientes.
-
-**Restricciones globales mandatorias**:
-
-* 🔒 **Prohibición absoluta de borrado físico**: Ninguna sentencia `DELETE` SQL está permitida sobre consumos, detalles por recepción ni asientos de auditoría.
-* 🔒 **Atomicidad e Integridad Transaccional**: El registro del consumo, el desglose de detalles, el descuento de existencias de bodega, la escritura en `san_outbox` y la firma en `san_auditoria` se ejecutan dentro de una única transacción local (`@Transactional`).
-* 🔒 **Seguridad y Atribución**: Acceso reservado exclusivamente a usuarios autenticados con rol `VETERINARIO`.
-* 🔒 **Concurrencia e Idempotencia**: Control optimista mediante `@Version` sobre el consumo y soporte de cabeceras `X-Idempotency-Key` retenidas durante 24 horas.
-* 🔒 **Inmutabilidad de Atribución**: Los identificadores de `loteId`, `galponId`, `medicacionId` y `medicamentoId` son derivados automáticamente del diagnóstico; el sistema bloquea cualquier intento de selección o modificación manual.
-
----
-
-## 2. User Scenarios & Testing *(mandatory)*
+## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Registro y Descuento de Existencias del Fármaco Aplicado (Priority: P1)
 
@@ -78,7 +52,7 @@ El sistema obtiene de forma inmutable el medicamento, el galpón y el lote a par
    * **And** no altera el inventario
 
 5. **AS-005 - Scenario**: Rechazo por diagnóstico inexistente o perteneciente a rama mortal
-   * **Given** un identificador `diagnosticoId` que no existe o cuyo diagnóstico dictaminó una patología letal (`requiereSacrificioSanitario == true`, sin medicación asociada)[cite: 4]
+   * **Given** un identificador `diagnosticoId` que no existe o cuyo diagnóstico dictaminó una patología letal (`requiereSacrificioSanitario == true`, sin medicación asociada)
    * **When** el Veterinario intenta enviar una orden de consumo
    * **Then** el sistema bloquea la acción respondiendo con HTTP `404 Not Found` (`DiagnosticoNotFoundException`) o HTTP `409 Conflict` (`DiagnosticoSinMedicacionException`)
 
@@ -124,7 +98,7 @@ El sistema obtiene de forma inmutable el medicamento, el galpón y el lote a par
 
 ---
 
-## 3. Requirements *(mandatory)*
+## Requirements *(mandatory)*
 
 ### Functional Requirements
 
@@ -207,7 +181,7 @@ El sistema obtiene de forma inmutable el medicamento, el galpón y el lote a par
 
 ---
 
-## 4. Success Criteria *(mandatory)*
+## Success Criteria *(mandatory)*
 
 ### Measurable Outcomes
 
@@ -222,52 +196,3 @@ El sistema obtiene de forma inmutable el medicamento, el galpón y el lote a par
 | **SC-007** | Cero incidentes (0%) de borrado físico (`DELETE` SQL) sobre consumos, detalles o auditorías. | 100% de inmutabilidad | Verificación de permisos y triggers en PostgreSQL. |
 | **SC-008** | El 100% de los eventos dirigidos al Módulo 3 se persiste en `san_outbox` dentro de la misma transacción local. | Atomicidad total | Prueba de integración de Transactional Outbox con Testcontainers. |
 
----
-
-## 5. Dependencies & Cross-References
-
-* **`Spec 008 – Registrar medicación`**: Provee el catálogo terapéutico que parametriza el fármaco y su dosimetría estándar.
-* **`Spec 011 – Diagnosticar galpón`**: Precondición directa. El diagnóstico clínico contiene el tratamiento aprobado, el lote y el galpón.
-* **Módulo 1 (Control de Galpones y Lotes)**: Bounded Context propietario de las aves y su ubicación física.
-* **Módulo 3 (Costos de Producción)**: Receptor asíncrono del evento `ConsumoMedicamentoRegistradoIntegrationEvent`. Es el **único responsable** de calcular el costo total de crianza multiplicando cada cantidad por su precio histórico.
-
----
-
-## 6. Notes
-
-* **Trazabilidad Bidireccional**: Cada requerimiento `FR-001` a `FR-015` mapea punto a punto contra una tarea del plan técnico (`T0xx`) y contra una clase o invariante en la arquitectura hexagonal.
-* **Separación de Responsabilidades**: El Módulo 2 no gestiona cuentas contables ni libros de costos; su misión se circunscribe a la sanidad animal, asegurando que las aves reciban la dosis prescrita y reflejando la salida física en bodega.
-* **Validación de Existencias en Dos Tiempos**: El sistema lee el saldo disponible al renderizar el formulario y vuelve a verificar el saldo bloqueando la tupla (`SELECT ... FOR UPDATE`) dentro de la transacción final para evitar sobreventas concurrentes entre distintos galpones.
-* **Notificación al Cliente Frontend**: El payload `ConsumoMedicamentoResponse` devuelve el detalle de las recepciones afectadas con sus fechas de vencimiento y precios históricos, permitiendo al veterinario revisar el desglose antes de la confirmación definitiva.
-
-## UI Component Mapping (Prototipo ↔ Spec)
-
-Esta sección documenta la correspondencia estricta entre los controles del prototipo visual oficial (`docs/prototype/Veterinario/013-RegistrarConsumoMedicamentoPorLote.png`) y los requerimientos funcionales del sistema. Todo componente visual debe responder a un FR y ningún comportamiento fuera de este catálogo está permitido.
-
-### Pantalla: Registro de consumo de medicamento por lote
-- **Prototipo de Referencia**: `docs/prototype/Veterinario/013-RegistrarConsumoMedicamentoPorLote.png`
-- **Actor Exclusivo**: `VETERINARIO` (FR-001)
-
-| Componente UI | Tipo | FR Asociado | Comportamiento Técnico y Validación |
-| :--- | :--- | :--- | :--- |
-| **InfoBox del Diagnóstico de Origen** | Info Panel | FR-002, FR-003 | Muestra de forma inmutable diagnóstico activo, galpón, lote, medicación y medicamento derivados del Spec 011 |
-| **Campo "Cantidad aplicada"** | Number Input | FR-005, FR-009 | Cantidad numérica positiva; valida contra el factor de conversión de la unidad base |
-| **Selector "Unidad de medida"** | Select | FR-005, FR-009 | Solo unidades dimensionalmente compatibles con la unidad base del medicamento |
-| **Campo "Fecha de aplicación real"** | Date Picker | FR-005 | Fecha efectiva de la aplicación en campo; no puede ser futura |
-| **Tabla Preview "Desglose FIFO por recepción"** | Data Grid (read-only) | FR-006, FR-007 | Muestra por cada recepción afectada: `recepcionId`, fecha de vencimiento, cantidad descontada y precio histórico unitario sin promediar |
-| **Indicador "Stock disponible"** | Info Badge | FR-008 | Se actualiza en tiempo real; bloquea el envío si el saldo total es insuficiente |
-| **Botón "Confirmar consumo"** | Button (Primary) | FR-010, FR-011, FR-012, FR-014 | Ejecuta la transacción atómica idempotente (consumo + detalles + descuento + outbox + auditoría) |
-| **Botón "Cancelar"** | Button (Secondary) | FR-001 | Cierra el formulario sin descontar existencias ni persistir consumo |
-
-### Elementos Prohibidos en la Pantalla (Guardrails Sanitarios)
-- ❌ **Botón "Eliminar" / "Borrar"**: Terminantemente prohibido (`FR-013`). No existe eliminación física de consumos, detalles ni auditoría.
-- ❌ **Selector manual de lote/galpón/medicamento**: Prohibido (`FR-003`); estos datos son derivados automáticamente del diagnóstico.
-- ❌ **Promedio de precios**: Prohibido (`FR-007`); cada recepción conserva su tarifa histórica intacta.
-- ❌ **Cálculo de costo total en pantalla**: Prohibido (`FR-015`); el costeo contable es responsabilidad exclusiva del Módulo 3.
-- ❌ **Campos huérfanos**: Prohibido añadir campos que no pertenezcan al dominio funcional de consumo de medicamentos.
-
-### Estados Operativos del Formulario
-- **Validación inline**: Resaltado de campos obligatorios, verificación dimensional de la unidad y bloqueo si el diagnóstico no tiene pauta terapéutica activa.
-- **Transacción en progreso**: Bloqueo de controles durante el commit atómico (`san_consumos` + `san_detalles_consumo` + descuento de existencias + `san_outbox` + `san_auditoria`).
-- **Colisión de Concurrencia**: Modal informativo ante HTTP 409 (`OptimisticLockException` / `ConsumoConcurrenciaException`) solicitando recarga de existencias vigentes.
-- **Idempotencia de reintentos**: Si el cliente reenvía la misma petición con la misma `X-Idempotency-Key` (ventana de 24 h), la UI presenta la respuesta original sin reabrir el formulario ni ejecutar un segundo descuento.

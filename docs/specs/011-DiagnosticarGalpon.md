@@ -2,31 +2,7 @@
 
 **Created**: 2026-09-04  
 **Last Updated**: 2026-09-22  
-**Spec**: `docs/specs/011-DiagnosticarGalpon.md`  
-**Módulo**: 2 – Sanidad y Bioseguridad  
-**Actor Principal**: `VETERINARIO`  
-**Precondición Obligatoria**: Galpón en estado `aislamiento` con lote activo (`Spec 010` completado)
-
----
-
-## 1. Summary
-
-El módulo **Diagnosticar un galpón** formaliza el expediente clínico emitido por el Médico Veterinario sobre una parvada previamente puesta en cuarentena (`Spec 010`). La resolución del diagnóstico se bifurca en dos caminos clínicos mutuamente excluyentes según el indicador nosológico `requiereSacrificioSanitario` de la enfermedad dictaminada (`Spec 009`):
-
-* **Rama Terapéutica** (`requiereSacrificioSanitario == false`): Exige la asociación de un protocolo de tratamiento estandarizado (`Spec 008`) y calcula de forma determinística la **fecha de reintegro** a producción (`fechaDiagnostico + diasTratamiento`).
-* **Rama Mortal / Erradicación** (`requiereSacrificioSanitario == true`): Prescinde de medicación (`medicacionId = null`), no proyecta fecha de reintegro y **habilita la emisión de la orden de sacrificio sanitario total** (`Spec 012`, relación `<<extend>>`).
-
-Adicionalmente, un proceso en segundo plano (`DiagnosticoReintegroScheduler`) evalúa los diagnósticos terapéuticos y ejecuta de manera autónoma la transición del galpón a estado `productiva` en el Módulo 1 al alcanzarse la fecha de reintegro, siempre y cuando la cuarentena no haya sido alterada por contingencias sanitarias intermedias.
-
-**Restricciones globales mandatorias**:
-* 🔒 **Prohibición de borrado físico**: Ninguna sentencia `DELETE` SQL está permitida sobre diagnósticos ni asientos de auditoría.
-* 🔒 **Atomicidad e Integridad Transaccional**: Registro simultáneo de `san_diagnosticos` + `san_outbox` + `san_auditoria` en una única transacción de base de datos (`@Transactional`).
-* 🔒 **Seguridad y Atribución**: Acceso restringido exclusivamente a usuarios autenticados con rol `VETERINARIO`.
-* 🔒 **Concurrencia e Idempotencia**: Control optimista vía `@Version` sobre el expediente y cabeceras `X-Idempotency-Key` retenidas durante 24 horas.
-
----
-
-## 2. User Scenarios & Testing *(mandatory)*
+## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Registro del Dictamen Clínico de la Parvada Aislada (Priority: P1)
 
@@ -133,7 +109,7 @@ Adicionalmente, un proceso en segundo plano (`DiagnosticoReintegroScheduler`) ev
 
 ---
 
-## 3. Requirements *(mandatory)*
+## Requirements *(mandatory)*
 
 ### Functional Requirements
 
@@ -200,7 +176,7 @@ Adicionalmente, un proceso en segundo plano (`DiagnosticoReintegroScheduler`) ev
 
 ---
 
-## 4. Success Criteria *(mandatory)*
+## Success Criteria *(mandatory)*
 
 ### Measurable Outcomes
 
@@ -216,23 +192,4 @@ Adicionalmente, un proceso en segundo plano (`DiagnosticoReintegroScheduler`) ev
 | **SC-008** | Cero duplicidad (0%) en registros de diagnósticos o eventos outbox ante reintentos de red. | Cero duplicados | Validación con `X-Idempotency-Key` y `@Version`. |
 | **SC-009** | Cero incidentes (0%) de borrado físico (`DELETE` SQL) sobre diagnósticos o trazas de auditoría. | 100% de persistencia | Verificación de permisos a nivel de usuario en base de datos. |
 | **SC-010** | El 100% de los eventos de integración se resguarda en `san_outbox` dentro de la misma transacción local. | Atomicidad total | Verificación transaccional rollback con Testcontainers. |
-
----
-
-## 5. Dependencies & Cross-References
-
-* **`Spec 008 – Registrar medicación`**: Provee el catálogo de pautas terapéuticas y la duración en días de cada tratamiento.
-* **`Spec 009 – Registrar enfermedad`**: Provee el catálogo nosológico y el indicador de letalidad `requiereSacrificioSanitario`.
-* **`Spec 010 – Validar aislamiento`**: Precondición operativa obligatoria (`aislamiento`); este caso de uso es incluido de forma directa (`<<include>>`) tras aislar el galpón.
-* **`Spec 012 – Ordenar sacrificio sanitario`**: Extensión funcional (`<<extend>>`) habilitada únicamente cuando la patología diagnosticada exige sacrificio total de la parvada.
-* **Módulo 1 (Control de Galpones y Lotes)**: Proveedor de las entidades físicas externas `Galpón` y `Lote`, y receptor de los cambios de estado operativo (`productiva` $\leftrightarrow$ `aislamiento`).
-
----
-
-## 6. Notes
-
-* **Trazabilidad Bidireccional**: Cada requerimiento `FR-001` a `FR-016` mapea punto a punto contra una tarea del plan técnico (`T0xx`) y contra una clase o invariante en la arquitectura hexagonal.
-* **Cálculo de Fechas y Zonas Horarias**: La `fechaReintegro` se computa normalizada a las 23:59:59 UTC del último día de tratamiento farmacológico para garantizar que la parvada complete las 24 horas del último ciclo antes de su retorno a producción.
-* **Automatización del Reintegro**: El componente `DiagnosticoReintegroScheduler` opera como un comando de aplicación interno desacoplado del API HTTP, ejecutándose periódicamente mediante `@Scheduled(cron = "0 0 1 * * ?")` o intervalos configurables vía `application.yml`.
-* **Notificación al Cliente Frontend**: El payload `DiagnosticoResponse` retorna los atributos calculados `fechaReintegro` y el booleano `habilitaSacrificio`, permitiendo a la interfaz de usuario redirigir al veterinario a la pantalla del `Spec 012` si la patología es mortal o retornar a la bandeja de monitoreo.
 

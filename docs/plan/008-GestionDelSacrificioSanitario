@@ -96,7 +96,7 @@ El plan preserva la **inmutabilidad** de los registros, **prohíbe el borrado f�
 Documentation (this feature)
 docs/
 ├── specs/
-│   └── 012-OrdenarSacrificioSanitario.md[cite: 8, 18, 30]
+│   └── 012-OrdenarSacrificioSanitario.md
 └── plan/
     └── 008-GestionDelSacrificioSanitario.md
 
@@ -152,8 +152,8 @@ src/test/java/com/avicontrol/
 +---------------------------------------------------------------------------------+
 | - id: UUID                                                                      |
 | - diagnosticoId: UUID                                (Ref. Spec 011)|
-| - galponId: UUID                                     (Ref. Externa Módulo 1)[cite: 8, 18, 30]|
-| - loteId: UUID                                       (Ref. Externa Módulo 1)[cite: 8, 18, 30]|
+| - galponId: UUID                                     (Ref. Externa Módulo 1)|
+| - loteId: UUID                                       (Ref. Externa Módulo 1)|
 | - veterinarioId: UUID                                      |
 | - alcance: AlcanceOrden                              (TOTAL)     |
 | - estado: EstadoOrden                                (PENDIENTE, EJECUTADA)|
@@ -230,7 +230,7 @@ src/test/java/com/avicontrol/
 
 - **T001** — Contrastar y confirmar con el Módulo 1 los contratos de consulta de población y los métodos para mutar el estado del galpón a `vaciado_sanitario` y la población del lote a cero.
 - **T002** — Acordar con el Plan 005 (Spec 011) el punto de extensión (`<<extend>>`) y la lógica de inhibición del scheduler de reintegro ante órdenes pendientes.
-- **T003** — Validar restricciones de seguridad para asegurar que únicamente usuarios con rol `VETERINARIO` puedan invocar los endpoints de emisión y confirmación `[cite: 1, 8, 18, 30]`.
+- **T003** — Validar restricciones de seguridad para asegurar que únicamente usuarios con rol `VETERINARIO` puedan invocar los endpoints de emisión y confirmación .
 - **T004** — Acordar esquemas, nombres y tópicos Kafka para los eventos de integración (`sanitary.sacrifice.issued.v1` y `sanitary.sacrifice.executed.v1`).
 - **T005** — Crear fixtures de prueba con diagnósticos de patologías letales (ej. Newcastle velogénico), galpones en aislamiento y lotes con población activa.
 - **T006** — Alinear configuración de transacciones locales, outbox, manejo de excepciones y reloj UTC con `General.md`.
@@ -253,7 +253,7 @@ src/test/java/com/avicontrol/
 > [!NOTE]  Phase 3: User Story 1 — Emisión de la Orden de Sacrificio Sanitario Total (Priority: P1)
 > **Objetivo:** El veterinario emite la orden en estado `PENDIENTE` sin alterar el Módulo 1.
 
-- **T014** — Probar validaciones de dominio: obligatoriedad de diagnóstico mortal (`requiereSacrificioSanitario == true`), galpón en aislamiento y población > 0 `[cite: 4, 8, 18, 30]`.
+- **T014** — Probar validaciones de dominio: obligatoriedad de diagnóstico mortal (`requiereSacrificioSanitario == true`), galpón en aislamiento y población > 0 .
 - **T015** — Probar que la emisión crea la orden en estado `PENDIENTE` sin alterar la población del lote ni el estado del galpón en el Módulo 1.
 - **T016** — Probar la atomicidad del guardado local junto con el outbox (`san_outbox`) y el registro de auditoría (`san_auditoria`).
 - **T017** — Implementar el caso de uso `EmitirOrdenSacrificioUseCase`.
@@ -266,9 +266,9 @@ src/test/java/com/avicontrol/
 
 - **T019** — Probar validaciones previas a la confirmación: orden en `PENDIENTE`, galpón aún en `aislamiento` y población viva existente.
 - **T020** — Probar la mutación atómica: población del lote fijada a cero, estado del galpón transicionado a `vaciado_sanitario` y orden cerrada a `EJECUTADA`.
-- **T021** — Probar el comportamiento del rollback transaccional completo ante caídas o timeouts del Módulo 1 `[cite: 18, 30]`.
-- **T022** — Implementar el caso de uso `ConfirmarEjecucionSacrificioUseCase` `[cite: 18, 30]`.
-- **T023** — Crear DTOs, mappers y adaptadores REST para el endpoint `PATCH /api/v1/sanitary/sacrificios/{id}/confirmar` `[cite: 18, 30]`.
+- **T021** — Probar el comportamiento del rollback transaccional completo ante caídas o timeouts del Módulo 1 .
+- **T022** — Implementar el caso de uso `ConfirmarEjecucionSacrificioUseCase` .
+- **T023** — Crear DTOs, mappers y adaptadores REST para el endpoint `PATCH /api/v1/sanitary/sacrificios/{id}/confirmar` .
 
 ---
 
@@ -277,17 +277,17 @@ src/test/java/com/avicontrol/
 
 - **T024** — Probar retransmisiones bajo la misma cabecera `X-Idempotency-Key` tanto en emisión como en confirmación, verificando respuestas cacheadas sin duplicar mutaciones ni eventos.
 - **T025** — Probar la inhibición de reintegros automáticos por parte del `DiagnosticoReintegroScheduler` cuando exista una orden de sacrificio `PENDIENTE`.
-- **T026** — Verificar la prohibición estricta de sentencias `DELETE` SQL sobre las tablas del módulo `[cite: 1, 18, 30]`.
+- **T026** — Verificar la prohibición estricta de sentencias `DELETE` SQL sobre las tablas del módulo .
 
 ---
 
 > [!NOTE]  Phase 6: Polish & Cross-Cutting Concerns
 > **Objetivo:** Documentar, integrar y auditar la calidad final del subsistema.
 
-- **T027** — Documentar endpoints, roles, códigos de error y esquemas en OpenAPI 3 `[cite: 18, 30]`.
+- **T027** — Documentar endpoints, roles, códigos de error y esquemas en OpenAPI 3 .
 - **T028** — Completar pruebas de integración de punta a punta (`SacrificioSanitarioIntegrationTest`) abarcando el flujo completo de emisión, confirmación, outbox e inhibición de reintegros.
-- **T029** — Ejecutar pruebas estáticas de arquitectura con ArchUnit para asegurar el aislamiento de las capas hexagonales `[cite: 18, 30]`.
-- **T030** — Ejecutar la suite completa de pruebas unitarias, de integración y de calidad mediante Gradle Wrapper `[cite: 18, 30]`.
+- **T029** — Ejecutar pruebas estáticas de arquitectura con ArchUnit para asegurar el aislamiento de las capas hexagonales .
+- **T030** — Ejecutar la suite completa de pruebas unitarias, de integración y de calidad mediante Gradle Wrapper .
 
 ---
 

@@ -2,8 +2,7 @@
 
 **Created**: 2026-09-05  
 
-## User Scenarios & Testing 
-
+## User Scenarios & Testing *(mandatory)**(mandatory)*
 ### User Story 1 - Consultar medicación y cantidad a aplicar en el día (Priority: P1)
 
 Como trabajador u operario de granja, quiero consultar qué medicación le corresponde a mi galpón asignado en el día actual, visualizando la enfermedad diagnosticada, el medicamento prescrito, la cantidad a aplicar hoy, la vía de administración y el avance del tratamiento, para suministrar el tratamiento médico exacto a las aves.
@@ -26,10 +25,10 @@ Como trabajador u operario de granja, quiero consultar qué medicación le corre
    - **When** el trabajador realiza la consulta del galpón
    - **Then** el sistema indica claramente que el tratamiento está en curso en el "Día 2 de 5" y muestra la cantidad total de medicamento a aplicar en la jornada
 
-3. **Scenario**: Intento de consulta de un galpón no asignado al trabajador
-   - **Given** que un trabajador intenta consultar la medicación de un galpón que no tiene a su cargo
+3. **Scenario**: Consulta de un galpón sin permiso de acceso por rol
+   - **Given** que un usuario autenticado con un rol distinto a `TRABAJADOR` intenta consultar la medicación de un galpón
    - **When** solicita acceder a la información de dicho galpón
-   - **Then** el sistema deniega el acceso y muestra únicamente los galpones asignados bajo su responsabilidad
+   - **Then** el sistema deniega el acceso y exige autenticación con rol autorizado
 
 ---
 
@@ -77,12 +76,11 @@ Como trabajador u operario de granja, quiero que el sistema me informe con clari
 
 ---
 
-## Requirements 
-
+## Requirements *(mandatory)**(mandatory)*
 ### Functional Requirements
 
 - **FR-001**: El sistema DEBE permitir la consulta de medicación por galpón por día a usuarios autenticados con rol de trabajador (y administradores autorizados).
-- **FR-002**: El sistema DEBE restringir la visualización y consulta de galpones para el trabajador exclusivamente a aquellos que tenga formalmente asignados a su cargo.
+- **FR-002**: El sistema DEBE permitir que cualquier usuario autenticado con rol `TRABAJADOR` consulte la medicación diaria de cualquier galpón activo del Módulo 1, sin requerir una validación de asignación trabajador-galpón.
 - **FR-003**: Para el galpón consultado, el sistema DEBE obtener y presentar sus atributos: UUID, Nombre, Aforo máximo y Estado.
 - **FR-004**: El sistema DEBE identificar el lote activo del galpón mediante la llave foránea que referencia al galpón, seleccionando el lote con la fecha de ingreso más reciente.
 - **FR-005**: Para el lote activo, el sistema DEBE presentar: UUID único, Nombre, Población actual (aves vivas) y Fecha de ingreso (edad en días).
@@ -93,11 +91,11 @@ Como trabajador u operario de granja, quiero que el sistema me informe con clari
 - **FR-010**: La consulta de medicación por galpón por día DEBE enfocarse exclusivamente en la información correspondiente a la fecha actual del sistema.
 - **FR-011**: La funcionalidad de consulta DEBE operar estrictamente en modo de solo lectura y NO DEBE alterar inventarios de medicamentos, diagnósticos ni datos del galpón o lote.
 - **FR-012**: El sistema DEBE presentar cada tratamiento en forma desglosada y separada si el galpón registra múltiples tratamientos activos concurrentes en el día.
-- **FR-013**: El sistema DEBE denegar el acceso a la consulta a usuarios sin permisos o que intenten acceder a galpones no asignados.
+- **FR-013**: El sistema DEBE denegar el acceso a la consulta a usuarios sin permisos o sin rol autorizado para la operación.
 
 ### Key Entities 
 
-- **Galpón**: Representa la unidad física de producción avícola asignada al trabajador.
+- **Galpón**: Representa la unidad física de producción avícola consultada por el trabajador dentro del Módulo 1.
   - Atributos utilizados: `UUID único`, `Nombre`, `Aforo máximo`, `Estado`.
 - **Lote**: Representa el grupo de aves registrado que referencia al galpón mediante llave foránea.
   - Atributos utilizados: `UUID único`, `Nombre`, `Población actual` (aves vivas), `Fecha de ingreso` (edad en días), `Llave foránea del galpón`.
@@ -109,16 +107,15 @@ Como trabajador u operario de granja, quiero que el sistema me informe con clari
 
 ---
 
-## Success Criteria 
-
+## Success Criteria *(mandatory)**(mandatory)*
 ### Measurable Outcomes
 
-- **SC-001**: El 100 % de las consultas de un trabajador muestra únicamente los galpones asignados a su cargo con su nombre, aforo y estado.
+- **SC-001**: El 100 % de las consultas autorizadas por un trabajador devuelve el estado operativo, el lote activo y la medicación vigente de cualquier galpón consultado sin requerir una asignación previa.
 - **SC-002**: El 100 % de los galpones con tratamiento vigente muestra con exactitud la enfermedad, medicamento, cantidad a aplicar en el día, instrucciones y avance del tratamiento (día X de N).
 - **SC-003**: El 100 % de los galpones sin tratamientos activos en la fecha muestra de forma inequívoca el estado `Sin medicación activa para hoy`.
 - **SC-004**: En el 100 % de los casos, la consulta identifica correctamente el lote activo más reciente mediante su llave foránea y muestra su población viva actual.
 - **SC-005**: El 100 % de las operaciones de consulta se ejecuta en menos de 2 segundos sin modificar existencias ni registros de la base de datos (garantía de solo lectura).
-- **SC-006**: El 100 % de los intentos de consulta en galpones no asignados es bloqueado por el sistema.
+- **SC-006**: El 100 % de los intentos de acceso por usuarios no autenticados o sin el rol permitido es bloqueado por el sistema.
 - **SC-007**: Si existen múltiples tratamientos concurrentes, el 100 % de ellos se muestra desglosado de forma independiente.
 
 ---

@@ -121,7 +121,7 @@ Como auditor de inocuidad y responsable técnico sanitario de la granja, quiero 
 
 - **Medicamento o enfermedad inactivados durante el guardado**: Si una patología es inactivada en el catálogo o un medicamento es dado de baja del inventario mientras el Veterinario está diligenciando el formulario, el sistema valida la disponibilidad inmediatamente antes de abrir la transacción y aborta el registro con un mensaje explicativo.
 - **Campos de texto con caracteres de espacio exclusivamente**: Si la dosis o la descripción contienen únicamente tabulaciones o espacios en blanco, el sistema los evalúa como datos no provistos y detiene el alta.
-- **Acción aislada de catálogo (Cero impacto en inventario o galpones)**: El caso de uso representa estrictamente la definición de un esquema terapéutico. No descuenta stock físico de fármacos en bodega ni altera estados de galpones; el descuento real de inventario ocurre cuando se registra el consumo del medicamento en campo (`Spec 013: Registrar consumo medicamento`)[cite: 9].
+- **Acción aislada de catálogo (Cero impacto en inventario o galpones)**: El caso de uso representa estrictamente la definición de un esquema terapéutico. No descuenta stock físico de fármacos en bodega ni altera estados de galpones; el descuento real de inventario ocurre cuando se registra el consumo del medicamento en campo (`Spec 013: Registrar consumo medicamento`).
 - **Falla de conexión en persistencia o broker (Transactional Outbox)**: La transacción local de base de datos es estrictamente atómica; si la base de datos falla, ni la medicación se crea ni se genera el evento outbox. Si el broker de mensajería (RabbitMQ/Kafka) está caído, el evento permanece almacenado localmente en `san_outbox` para ser retransmitido sin pérdida de información.
 
 ## Requirements *(mandatory)*
@@ -131,11 +131,11 @@ Como auditor de inocuidad y responsable técnico sanitario de la granja, quiero 
 - **FR-001**: El registro y actualización de medicaciones DEBE estar reservado exclusivamente a usuarios autenticados con rol `VETERINARIO`.
 - **FR-002**: Toda medicación DEBE registrar obligatoriamente: patología asociada, medicamento de inventario, dosis con formato `<valor><unidad>` (ej. `'0.5 g/L de agua'`), duración en días enteros positivos, y descripción de administración. El sistema DEBE normalizar los campos de texto con `trim()` y rechazar valores nulos, vacíos o compuestos únicamente por espacios. La descripción DEBE tener entre 10 y 500 caracteres tras normalización.
 - **FR-003**: La duración del tratamiento DEBE ser validada como un número entero estrictamente mayor a cero ($\text{diasTratamiento} \in \mathbb{Z}^+$).
-- **FR-004**: El sistema DEBE validar que la patología referenciada exista en el catálogo de enfermedades de la granja y esté en estado `ACTIVA` (`Spec 009: Registrar enfermedad`)[cite: 9].
+- **FR-004**: El sistema DEBE validar que la patología referenciada exista en el catálogo de enfermedades de la granja y esté en estado `ACTIVA` (`Spec 009: Registrar enfermedad`).
 - **FR-005**: El sistema DEBE validar que el medicamento referenciado exista y se encuentre habilitado para su uso en el inventario central de medicamentos.
 - **FR-006**: El registro de una medicación NO DEBE requerir la existencia de un diagnóstico previo, no debe alterar el estado operativo de ningún galpón y NO DEBE descontar existencias físicas del inventario.
 - **FR-007**: Toda modificación sobre una medicación DEBE aplicar exclusivamente a prescripciones y diagnósticos futuros, manteniendo inalterables las dosis, duraciones y cálculos de retiro de diagnósticos pasados.
-- **FR-008**: Al completarse el guardado, el sistema DEBE registrar en la tabla outbox el evento `MedicacionRegistradaIntegrationEvent` para su publicación en el broker bajo el tópico `sanitary.medication.registered.v1`, dejando el esquema disponible para selección en el caso de uso `Diagnosticar galpón`[cite: 9].
+- **FR-008**: Al completarse el guardado, el sistema DEBE registrar en la tabla outbox el evento `MedicacionRegistradaIntegrationEvent` para su publicación en el broker bajo el tópico `sanitary.medication.registered.v1`, dejando el esquema disponible para selección en el caso de uso `Diagnosticar galpón`.
 - **FR-009**: Cada creación o edición de medicación DEBE persistir un asiento histórico inmutable en la tabla `san_auditoria` con usuario responsable, fecha, hora y justificación de cambio.
 - **FR-010**: Queda ESTRICTAMENTE PROHIBIDO el borrado físico (`DELETE` en base de datos) de cualquier registro de medicación.
 - **FR-011**: El sistema DEBE aplicar control de concurrencia optimista (`version`) y soportar cabeceras de idempotencia técnica para evitar tratamientos duplicados ante reconexiones de red.
@@ -153,7 +153,7 @@ Como auditor de inocuidad y responsable técnico sanitario de la granja, quiero 
 ### Key Entities
 
 - **Medicación**: Aggregate Root que define el esquema de tratamiento clínico estándar. Atributos: `id` (UUID), `enfermedadId` (UUID), `medicamentoId` (UUID), `dosis` (String estructurado con valor y unidad), `diasTratamiento` (Integer > 0), `descripcion` (Texto con pautas de administración), `activa` (Boolean), `version` (control concurrente) y marcas temporales de auditoría (`createdAt`, `updatedAt`).
-- **Enfermedad**: Entidad del catálogo nosológico de la granja (`Spec 009`)[cite: 9] que actúa como la patología causal del esquema terapéutico.
+- **Enfermedad**: Entidad del catálogo nosológico de la granja (`Spec 009`) que actúa como la patología causal del esquema terapéutico.
 - **Medicamento**: Insumo farmacéutico registrado en el inventario central que provee el principio activo y la concentración.
 - **Auditoría Sanitaria (`san_auditoria`)**: Registro inmutable append-only donde queda resguardada la firma, fecha y autoría del Veterinario que formula el protocolo.
 

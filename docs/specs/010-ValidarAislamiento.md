@@ -3,8 +3,6 @@
 **Created**: 2026-09-04  
 **Last Updated**: 2026-09-22  
 
----
-
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Evaluación y Confirmación de Aislamiento Sanitario (Priority: P1)
@@ -144,11 +142,11 @@ Como auditor de bioseguridad y aseguramiento de calidad, quiero garantizar que c
 
 ### Measurable Outcomes
 
-- **SC-001**: El 100% de las evaluaciones de aislamiento se ejecutan sobre solicitudes formales de revisión registradas previamente por trabajadores de campo[cite: 4, 8].
+- **SC-001**: El 100% de las evaluaciones de aislamiento se ejecutan sobre solicitudes formales de revisión registradas previamente por trabajadores de campo.
 - **SC-002**: El 100% de los intentos de confirmación o desestimación ejecutados por roles distintos a `VETERINARIO` son bloqueados con código HTTP 403 Forbidden.
 - **SC-003**: El tiempo de respuesta del sistema para evaluar y persistir atómicamente la validación del aislamiento es inferior a 250 milisegundos bajo condiciones normales de red.
-- **SC-004**: Cero por ciento (0%) de modificaciones sobre el estado del galpón provocadas por la simple emisión, consulta o navegación de una solicitud de revisión sin confirmación veterinaria[cite: 4].
-- **SC-005**: El 100% de los aislamientos confirmados habilitan la disponibilidad inmediata del expediente de diagnóstico (`Spec 011`) en menos de 1 segundo tras el guardado[cite: 4, 8].
+- **SC-004**: Cero por ciento (0%) de modificaciones sobre el estado del galpón provocadas por la simple emisión, consulta o navegación de una solicitud de revisión sin confirmación veterinaria.
+- **SC-005**: El 100% de los aislamientos confirmados habilitan la disponibilidad inmediata del expediente de diagnóstico (`Spec 011`) en menos de 1 segundo tras el guardado.
 - **SC-006**: Cero incidentes (0%) de borrado físico (`DELETE`) en bases de datos sobre solicitudes o registros de aislamiento sanitario.
 - **SC-007**: El 100% de los eventos de integración asociados se resguardan de forma atómica en `san_outbox` dentro de la misma transacción local de base de datos.
 - **SC-008**: Cero duplicados (0%) en publicaciones de eventos o cambios de estado gracias a la validación de concurrencia optimista y la cabecera `X-Idempotency-Key`.

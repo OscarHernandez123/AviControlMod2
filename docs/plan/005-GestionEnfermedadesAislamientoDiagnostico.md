@@ -35,10 +35,10 @@ No se implementan aquí el catálogo ni el consumo de medicamentos, la mortalida
 2. **Versionado de decisiones y Snapshots:** Editar una enfermedad solo afecta diagnósticos futuros. Un diagnóstico conserva una instantánea (`snapshot`) de los datos (`nombreEnfermedadHistorico`, `requiereSacrificioHistorico`) y la decisión utilizados al confirmarse.
 3. **Galpón y lote:** No se duplican ni se crean tablas paralelas para `Galpon` o `Lote`. La solicitud y el diagnóstico almacenan sus UUID, población actual y edad capturadas en el momento requerido.
 4. **Asignación de trabajadores:** No se consulta ni se valida una asignación trabajador-galpón. Cualquier trabajador con el permiso correspondiente puede crear una solicitud para cualquier galpón que cumpla las condiciones.
-5. **Solicitud:** Solo se crea para un galpón en estado `En cosecha`, con lote activo y población actual mayor que cero. Una solicitud pendiente por galpón impide otra solicitud pendiente. Una solicitud enviada no se edita ni se retira.
+5. **Solicitud:** Solo se crea para un galpón en estado `productiva`, con lote activo y población actual mayor que cero. Una solicitud pendiente por galpón impide otra solicitud pendiente. Una solicitud enviada no se edita ni se retira.
 6. **Validación:** El veterinario debe tener una solicitud previa en estado `PENDIENTE`. Antes de completar la validación se consulta nuevamente el estado del galpón en el Módulo 1. Solo se permite la transición `productiva` a `aislamiento`.
 7. **Diagnóstico:** El diagnóstico se registra para el galpón que continúa en `aislamiento` y para el lote alojado al momento de confirmar. Una enfermedad tratable exige una medicación compatible; una enfermedad que requiere sacrificio no acepta medicación ni calcula reintegro.
-8. **Reintegro y Manejo de Concurrencia:** La fecha de reintegro es `fechaDiagnostico + diasTratamiento` (calculado en `LocalDate`). Un proceso programado (`Scheduler`) busca diagnósticos vencidos (`LocalDate.now() >= fechaReintegro`) aplicando bloqueo o exclusión por estado para evitar condiciones de carrera. Solicita la transición de `aislamiento` a `productiva` solo si el galpón conserva el estado `aislamiento`.
+8. **Reintegro y Manejo de Concurrencia:** La fecha de reintegro se calcula como `fechaDiagnostico + diasTratamiento` y se normaliza en UTC como `Instant` a las `23:59:59 UTC` del último día de tratamiento. Un proceso programado (`Scheduler`) busca diagnósticos vencidos consultando `fechaReintegro` en UTC y aplica bloqueo o exclusión por estado para evitar condiciones de carrera. Solicita la transición de `aislamiento` a `productiva` solo si el galpón conserva el estado `aislamiento`.
 9. **Puertos:** Se reutilizan `GalponQueryPort` y `LoteQueryPort` si ya están publicados por la capacidad de consulta. No se agrega un `Modulo1QueryPort` redundante. `CambiarEstadoOperativoGalponPort` representa una operación distinta y sí es necesario.
 10. **Eventos:** Las escrituras publican eventos internos después de confirmar la transacción local. Los eventos que atraviesan límites de módulo usan `IntegrationEventPublisherPort` y outbox. Las consultas no publican eventos.
 11. **Persistencia:** Las entidades sanitarias y sus relaciones se persisten en tablas propias (`san_enfermedades`, `san_solicitudes`, `san_diagnosticos`, `san_auditoria`, `san_outbox`). `Galpon` y `Lote` permanecen en la capacidad propietaria.
@@ -129,8 +129,8 @@ src/test/java/com/avicontrol/
 | - medicacionId: MedicacionId [0..1] (UUID)    [Ref. Catálogo - Spec 008]        |
 | - diasMedicacion: Integer [0..1]                                                |
 | - veterinarioId: VeterinarioId (UUID)                                           |
-| - fechaDiagnostico: LocalDate                                                   |
-| - fechaReintegro: LocalDate [0..1]            [Calculado / Nullable]            |
+| - fechaDiagnostico: Instant (UTC)                                           |
+| - fechaReintegro: Instant [0..1]             [UTC / Calculado / Nullable]      |
 | - observaciones: String [0..1]                                                  |
 | - estado: EstadoDiagnostico                   [ACTIVO, CERRADO, HABILITA_SACRIFICIO] |
 | - version: Long                               [@Version - Concurrencia]         |
@@ -155,12 +155,12 @@ La arquitectura expone endpoints REST bajo el prefijo `/api/v1/sanitary` (o `/ap
 
 | Endpoint | Método | Acceso | Propósito y Comunicación |
 | :--- | :--- | :--- | :--- |
-| `/api/enfermedades` | POST | `ROLE_VETERINARIO` | Registra una enfermedad con campos obligatorios explícitos. |
-| `/api/enfermedades/{enfermedadId}` | PUT | `ROLE_VETERINARIO` | Actualiza atributos de la enfermedad para diagnósticos futuros. |
-| `/api/galpones/{galponId}/solicitudes-aislamiento` | POST | `ROLE_TRABAJADOR` | Envía una solicitud de aislamiento sobre un galpón en cosecha. |
-| `/api/solicitudes-aislamiento` | GET | `ROLE_VETERINARIO` | Consulta la bandeja de solicitudes pendientes de validación. |
-| `/api/solicitudes-aislamiento/{solicitudId}/validacion` | POST | `ROLE_VETERINARIO` | Aprueba o rechaza la solicitud de aislamiento y muta el estado del galpón. |
-| `/api/galpones/{galponId}/diagnosticos` | POST | `ROLE_VETERINARIO` | Registra diagnóstico clínico, calcula reintegro o habilita sacrificio. |
+| `/api/v1/sanitary/enfermedades` | POST | `ROLE_VETERINARIO` | Registra una enfermedad con campos obligatorios explícitos. |
+| `/api/v1/sanitary/enfermedades/{enfermedadId}` | PUT | `ROLE_VETERINARIO` | Actualiza atributos de la enfermedad para diagnósticos futuros. |
+| `/api/v1/sanitary/galpones/{galponId}/solicitudes-aislamiento` | POST | `ROLE_TRABAJADOR` | Envía una solicitud de aislamiento sobre un galpón en estado `productiva`. |
+| `/api/v1/sanitary/solicitudes-aislamiento` | GET | `ROLE_VETERINARIO` | Consulta la bandeja de solicitudes pendientes de validación. |
+| `/api/v1/sanitary/solicitudes-aislamiento/{solicitudId}/validacion` | POST | `ROLE_VETERINARIO` | Aprueba o rechaza la solicitud de aislamiento y muta el estado del galpón. |
+| `/api/v1/sanitary/diagnosticos` | POST | `ROLE_VETERINARIO` | Registra diagnóstico clínico, calcula reintegro o habilita sacrificio. |
 
 ### Formato estándar de errores HTTP
 
@@ -190,24 +190,24 @@ T004: Acordar nombres y versiones de eventos de integración con Módulo 1, Plan
 
 T005: Crear fixtures de prueba para galpón productivo, sin lote, población cero, aislado y diagnósticos vencidos (LocalDate).
 
-T006: Alinear paquete raíz, actor autenticado, reloj (LocalDate), manejo de errores, outbox y transacciones con General.md [cite: 4].
+T006: Alinear paquete raíz, actor autenticado, reloj (LocalDate), manejo de errores, outbox y transacciones con General.md .
 
 Phase 2: Foundational (Blocking Prerequisites)
 T007: Implementar la entidad de dominio Enfermedad, enums y validaciones en Java puro.
 
 T008: Implementar SolicitudAislamiento, estados, inmutabilidad y validación de una solicitud pendiente por galpón.
 
-T009: Implementar DiagnosticoGalpon, cálculo de fecha de reintegro (LocalDate) y estados de seguimiento [cite: 4].
+T009: Implementar DiagnosticoGalpon, cálculo de fecha de reintegro (LocalDate) y estados de seguimiento .
 
 T010: Definir excepciones de dominio y puertos de salida (RepositoryPort, QueryPort).
 
 T011: Crear migraciones Flyway secuenciales para tablas sanitarias y outbox.
 
-T012: Implementar adaptadores internos para galpón, lote y medicación respetando los límites de los módulos [cite: 4].
+T012: Implementar adaptadores internos para galpón, lote y medicación respetando los límites de los módulos .
 
 T013: Configurar transacciones locales (@Transactional), outbox e idempotencia de eventos vía X-Idempotency-Key.
 
-T014: Verificar aislamiento estructural (el módulo sanitario no introduce tablas paralelas de Galpon o Lote) [cite: 4].
+T014: Verificar aislamiento estructural (el módulo sanitario no introduce tablas paralelas de Galpon o Lote) .
 
 Phase 3: User Story 1 — Registrar una Enfermedad (Priority: P1)
 T015: Probar validaciones de campos obligatorios, espacios y selección explícita del indicador de sacrificio.
@@ -220,17 +220,17 @@ T018: Implementar RegistrarEnfermedadUseCase.
 
 T019: Crear DTOs, mappers y resultados asociados.
 
-T020: Implementar controlador REST POST /api/enfermedades.
+T020: Implementar controlador REST POST /api/v1/sanitary/enfermedades.
 
 Phase 4: User Story 2 — Editar una Enfermedad (Priority: P2)
 T021: Probar edición válida y restricciones de seguridad por rol.
 
 T022: Probar que diagnósticos anteriores conservan sus snapshots históricos intactos.
 
-T023: Implementar EditarEnfermedadUseCase, endpoint PUT, control de versión optimista y evento EnfermedadActualizadaIntegrationEvent [cite: 1].
+T023: Implementar EditarEnfermedadUseCase, endpoint PUT, control de versión optimista y evento EnfermedadActualizadaIntegrationEvent .
 
 Phase 5: User Story 3 — Crear y Enviar Solicitud de Aislamiento (Priority: P1)
-T024: Probar validaciones de galpón en cosecha, estados incompatibles y población mayor a cero.
+T024: Probar validaciones de galpón en estado productiva, estados incompatibles y población mayor a cero.
 
 T025: Probar captura correcta de población y edad vigentes del lote activo.
 
@@ -243,7 +243,7 @@ T028: Probar restricción única por galpón ante peticiones concurrentes de ais
 
 T029: Probar consulta paginada de solicitudes para el rol veterinario.
 
-T030: Implementar consulta, restricciones de unicidad en base de datos y DTOs de paginación [cite: 2].
+T030: Implementar consulta, restricciones de unicidad en base de datos y DTOs de paginación .
 
 Phase 7: User Story 5 — Validar el Aislamiento (Priority: P1)
 T031: Probar seguridad por rol y obligatoriedad de solicitud previa en estado PENDIENTE.
@@ -252,37 +252,37 @@ T032: Probar re-lectura síncrona del estado vigente del galpón justo antes de 
 
 T033: Probar transición de estado a través de CambiarEstadoOperativoGalponPort.
 
-T034: Implementar ValidarAislamientoUseCase, decisiones, eventos de validación/rechazo y endpoint REST [cite: 3].
+T034: Implementar ValidarAislamientoUseCase, decisiones, eventos de validación/rechazo y endpoint REST .
 
 Phase 8: User Story 6 — Registrar Diagnóstico y Gestionar Reintegro (Priority: P1)
-T035: Probar restricciones de veterinario, galpón aislado, lote activo y enfermedad activa [cite: 4].
+T035: Probar restricciones de veterinario, galpón aislado, lote activo y enfermedad activa .
 
-T036: Probar obligatoriedad y compatibilidad de medicación para enfermedades tratables [cite: 4].
+T036: Probar obligatoriedad y compatibilidad de medicación para enfermedades tratables .
 
-T037: Probar reglas de negocio para patologías letales que exigen sacrificio (sin medicación ni reintegro) [cite: 4].
+T037: Probar reglas de negocio para patologías letales que exigen sacrificio (sin medicación ni reintegro) .
 
-T038: Probar snapshots históricos y rechazo ante cambios de estado concurrentes del galpón [cite: 4].
+T038: Probar snapshots históricos y rechazo ante cambios de estado concurrentes del galpón .
 
-T039: Implementar RegistrarDiagnosticoUseCase, MedicacionQueryPort, persistencia y eventos [cite: 4].
+T039: Implementar RegistrarDiagnosticoUseCase, MedicacionQueryPort, persistencia y eventos .
 
-T040: Implementar ProcesarReintegrosVencidosUseCase y ReintegroSanitarioScheduler con control de concurrencia seguro basado en LocalDate [cite: 4].
+T040: Implementar ProcesarReintegrosVencidosUseCase y ReintegroSanitarioScheduler con control de concurrencia seguro basado en LocalDate .
 
-T041: Probar reintegro idempotente, resiliencia ante caídas del microservicio y protección contra sobreescritura de galpones que ya no están aislados [cite: 4].
+T041: Probar reintegro idempotente, resiliencia ante caídas del microservicio y protección contra sobreescritura de galpones que ya no están aislados .
 
 Phase 9: Polish & Cross-Cutting Concerns
 T042: Documentar endpoints, roles, códigos de error y esquemas en OpenAPI.
 
 T043: Completar pruebas de integración de punta a punta (SanitarioIntegrationTest) cubriendo el flujo completo.
 
-T044: Verificar inmutabilidad histórica ante ediciones posteriores en el catálogo de enfermedades [cite: 1, 4].
+T044: Verificar inmutabilidad histórica ante ediciones posteriores en el catálogo de enfermedades .
 
 T045: Verificar que las solicitudes no alteren estados por sí mismas y que las validaciones utilicen correctamente los puertos del Módulo 1.
 
 T046: Comprobar idempotencia general en outbox, validaciones y reintegros del scheduler.
 
-T047: Verificar integración limpia con el Plan 006 (consultas de medicación) [cite: 4].
+T047: Verificar integración limpia con el Plan 006 (consultas de medicación) .
 
-T048: Verificar consumo correcto del evento de habilitación de sacrificio por parte del Plan 008 [cite: 4].
+T048: Verificar consumo correcto del evento de habilitación de sacrificio por parte del Plan 008 .
 
 T049: Auditoría de arquitectura limpia (dominio libre de frameworks, adaptadores desacoplados de persistencia externa).
 

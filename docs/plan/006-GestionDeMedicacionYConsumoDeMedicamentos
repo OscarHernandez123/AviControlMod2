@@ -5,7 +5,7 @@
 **Specs:**
 - `008-RegistrarMedicacion.md`
 - `015-ConsultarMedicacionPorGalponPorDia.md`
-- `013-RegistrarConsumoMedicamento.md`
+- `013-RegistrarConsumoMedicamentoPorLote.md`
 
 ---
 
@@ -145,8 +145,8 @@ src/test/java/com/avicontrol/
 | - unidadIngresada: String                                                       |
 | - cantidadNormalizada: BigDecimal                    (En unidad base)           |
 | - unidadBase: String                                                            |
-| - fechaAplicacion: LocalDate                                                    |
-| - registradoEn: Instant                              (UTC al confirmar)         |
+| - fechaAplicacion: Instant                                                   |
+| - fechaRegistro: Instant                            (UTC al confirmar)         |
 | - version: Integer                                   (@Version Optimistic Lock) |
 +---------------------------------------------------------------------------------+
                                    │
@@ -186,7 +186,7 @@ La arquitectura expone endpoints REST bajo el prefijo `/api/v1` (o `/api/`) orie
 | `/api/medicaciones/{medicacionId}` | PUT | `ROLE_VETERINARIO` | Edita una medicación para diagnósticos futuros. |
 | `/api/galpones/{galponId}/medicacion-diaria` | GET | `ROLE_TRABAJADOR` o Admin | Consulta tratamientos vigentes para la fecha actual en un galpón. |
 | `/api/medicacion-diaria` | GET | `ROLE_TRABAJADOR` o Admin | Consulta el resumen consolidado de medicación diaria permitido por el rol. |
-| `/api/diagnosticos/{diagnosticoId}/consumos-medicamento` | POST | `ROLE_VETERINARIO` | Registra el consumo real de medicamento. |
+| `/api/v1/sanitary/consumos` | POST | `ROLE_VETERINARIO` | Registra el consumo real de medicamento. |
 
 ### Formato estándar de errores HTTP
 
@@ -198,7 +198,7 @@ Ante un conflicto de negocio (ej. existencias insuficientes, unidad incompatible
   "title": "Consumo de medicamento no permitido",
   "status": 409,
   "detail": "Las existencias disponibles no cubren la cantidad solicitada",
-  "instance": "/api/diagnosticos/{diagnosticoId}/consumos-medicamento",
+  "instance": "/api/v1/sanitary/consumos",
   "code": "EXISTENCIAS_INSUFICIENTES",
   "correlationId": "uuid",
   "fieldErrors": []
@@ -267,12 +267,12 @@ Ante un conflicto de negocio (ej. existencias insuficientes, unidad incompatible
 
 - **T037** — Documentar endpoints, roles, unidades, mensajes y errores en OpenAPI.
 - **T038** — Completar `MedicamentoIntegrationTest` con registro, edición, consulta diaria y consumo.
-- **T039** — Verificar que registrar o editar medicación no descuente existencias ni modifique diagnósticos existentes [cite: 5].
+- **T039** — Verificar que registrar o editar medicación no descuente existencias ni modifique diagnósticos existentes .
 - **T040** — Verificar que una consulta diaria no escriba diagnósticos, consumos ni inventario.
 - **T041** — Verificar atomicidad del descuento y ausencia de consumos parciales ante concurrencia.
 - **T042** — Verificar idempotencia de eventos generados (`ConsumoMedicamentoRegistrado`) y eventos de inventario.
 - **T043** — Verificar que Módulo 3 pueda calcular costo como suma de cantidad descontada por precio histórico de cada recepción.
-- **T044** — Verificar que Plan 005 consuma `MedicacionQueryPort` y no duplique el catálogo [cite: 6].
+- **T044** — Verificar que Plan 005 consuma `MedicacionQueryPort` y no duplique el catálogo .
 - **T045** — Extender comprobaciones arquitectónicas con ArchUnit (dominio sin frameworks, aplicación sin JPA/HTTP y adaptadores sin acceso a repositorios privados).
 - **T046** — Ejecutar suite completa de pruebas unitarias y de integración mediante Gradle Wrapper.
 - **T047** — Medir objetivos de respuesta (< 2s) y garantizar que el resumen optimice consultas por conjunto.
