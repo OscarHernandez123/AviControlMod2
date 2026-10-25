@@ -55,7 +55,7 @@ Como veterinario de granja, quiero que la alerta sanitaria generada consolide au
 ### Edge Cases
 
 - **¿Qué sucede si ocurre una falla técnica durante la generación de la alerta?**
-  - El sistema debe asegurar transaccionalidad o reintento inmediato para garantizar que ningún registro de mortalidad anormal quede sin su correspondiente alerta sanitaria.
+  - El registro de mortalidad anormal, la actualización de población y la alerta se confirman en una única transacción local. Si falla la creación de la alerta, se revierte la operación completa y puede repetirse la solicitud sin duplicados.
 
 - **¿Qué sucede si el lote activo del galpón se queda con 0 aves vivas tras la mortalidad anormal?**
   - El sistema genera la alerta sanitaria con prioridad máxima ("Emergencia sanitaria") indicando mortalidad total del lote para la intervención inmediata del veterinario.

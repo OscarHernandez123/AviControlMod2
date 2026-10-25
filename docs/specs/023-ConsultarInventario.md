@@ -23,7 +23,7 @@ Como administrador, quiero consultar en un mismo lugar las existencias disponibl
 2. **Scenario**: Consulta de existencias de alimentos
    - **Given** que existen alimentos con saldo disponible provenientes de una o varias recepciones
    - **When** el administrador consulta la sección de alimentos
-   - **Then** el sistema muestra las tarjetas `Pre-inicio`, `Inicio`, `Broiler` y `Total alimento disponible` en kilogramos, además de una tabla consolidada con las columnas `Etapa`, `Alimento`, `Recepciones activas`, `Próximo vencimiento`, `Stock actual` y `Demanda`
+   - **Then** el sistema muestra las tarjetas `Pre-inicio`, `Inicio`, `Broiler` y `Total alimento disponible` en kilogrbamos, además de una tabla consolidada con las columnas `Etapa`, `Alimento`, `Recepciones activas`, `Próximo vencimiento`, `Stock actual` y `Demanda`
 
 3. **Scenario**: Consulta de existencias de medicamentos
    - **Given** que existen medicamentos con saldo disponible provenientes de una o varias recepciones
