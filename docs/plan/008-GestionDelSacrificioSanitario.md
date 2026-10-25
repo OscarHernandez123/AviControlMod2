@@ -14,11 +14,11 @@ Implementar la emisión y la confirmación de la ejecución de órdenes de sacri
 
 El plan asegura la separación estricta entre la orden y su ejecución efectiva: la emisión de la orden no altera la población del lote ni el estado operativo del galpón, manteniéndolo en estado de aislamiento hasta que se confirme la ejecución en campo. La confirmación de la ejecución opera como una transacción atómica local indivisible que fija en exactamente cero la población viva del lote, transiciona el estado operativo del galpón de aislamiento a vaciado sanitario y marca la orden como ejecutada, bloqueando cualquier intento de re-confirmación.
 
-`Galpon` y `Lote` continúan siendo entidades autoritativas del Módulo 1; el diagnóstico clínico y la enfermedad pertenecen a la capacidad sanitaria del Plan 005 ([005-GestionDeEnfermedadesAislamientoYDiagnostico.md](005-GestionDeEnfermedadesAislamientoYDiagnostico.md)). Este plan orquesta dichas capacidades a través de puertos de salida públicos, sin crear tablas paralelas ni copias de datos ajenos. La orden de sacrificio sanitario es de alcance total (100 % de las aves alojadas) y no solicita pesajes, cantidades parciales ni liquidaciones económicas, las cuales corresponden exclusivamente al sacrificio comercial y al Módulo 3.
+`Galpon` y `Lote` continúan siendo entidades autoritativas del Módulo 1; el diagnóstico clínico pertenece al Plan 015 y el catálogo de enfermedades al Plan 005 ([015-DiagnosticoYReintegroSanitario.md](015-DiagnosticoYReintegroSanitario.md)). Este plan orquesta dichas capacidades a través de puertos de salida públicos, sin crear tablas paralelas ni copias de datos ajenos. La orden de sacrificio sanitario es de alcance total (100 % de las aves alojadas) y no solicita pesajes, cantidades parciales ni liquidaciones económicas, las cuales corresponden exclusivamente al sacrificio comercial y al Módulo 3.
 
 ## Technical Context
 
-**Integraciones específicas**: Consulta del diagnóstico clínico y validación del indicador `requiereSacrificioSanitario` del Plan 005 (`DiagnosticoGalponQueryPort`); consulta del estado operativo del galpón y población del lote del Módulo 1 (`GalponQueryPort`, `LoteQueryPort`); solicitud de cambio de estado operativo del galpón (`CambiarEstadoOperativoGalponPort`); vaciado atómico de inventario vivo a cero (`ActualizarInventarioVivoPort`); eventos internos con Spring Modulith y contratos de integración hacia Apache Kafka.
+**Integraciones específicas**: Consulta del diagnóstico clínico y validación del indicador `requiereSacrificioSanitario` del Plan 015 (`DiagnosticoGalponQueryPort`); consulta del estado operativo del galpón y población del lote del Módulo 1 (`GalponQueryPort`, `LoteQueryPort`); solicitud de cambio de estado operativo del galpón (`CambiarEstadoOperativoGalponPort`); vaciado atómico de inventario vivo a cero (`ActualizarInventarioVivoPort`); eventos internos con Spring Modulith y contratos de integración hacia Apache Kafka.
 
 **Datos propios**: Órdenes de sacrificio sanitario (`OrdenSacrificioSanitario`) y su ciclo de vida auditado.
 
@@ -41,7 +41,7 @@ El plan asegura la separación estricta entre la orden y su ejecución efectiva:
 **Scale/Scope**: Dos historias de usuario, tres endpoints REST, una entidad raíz con su máquina de estados, cinco puertos de salida hacia integración y persistencia, eventos internos y publicación de eventos de integración.
 
 **Dependencias funcionales**:
-- Diagnósticos clínicos y catálogo de enfermedades del Plan 005 ([005-GestionDeEnfermedadesAislamientoYDiagnostico.md](005-GestionDeEnfermedadesAislamientoYDiagnostico.md)).
+- Diagnósticos clínicos del Plan 015 y catálogo de enfermedades del Plan 005 ([015-DiagnosticoYReintegroSanitario.md](015-DiagnosticoYReintegroSanitario.md)).
 - Consulta y mutación de galpones y lotes del Módulo 1 (reutilizando `GalponQueryPort`, `LoteQueryPort`, `CambiarEstadoOperativoGalponPort` y `ActualizarInventarioVivoPort`).
 - Autenticación, actor autenticado, reloj compartido y formato de errores definidos en [General.md](General.md).
 
@@ -77,8 +77,8 @@ El plan asegura la separación estricta entre la orden y su ejecución efectiva:
 
 ### Alcance documental
 
-- La identificación de signos clínicos, solicitud de aislamiento, validación y confirmación del diagnóstico corresponden a [005-GestionDeEnfermedadesAislamientoYDiagnostico.md](005-GestionDeEnfermedadesAislamientoYDiagnostico.md). Este plan solo consume el diagnóstico resultante.
-- El sacrificio comercial por cumplimiento del ciclo de engorde (edad $\ge 45$ días) y el pesaje final para liquidación corresponden al Plan 009 ([009-AptitudProgramacionYResultadosDelSacrificioProductivo.md](009-AptitudProgramacionYResultadosDelSacrificioProductivo.md)).
+- La solicitud y validación de aislamiento corresponden al Plan 014; la confirmación del diagnóstico corresponde a [015-DiagnosticoYReintegroSanitario.md](015-DiagnosticoYReintegroSanitario.md). Este plan solo consume el diagnóstico resultante.
+- La aptitud, programación y ejecución del sacrificio comercial por cumplimiento del ciclo de engorde (edad $\ge 45$ días) corresponden al Plan 009 ([009-AptitudProgramacionYResultadosDelSacrificioProductivo.md](009-AptitudProgramacionYResultadosDelSacrificioProductivo.md)); el registro de peso y cantidad final para liquidación corresponde al Plan 016 ([016-ResultadosDelSacrificioProductivo.md](016-ResultadosDelSacrificioProductivo.md)).
 - Los protocolos físicos de enterramiento, incineración o compostaje sanitario de las aves muertas quedan fuera del alcance del software de gestión operativa.
 
 ## Project Structure
@@ -184,7 +184,7 @@ OrdenSacrificioSanitario (Agregado Raíz)
 ```
 
 Relaciones:
-- La orden se vincula de forma unívoca a un `DiagnosticoGalpon` de Plan 005 cuya enfermedad exige sacrificio sanitario.
+- La orden se vincula de forma unívoca a un `DiagnosticoGalpon` de Plan 015 cuya enfermedad exige sacrificio sanitario.
 - Referencia al `Galpon` en estado `AISLAMIENTO` y al `Lote` activo con aves vivas alojadas.
 - La confirmación transiciona la orden a `EJECUTADA`, pone a `0` la población del `Lote` y pasa el `Galpon` a `VACIADO_SANITARIO`.
 
@@ -193,7 +193,7 @@ Relaciones:
 | Puerto | Tipo | Responsabilidad |
 | --- | --- | --- |
 | `OrdenSacrificioSanitarioRepositoryPort` | Salida (Persistencia) | Guardar y actualizar órdenes inmutables, buscar por UUID y verificar órdenes pendientes activas por galpón. |
-| `DiagnosticoGalponQueryPort` | Salida (Integración Plan 005) | Consultar existencia del diagnóstico, enfermedad asociada y valor de `requiereSacrificioSanitario`. |
+| `DiagnosticoGalponQueryPort` | Salida (Integración Plan 015) | Consultar existencia del diagnóstico, enfermedad asociada y valor de `requiereSacrificioSanitario`. |
 | `GalponQueryPort` | Salida (Integración Módulo 1) | Verificar que el galpón exista y se encuentre en estado `AISLAMIENTO`. |
 | `LoteQueryPort` | Salida (Integración Módulo 1) | Verificar lote activo alojado y población actual mayor a cero. |
 | `CambiarEstadoOperativoGalponPort` | Salida (Integración Módulo 1) | Ejecutar la transición del galpón de `AISLAMIENTO` a `VACIADO_SANITARIO`. |
@@ -231,7 +231,7 @@ Siguiendo RFC 9457 y [General.md](General.md):
 
 **Purpose**: Preparar configuraciones de seguridad, fixtures y contratos de comunicación interna.
 
-- [ ] T001 Revisar el contrato de `DiagnosticoGalponQueryPort` con el Plan 005 para asegurar que exponga el identificador de enfermedad y el flag booleano `requiereSacrificioSanitario`.
+- [ ] T001 Revisar el contrato de `DiagnosticoGalponQueryPort` con el Plan 015 para asegurar que exponga el identificador de enfermedad y el flag booleano `requiereSacrificioSanitario`.
 - [ ] T002 Verificar los contratos de `CambiarEstadoOperativoGalponPort` y `ActualizarInventarioVivoPort` con el Módulo 1 para la transición a `VACIADO_SANITARIO` y reseteo de población a cero.
 - [ ] T003 Configurar en Spring Security la restricción de acceso estricta para que únicamente usuarios autenticados con `ROLE_VETERINARIO` puedan invocar endpoints de emisión y confirmación de sacrificio sanitario.
 - [ ] T004 Crear fixtures de pruebas: galpón en aislamiento con lote activo, galpón en producción, diagnóstico tratable (sin sacrificio), diagnóstico con sacrificio requerido y órdenes en estado pendiente y ejecutada.
@@ -426,7 +426,7 @@ graph TD
 
 ### Dependencias con otros planes
 
-- **Plan 005**: Suministra la validación clínica de la enfermedad que habilita la orden.
+- **Plan 015**: Suministra el diagnóstico que habilita la orden; Plan 005 mantiene la enfermedad.
 - **Módulo 1**: Gestiona el cambio de estado operativo a `VACIADO_SANITARIO` y la puesta a cero del lote activo.
 - **Módulo 3**: Consume `AviControl.Sanitario.SacrificioSanitarioEjecutado.v1` para la baja contable del lote sin liquidación comercial.
 

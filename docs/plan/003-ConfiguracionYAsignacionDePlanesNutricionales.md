@@ -31,12 +31,12 @@ La arquitectura sigue el patrón hexagonal dentro del monolito modular de AviCon
 - Inmutabilidad absoluta para etapas en estado `COMPLETADA` o lotes finalizados.
 - Ninguna operación de este plan genera movimientos de almacén ni reservas físicas de bultos en bodega central.
 
-**Scale/Scope**: Cuatro historias de usuario, ocho endpoints REST, cinco entidades de dominio, un Value Object de ración y demanda, puertos de consulta hacia galpones, catálogo e inventario, eventos internos de Spring Modulith para asignación automática y notificación de cambios de fecha de salida.
+**Scale/Scope**: Cuatro historias de usuario, diez endpoints REST, cinco entidades de dominio, un Value Object de ración y demanda, puertos de consulta hacia galpones, catálogo e inventario, eventos internos de Spring Modulith para asignación automática y notificación de cambios de fecha de salida.
 
 **Dependencias funcionales**:
-- Galpones y lotes vigentes gestionados por Módulo 1 (reutilizando `GalponQueryPort` y `LoteQueryPort` de [001-ConsultaYSeguimientoDeGalpones.md](001-ConsultaYSeguimientoDeGalpones.md)).
-- Catálogo de alimentos e inventario físico en bodega central ([002-GestionDeInventarioYRecepciones.md](002-GestionDeInventarioYRecepciones.md) y [SPEC-023](../specs/023-ConsultarInventario.md)).
-- Requerimientos operativos diarios y proyección contable para Finanzas ([004-RequerimientosYSeguimientoDeAlimentacion.md](004-RequerimientosYSeguimientoDeAlimentacion.md), [SPEC-014](../specs/014-ConsultarAlimentoPorGalponPorDia.md) y [SPEC-022](../specs/022-ConsultarAlimentoRequeridoPorLote.md)).
+- Galpones y lotes vigentes gestionados por Módulo 1 (reutilizando `GalponQueryPort` y `LoteQueryPort` de [Plan 001](001-ConsultaDeGalpones.md)).
+- Catálogo de alimentos y datos comerciales de recepciones del Plan 002 ([002-GestionDeRecepciones.md](002-GestionDeRecepciones.md)); inventario físico de bodega central del [Plan 010](010-GestionDelInventario.md) y [SPEC-023](../specs/023-ConsultarInventario.md).
+- Requerimientos operativos diarios ([Plan 004](004-SeguimientoOperativoDeAlimentacion.md) y [SPEC-014](../specs/014-ConsultarAlimentoPorGalponPorDia.md)) y proyección por lote para Finanzas ([Plan 011](011-ProyeccionesDeAlimentoPorLote.md) y [SPEC-022](../specs/022-ConsultarAlimentoRequeridoPorLote.md)).
 - Programación de salida / sacrificio del lote (Módulo 1 y Planes 008/009).
 
 ### Decisiones específicas
@@ -64,8 +64,9 @@ La arquitectura sigue el patrón hexagonal dentro del monolito modular de AviCon
 ### Alcance documental
 
 - **SPEC-021** (este plan): Define plantillas maestras, asignación a galpones, excepciones de ingreso, selección de alimentos compatibles, bloqueo en etapa activa, ajuste de duración en cascada y actualización de la fecha proyectada de salida.
-- **[Plan 004](004-RequerimientosYSeguimientoDeAlimentacion.md) (SPEC-014 y SPEC-022)**: Implementa la consulta diaria operativa de alimento por galpón y la proyección de requerimientos por lote para el Módulo 3 (Finanzas). Este Plan 003 garantiza la inmutabilidad del insumo, emite los eventos `EtapaNutricionalActivada` y `DuracionEtapaAjustada`, y provee las raciones y días efectivos que el Plan 004 consume.
-- **[Plan 002](002-GestionDeInventarioYRecepciones.md) (SPEC-023)**: Provee la consulta de stock físico consolidado en bodega central. Plan 003 consume las existencias mediante `StockBodegaQueryPort` de forma pasiva (solo lectura).
+- **[Plan 004](004-SeguimientoOperativoDeAlimentacion.md) (SPEC-014)**: Implementa la consulta diaria operativa de alimento por galpón y el registro de suministros. Este Plan 003 provee las raciones y etapas activas que Plan 004 consume.
+- **[Plan 011](011-ProyeccionesDeAlimentoPorLote.md) (SPEC-022)**: Implementa la proyección de requerimientos por lote para Finanzas. Este Plan 003 emite `EtapaNutricionalActivada` y `DuracionEtapaAjustada`, y garantiza la inmutabilidad del alimento y cuota que protege la proyección.
+- **[Plan 010](010-GestionDelInventario.md) (SPEC-023)**: Provee la consulta de stock físico consolidado en bodega central. Plan 003 consume las existencias mediante `StockBodegaQueryPort` de forma pasiva (solo lectura).
 - **Módulo 1**: Es propietario de los agregados `Galpon` y `Lote`. Plan 003 consulta sus datos vigentes y notifica desplazamientos de la fecha estimada de salida/sacrificio.
 
 ---
@@ -288,6 +289,7 @@ PlanNutricionalGalpon (1) ───< (1..*) CalendarioEtapaGalpon (1) ───<
 | `/api/nutricion/alimentos-compatibles` | `GET` | `ROLE_NUTRICIONISTA`, `ROLE_ADMINISTRADOR` | Consulta alimentos comerciales compatibles con la etapa y sus existencias en bodega central. |
 | `/api/galpones/{galponId}/plan-nutricional/etapas/{etapaId}/alimento` | `PUT` | `ROLE_NUTRICIONISTA` | Asigna o cambia el alimento comercial para una etapa futura no iniciada. Rechaza etapa activa. |
 | `/api/galpones/{galponId}/plan-nutricional/etapas/{etapaId}/ajuste-duracion` | `PUT` | `ROLE_NUTRICIONISTA` | Ajusta los días de una etapa activa con justificación obligatoria y recálculo en cascada. |
+| `/api/galpones/{galponId}/plan-nutricional/etapas/{etapaId}/historial-ajustes` | `GET` | `ROLE_NUTRICIONISTA`, `ROLE_ADMINISTRADOR` | Consulta el historial de ajustes de duración de una etapa. |
 
 ---
 
@@ -332,7 +334,7 @@ Todos los errores retornan `Content-Type: application/problem+json` conforme a [
 - [ ] T005 Implementar en Java puro los enums `TipoAve`, `EtapaCrianza` (`PRE_INICIO`, `INICIO`, `ENGORDE`), `EstadoPlanGalpon`, `EstadoEtapa` y `MotivoAjusteEtapa`.
 - [ ] T006 Implementar el Value Object `RacionDiaria` con validación de valor estrictamente positivo (`> 0.0000`), precisión de hasta 4 decimales y operaciones aritméticas de demanda.
 - [ ] T007 Implementar las entidades `PlanNutricionalPlantilla` y `PlanNutricionalEtapaPlantilla` con validación estricta de contigüidad (`DiaInicio_i = DiaFin_{i-1} + 1`).
-- [ ] T008 Implementar las entidades `PlanNutricionalGalpon`, `CalendarioEtapaGalpon` e `HistorialAjusteEtapa` con sus reglas de transición de estado, blindaje de etapa activa e inmutabilidad de etapa completada.
+- [ ] T008 Implementar las entidades `PlanNutricionalGalpon`, `CalendarioEtapaGalpon` e `HistorialAjusteEtapa` con sus reglas de transición de estado, emisión de `EtapaNutricionalActivada` al pasar una etapa a `ACTIVA`, blindaje de etapa activa e inmutabilidad de etapa completada.
 - [ ] T009 Implementar en `CalendarioEtapaGalpon` el método de cierre matemático de cascada: desplazar etapas posteriores preservando días efectivos y calcular la variación total de días de salida.
 - [ ] T010 Definir excepciones de dominio específicas (`PlanNutricionalNoEncontradoException`, `EtapaActivaInmutableException`, `EtapasDiscontinuasException`, etc.).
 - [ ] T011 Definir los puertos de salida `PlanNutricionalPlantillaRepositoryPort`, `PlanNutricionalGalponRepositoryPort`, `AlimentoCatalogoQueryPort`, `StockBodegaQueryPort`, `ActualizarFechaSalidaLotePort` y `NutricionEventPublisherPort`.
@@ -456,6 +458,7 @@ Todos los errores retornan `Content-Type: application/problem+json` conforme a [
 - **Evento consumido**: `LoteAlojado(galponId, loteId, tipoAve, edadDiasIngreso, fechaIngreso, poblacionInicial, occurredAt)` (desde Módulo 1).
 - **Eventos producidos**:
   - `PlanNutricionalAsignado(planGalponId, galponId, loteId, plantillaId, occurredAt)`
+  - `EtapaNutricionalActivada(eventoId, planGalponId, galponId, loteId, etapaId, nombreEtapa, diasBase, cuotaKgAveDia, alimentoId, pesoNominalPorBulto, poblacionInicioEtapa, occurredAt)`, cuando una etapa entra en estado `ACTIVA`, incluida la etapa inicial asignada al alojar el lote.
   - `PlanNutricionalPendienteAsignacion(galponId, loteId, tipoAve, mensaje, occurredAt)`
   - `PlanNutricionalSustituido(planGalponId, galponId, loteId, nuevaPlantillaId, occurredAt)`
 
@@ -527,15 +530,15 @@ Todos los errores retornan `Content-Type: application/problem+json` conforme a [
 
 ### Tests para User Story 2
 
-- [ ] T022 [US2] Probar en `AsignarPlanNutricionalLoteUseCaseTest` la clonación desacoplada del plan predeterminado al recibir `LoteAlojado`.
-- [ ] T023 [US2] Probar la regla de edad de ingreso > 1: verificar que etapas anteriores se marquen como `OMITIDA` y la etapa correspondiente se active de inmediato.
+- [ ] T022 [US2] Probar en `AsignarPlanNutricionalLoteUseCaseTest` la clonación desacoplada del plan predeterminado al recibir `LoteAlojado` y la emisión de `EtapaNutricionalActivada` con la población inicial capturada.
+- [ ] T023 [US2] Probar la regla de edad de ingreso > 1: verificar que etapas anteriores se marquen como `OMITIDA`, la etapa correspondiente se active de inmediato y emita el evento con la población viva al corte.
 - [ ] T024 [US2] Probar la ausencia de plan predeterminado: galpón pasa a `PENDIENTE_ASIGNACION`, publicación de alerta prioritaria y demanda diaria en `0.0`.
 - [ ] T025 [US2] Probar en `SustituirPlanNutricionalGalponUseCaseTest` que las etapas `COMPLETADA` y `ACTIVA` se mantengan rigurosamente intactas y la nueva plantilla solo se acople a etapas futuras `PROGRAMADA`.
 - [ ] T026 [US2] Probar en `LoteAlojadoEventListenerTest` el manejo idempotente ante reentregas del evento de alojamiento.
 
 ### Implementación de User Story 2
 
-- [ ] T027 [US2] Implementar `AsignarPlanNutricionalLoteUseCase` contemplando asignación automática por evento y asignación manual de contingencia.
+- [ ] T027 [US2] Implementar `AsignarPlanNutricionalLoteUseCase` contemplando asignación automática por evento, asignación manual de contingencia y publicación de `EtapaNutricionalActivada` para la etapa que queda activa.
 - [ ] T028 [US2] Implementar `LoteAlojadoEventListener` consumiendo el evento interno de Spring Modulith.
 - [ ] T029 [US2] Implementar `SustituirPlanNutricionalGalponUseCase` con lógica de acoplamiento no destructivo.
 - [ ] T030 [US2] Implementar endpoints de consulta y sustitución en `PlanNutricionalGalponController`.
@@ -631,7 +634,7 @@ Todos los errores retornan `Content-Type: application/problem+json` conforme a [
 ### Definición del evento para User Story 4
 
 - **Eventos producidos**:
-  - `DuracionEtapaAjustada(planGalponId, etapaId, diasProrroga, diasEfectivosNuevos, motivo, justificacion, occurredAt)`
+  - `DuracionEtapaAjustada(ajusteId, planGalponId, galponId, loteId, etapaId, diasProrrogaAcumulados, diasEfectivosNuevos, motivo, justificacion, usuarioResponsable, occurredAt)`. `ajusteId` es el ID UUID del registro persistido en `HistorialAjusteEtapa`.
   - `FechaProyectadaSalidaLoteActualizada(galponId, loteId, nuevaFechaSalida, diasDesplazamiento, occurredAt)`
 
 ### Definición de endpoints REST para User Story 4
@@ -736,9 +739,10 @@ Todos los errores retornan `Content-Type: application/problem+json` conforme a [
 
 ### Dependencias con otros planes
 
-- **[Plan 001](001-ConsultaYSeguimientoDeGalpones.md)**: Reutiliza `GalponQueryPort` y `LoteQueryPort` para consultar el estado del galpón, lote alojado y edad actual.
-- **[Plan 002](002-GestionDeInventarioYRecepciones.md)**: Provee la información de stock físico disponible en bodega central mediante `StockBodegaQueryPort`.
-- **[Plan 004](004-RequerimientosYSeguimientoDeAlimentacion.md)**: Consume las etapas nutricionales activas, raciones diarias, productos asignados y los eventos `EtapaNutricionalActivada` y `DuracionEtapaAjustada` emitidos por este Plan 003 para calcular la cuota operativa del día (SPEC-014), registrar la proyección oficial por lote para Finanzas y consolidar el balance de compras (SPEC-022).
+- **[Plan 001](001-ConsultaDeGalpones.md)**: Reutiliza `GalponQueryPort` y `LoteQueryPort` para consultar el estado del galpón, lote alojado y edad actual.
+- **[Plan 010](010-GestionDelInventario.md)**: Provee la información de stock físico disponible en bodega central mediante `StockBodegaQueryPort`.
+- **[Plan 004](004-SeguimientoOperativoDeAlimentacion.md)**: Consume las etapas nutricionales activas, raciones diarias y productos asignados para la operación diaria y registro de suministros (SPEC-014).
+- **[Plan 011](011-ProyeccionesDeAlimentoPorLote.md)**: Consume los eventos `EtapaNutricionalActivada` y `DuracionEtapaAjustada` emitidos por este Plan 003 para registrar y actualizar la proyección por lote y consolidar el balance de abastecimiento (SPEC-022).
 
 ### Dentro de cada User Story
 

@@ -6,8 +6,8 @@
 
 **Specs**:
 
-- [001-RegistrarRecepcionDeAlimento.md](../specs/001-RegistrarRecepcionDeAlimento.md)
-- [002-RegistroRecepcionDeMedicamento.md](../specs/002-RegistroRecepcionDeMedicamento.md)
+  [001-RegistrarRecepcionDeAlimento.md](../specs/001-RegistrarRecepcionDeAlimento.md)
+  [002-RegistroRecepcionDeMedicamento.md](../specs/002-RegistroRecepcionDeMedicamento.md)
 
 ## Summary
 
@@ -23,7 +23,7 @@ El código de lote puede repetirse: cada entrega crea una recepción independien
 
 **Constraints**: Solo el administrador registra, edita y consulta recepciones. Las fechas, cantidades, precios e impuestos deben validarse con BigDecimal, precisión y redondeo centralizados. Los catálogos de alimentos y medicamentos son externos a este plan.
 
-**Scale/Scope**: Seis historias de usuario, seis endpoints REST principales, dos tipos de recepción, cálculos comerciales, historial, auditoría y publicación de eventos de recepción confirmada.
+**Scale/Scope**: Seis historias de usuario y ocho endpoints REST (registro, edición, listado y detalle para cada tipo de recepción), dos tipos de recepción, cálculos comerciales, historial, auditoría y publicación de eventos de recepción confirmada.
 
 **Dependencias funcionales**: Catálogos de alimentos y medicamentos; BodegaCentral y movimientos del Plan 010; autenticación, actor, errores y eventos de General.md.
 
@@ -38,14 +38,14 @@ El código de lote puede repetirse: cada entrega crea una recepción independien
 7. **Eventos**: Se publican RecepcionAlimentoConfirmada, RecepcionMedicamentoConfirmada y sus eventos de edición después de confirmar. Los consumidores deben ser idempotentes.
 8. **Seguridad**: Todos los endpoints requieren ROLE_ADMINISTRADOR y el caso de uso valida nuevamente el actor.
 9. **Persistencia**: Este plan crea tablas de recepción y auditoría. No crea tablas de saldo, existencia ni movimiento; esas tablas pertenecen al Plan 010.
-10. **Unidades**: Alimento conserva bultos, peso por bulto y peso total en kg. Medicamento conserva cantidad, contenido por presentación y unidad de medida. No se convierten unidades incompatibles.
+10. **Unidades**: Alimento conserva bultos, peso por bulto y peso total en kg. Medicamento admite `MILIGRAMO`, `GRAMO`, `MILILITRO` y `UNIDAD`; normaliza masa a gramos (`1.000 mg = 1 g`), volumen a mililitros y conteo a unidades. Un medicamento conserva una sola dimensión compatible entre recepciones; no se convierten dimensiones incompatibles.
 
 ### Alcance documental
 
-- El movimiento inicial requerido por los specs se implementa mediante RegistrarEntradaInventarioPort, propiedad del Plan 010.
-- Las consultas de existencias, vencimientos, FEFO, resumen y cobertura pertenecen al Plan 010 y al spec 023.
-- El precio neto por kilogramo o unidad se conserva como valor calculado de la recepción; el consumo posterior conserva su propio precio histórico por recepción.
-- Los nombres definitivos de puertos y eventos se acuerdan con el Plan 010 antes de implementar.
+  El movimiento inicial requerido por los specs se implementa mediante RegistrarEntradaInventarioPort, propiedad del Plan 010.
+  Las consultas de existencias, vencimientos, FEFO, resumen y cobertura pertenecen al Plan 010 y al spec 023.
+  El precio neto por kilogramo o unidad se conserva como valor calculado de la recepción; el consumo posterior conserva su propio precio histórico por recepción.
+  Los nombres definitivos de puertos y eventos se acuerdan con el Plan 010 antes de implementar.
 
 ## Project Structure
 
@@ -56,7 +56,7 @@ El código de lote puede repetirse: cada entrega crea una recepción independien
     │   ├── 001-RegistrarRecepcionDeAlimento.md
     │   └── 002-RegistroRecepcionDeMedicamento.md
     └── plan/
-        └── 002-GestionDeRecepciones.md
+        └── 002 GestionDeRecepciones.md
 
 ### Source Code (repository root)
 
@@ -168,7 +168,7 @@ La recepción no contiene una colección de movimientos. Su entrada y uso poster
 ### Contratos de los puertos
 
 | Puerto | Responsabilidad |
-| --- | --- |
+|     |     |
 | RecepcionAlimentoRepositoryPort | Crear, editar, buscar, filtrar y obtener detalles de recepciones de alimento. |
 | RecepcionMedicamentoRepositoryPort | Crear, editar, buscar, filtrar y obtener detalles de recepciones de medicamento. |
 | AuditoriaRecepcionRepositoryPort | Guardar los valores anteriores y nuevos de cada edición. |
@@ -181,7 +181,7 @@ La recepción no contiene una colección de movimientos. Su entrada y uso poster
 ### Contratos HTTP propuestos
 
 | Endpoint | Acceso | Resultado |
-| --- | --- | --- |
+|     |     |     |
 | POST /api/recepciones/alimentos | Administrador | Registra una recepción y solicita su entrada inicial. |
 | PUT /api/recepciones/alimentos/{recepcionId} | Administrador | Edita una recepción no utilizada. |
 | GET /api/recepciones/alimentos | Administrador | Historial paginado y filtrado. |
@@ -197,7 +197,7 @@ Las consultas responden 200, los registros 201 y las ediciones 200. Los errores 
 
 ```json
     {
-      "type": "https://avicontrol/errors/recepcion-utilizada",
+      "type": "https://avicontrol/errors/recepcion utilizada",
       "title": "Recepción utilizada",
       "status": 409,
       "detail": "La recepción tiene movimientos posteriores y no puede editarse",
@@ -212,11 +212,11 @@ Las consultas responden 200, los registros 201 y las ediciones 200. Los errores 
 
 **Purpose**: Preparar contratos y configuración de recepción.
 
-- [ ] T001 Crear paquetes de dominio, aplicación y adaptadores de recepción.
-- [ ] T002 Confirmar contratos públicos del Plan 010 para registrar y ajustar entradas.
-- [ ] T003 Configurar precisión, escala y redondeo de cantidades, pesos, porcentajes y valores monetarios.
-- [ ] T004 Confirmar catálogos activos y roles de administrador.
-- [ ] T005 Preparar fixtures de alimentos, medicamentos, recepciones repetidas, vencimientos y recepciones utilizadas.
+  [ ] T001 Crear paquetes de dominio, aplicación y adaptadores de recepción.
+  [ ] T002 Confirmar contratos públicos del Plan 010 para registrar y ajustar entradas.
+  [ ] T003 Configurar precisión, escala y redondeo de cantidades, pesos, porcentajes y valores monetarios.
+  [ ] T004 Confirmar catálogos activos y roles de administrador.
+  [ ] T005 Preparar fixtures de alimentos, medicamentos, recepciones repetidas, vencimientos y recepciones utilizadas.
 
 **Checkpoint**: Contratos de recepción, inventario y catálogos definidos.
 
@@ -224,12 +224,12 @@ Las consultas responden 200, los registros 201 y las ediciones 200. Los errores 
 
 **Purpose**: Preparar entidades, validaciones, persistencia y puertos compartidos.
 
-- [ ] T006 Implementar RecepcionAlimento, RecepcionMedicamento y sus cálculos derivados.
-- [ ] T007 Implementar RegistroAuditoriaRecepcion y serialización de valores anteriores/nuevos.
-- [ ] T008 Definir repositorios, catálogos y RegistrarEntradaInventarioPort.
-- [ ] T009 Crear migraciones de recepciones y auditoría con la siguiente versión Flyway disponible.
-- [ ] T010 Implementar validaciones de fechas, cantidades, precios, impuestos, desbordamiento y unidades.
-- [ ] T011 Configurar transacciones y publicación idempotente de eventos.
+  [ ] T006 Implementar RecepcionAlimento, RecepcionMedicamento y sus cálculos derivados.
+  [ ] T007 Implementar RegistroAuditoriaRecepcion y serialización de valores anteriores/nuevos.
+  [ ] T008 Definir repositorios, catálogos y RegistrarEntradaInventarioPort.
+  [ ] T009 Crear migraciones de recepciones y auditoría con la siguiente versión Flyway disponible.
+  [ ] T010 Implementar validaciones de fechas, cantidades, precios, impuestos, desbordamiento y unidades.
+  [ ] T011 Configurar transacciones y publicación idempotente de eventos.
 
 **Checkpoint**: Las recepciones pueden validarse y persistirse sin duplicar el inventario.
 
@@ -252,7 +252,7 @@ El evento conserva alimento, tipo, lote, fechas, kilogramos totales, precio por 
 ### Definición del endpoint REST
 
 | Elemento | Definición |
-| --- | --- |
+|     |     |
 | Método y ruta | POST /api/recepciones/alimentos |
 | Autorización | ROLE_ADMINISTRADOR |
 | Respuesta 201 | Recepción confirmada y entrada inicial asociada. |
@@ -264,9 +264,9 @@ El evento conserva alimento, tipo, lote, fechas, kilogramos totales, precio por 
     {
       "alimentoId": "uuid",
       "tipoAlimento": "INICIO",
-      "codigoLote": "LOTE-2026-01",
-      "fechaIngreso": "2026-10-04",
-      "fechaVencimiento": "2027-01-04",
+      "codigoLote": "LOTE 2026 01",
+      "fechaIngreso": "2026 10 04",
+      "fechaVencimiento": "2027 01 04",
       "cantidadBultos": 50,
       "pesoPorBultoKg": 40,
       "precioNetoPorBulto": 125000,
@@ -291,10 +291,10 @@ El evento conserva alimento, tipo, lote, fechas, kilogramos totales, precio por 
 
 ### Tests e implementación
 
-- [ ] T012 [US1] Probar validaciones, código de lote repetido y usuario no administrador.
-- [ ] T013 [US1] Probar cálculos con precisión y redondeo.
-- [ ] T014 [US1] Probar confirmación coordinada con RegistrarEntradaInventarioPort.
-- [ ] T015 [US1] Implementar caso de uso, DTOs, mapper, evento y endpoint.
+  [ ] T012 [US1] Probar validaciones, código de lote repetido y usuario no administrador.
+  [ ] T013 [US1] Probar cálculos con precisión y redondeo.
+  [ ] T014 [US1] Probar confirmación coordinada con RegistrarEntradaInventarioPort.
+  [ ] T015 [US1] Implementar caso de uso, DTOs, mapper, evento y endpoint.
 
 **Checkpoint**: Recepción y entrada inicial quedan confirmadas sin saldo calculado en este plan.
 
@@ -315,7 +315,7 @@ El evento conserva alimento, tipo, lote, fechas, kilogramos totales, precio por 
 ### Definición del endpoint REST
 
 | Elemento | Definición |
-| --- | --- |
+|     |     |
 | Método y ruta | PUT /api/recepciones/alimentos/{recepcionId} |
 | Autorización | ROLE_ADMINISTRADOR |
 | Entrada | Alimento, vencimiento, cantidad, peso, precio e impuesto. |
@@ -326,7 +326,7 @@ El evento conserva alimento, tipo, lote, fechas, kilogramos totales, precio por 
 ```json
     {
       "alimentoId": "uuid",
-      "fechaVencimiento": "2027-02-01",
+      "fechaVencimiento": "2027 02 01",
       "cantidadBultos": 52,
       "pesoPorBultoKg": 40,
       "precioNetoPorBulto": 125000,
@@ -336,9 +336,9 @@ El evento conserva alimento, tipo, lote, fechas, kilogramos totales, precio por 
 
 ### Tests e implementación
 
-- [ ] T016 [US2] Probar campos editables/protegidos y recepción utilizada.
-- [ ] T017 [US2] Probar auditoría y ajuste atómico de entrada.
-- [ ] T018 [US2] Implementar caso de uso, endpoint y evento.
+  [ ] T016 [US2] Probar campos editables/protegidos y recepción utilizada.
+  [ ] T017 [US2] Probar auditoría y ajuste atómico de entrada.
+  [ ] T018 [US2] Implementar caso de uso, endpoint y evento.
 
 **Checkpoint**: Las ediciones no destruyen historia ni alteran consumos posteriores.
 
@@ -357,7 +357,7 @@ El evento conserva alimento, tipo, lote, fechas, kilogramos totales, precio por 
 ### Definición de endpoints
 
 | Endpoint | Acceso | Resultado |
-| --- | --- | --- |
+|     |     |     |
 | GET /api/recepciones/alimentos | Administrador | Historial con paginación, búsqueda por recepción/lote, estado y periodo. |
 | GET /api/recepciones/alimentos/{recepcionId} | Administrador | Detalle solo lectura. |
 
@@ -368,11 +368,11 @@ El evento conserva alimento, tipo, lote, fechas, kilogramos totales, precio por 
       "content": [
         {
           "recepcionId": "uuid",
-          "codigoLote": "LOTE-2026-01",
+          "codigoLote": "LOTE 2026 01",
           "tipoAlimento": "INICIO",
           "cantidadBultos": 50,
           "pesoPorBultoKg": 40,
-          "fechaIngreso": "2026-10-04",
+          "fechaIngreso": "2026 10 04",
           "estado": "CONFIRMADA"
         }
       ],
@@ -385,9 +385,9 @@ El evento conserva alimento, tipo, lote, fechas, kilogramos totales, precio por 
 
 ### Tests e implementación
 
-- [ ] T019 [US3] Probar indicadores mensuales, búsqueda, filtros y estado vacío.
-- [ ] T020 [US3] Probar detalle de solo lectura y acceso condicionado a edición.
-- [ ] T021 [US3] Implementar casos de consulta y endpoints.
+  [ ] T019 [US3] Probar indicadores mensuales, búsqueda, filtros y estado vacío.
+  [ ] T020 [US3] Probar detalle de solo lectura y acceso condicionado a edición.
+  [ ] T021 [US3] Implementar casos de consulta y endpoints.
 
 **Checkpoint**: El historial expone trazabilidad sin calcular existencias.
 
@@ -406,7 +406,7 @@ El evento conserva alimento, tipo, lote, fechas, kilogramos totales, precio por 
 ### Definición del endpoint REST
 
 | Elemento | Definición |
-| --- | --- |
+|     |     |
 | Método y ruta | POST /api/recepciones/medicamentos |
 | Autorización | ROLE_ADMINISTRADOR |
 | Respuesta 201 | Recepción confirmada y movimiento inicial asociado. |
@@ -417,23 +417,23 @@ El evento conserva alimento, tipo, lote, fechas, kilogramos totales, precio por 
 ```json
     {
       "medicamentoId": "uuid",
-      "codigoLote": "MED-2026-01",
+      "codigoLote": "MED 2026 01",
       "presentacion": "FRASCO",
       "cantidad": 20,
       "contenidoPorPresentacion": 500,
       "unidadMedida": "MILILITRO",
       "precioNetoPorPresentacion": 35000,
       "porcentajeImpuesto": 19,
-      "fechaIngreso": "2026-10-04",
-      "fechaVencimiento": "2028-10-04"
+      "fechaIngreso": "2026 10 04",
+      "fechaVencimiento": "2028 10 04"
     }
 ```
 
 ### Tests e implementación
 
-- [ ] T022 [US4] Probar cantidades, contenidos, unidades, impuestos, fechas y medicamento activo.
-- [ ] T023 [US4] Probar código de lote repetido como recepción independiente.
-- [ ] T024 [US4] Implementar caso de uso, entrada, evento y endpoint.
+  [ ] T022 [US4] Probar cantidades, contenidos, unidades, impuestos, fechas y medicamento activo.
+  [ ] T023 [US4] Probar código de lote repetido como recepción independiente.
+  [ ] T024 [US4] Implementar caso de uso, entrada, evento y endpoint.
 
 **Checkpoint**: La recepción de medicamento queda histórica y disponible para inventario.
 
@@ -452,16 +452,16 @@ El evento conserva alimento, tipo, lote, fechas, kilogramos totales, precio por 
 ### Definición del endpoint REST
 
 | Elemento | Definición |
-| --- | --- |
+|     |     |
 | Método y ruta | PUT /api/recepciones/medicamentos/{recepcionId} |
 | Autorización | ROLE_ADMINISTRADOR |
 | Errores | 400, 403, 404 y 409 si existen movimientos posteriores. |
 
 ### Tests e implementación
 
-- [ ] T025 [US5] Probar edición de campos permitidos, auditoría y bloqueo por uso.
-- [ ] T026 [US5] Verificar que diagnósticos y consumos existentes conservan sus snapshots.
-- [ ] T027 [US5] Implementar caso de uso, endpoint y evento.
+  [ ] T025 [US5] Probar edición de campos permitidos, auditoría y bloqueo por uso.
+  [ ] T026 [US5] Verificar que diagnósticos y consumos existentes conservan sus snapshots.
+  [ ] T027 [US5] Implementar caso de uso, endpoint y evento.
 
 **Checkpoint**: La edición solo afecta futuras recepciones utilizadas en diagnósticos.
 
@@ -480,27 +480,27 @@ El evento conserva alimento, tipo, lote, fechas, kilogramos totales, precio por 
 ### Definición de endpoints
 
 | Endpoint | Acceso | Resultado |
-| --- | --- | --- |
+|     |     |     |
 | GET /api/recepciones/medicamentos | Administrador | Historial filtrado por lote, medicamento, presentación y periodo. |
 | GET /api/recepciones/medicamentos/{recepcionId} | Administrador | Detalle de solo lectura. |
 
 ### Tests e implementación
 
-- [ ] T028 [US6] Probar indicador mensual, búsquedas, filtros, detalle y estado vacío.
-- [ ] T029 [US6] Implementar consultas, DTOs y endpoints.
+  [ ] T028 [US6] Probar indicador mensual, búsquedas, filtros, detalle y estado vacío.
+  [ ] T029 [US6] Implementar consultas, DTOs y endpoints.
 
 **Checkpoint**: El historial de medicamentos conserva trazabilidad sin calcular stock.
 
-## Phase 9: Polish & Cross-Cutting Concerns
+## Phase 9: Polish & Cross Cutting Concerns
 
 **Purpose**: Verificar integración entre recepción e inventario.
 
-- [ ] T030 Documentar endpoints, roles, validaciones y errores en OpenAPI.
-- [ ] T031 Completar RecepcionesIntegrationTest con alimento y medicamento.
-- [ ] T032 Verificar que los eventos de recepción sean idempotentes.
-- [ ] T033 Verificar que una recepción confirmada siempre tenga entrada inicial o quede rechazada completa.
-- [ ] T034 Verificar que no existan tablas ni repositorios de movimientos en este plan.
-- [ ] T035 Ejecutar pruebas y tareas de calidad disponibles.
+  [ ] T030 Documentar endpoints, roles, validaciones y errores en OpenAPI.
+  [ ] T031 Completar RecepcionesIntegrationTest con alimento y medicamento.
+  [ ] T032 Verificar que los eventos de recepción sean idempotentes.
+  [ ] T033 Verificar que una recepción confirmada siempre tenga entrada inicial o quede rechazada completa.
+  [ ] T034 Verificar que no existan tablas ni repositorios de movimientos en este plan.
+  [ ] T035 Ejecutar pruebas y tareas de calidad disponibles.
 
 **Checkpoint**: Recepciones, auditoría y contratos con el Plan 010 verificados.
 
@@ -508,33 +508,31 @@ El evento conserva alimento, tipo, lote, fechas, kilogramos totales, precio por 
 
 ### Phase Dependencies
 
-- Setup precede a Foundation.
-- Foundation habilita las seis historias.
-- Las historias de registro preceden a sus historias de edición e historial.
-- El Plan 010 debe ofrecer RegistrarEntradaInventarioPort y VerificarRecepcionUtilizadaPort antes de cerrar las historias de escritura.
-- Polish depende de los contratos publicados por ambos planes.
+  Setup precede a Foundation.
+  Foundation habilita las seis historias.
+  Las historias de registro preceden a sus historias de edición e historial.
+  El Plan 010 debe ofrecer RegistrarEntradaInventarioPort y VerificarRecepcionUtilizadaPort antes de cerrar las historias de escritura.
+  Polish depende de los contratos publicados por ambos planes.
 
 ### Dependencias con otros planes
 
-- **Plan 010**: Registra entradas, movimientos, saldos y uso posterior de recepciones.
-- **Plan 005**: Puede consultar medicamentos y enfermedades para tratamientos futuros.
-- **Plan 006**: Consulta recepciones de medicamentos para aplicar consumos.
-- **General.md**: Seguridad, actor, reloj, errores y eventos.
+  **Plan 010**: Registra entradas, movimientos, saldos y uso posterior de recepciones.
+  **Plan 005**: Proporciona el catálogo de enfermedades. **Plan 006**: Proporciona el catálogo de medicaciones para tratamientos futuros.
+  **Plan 012**: Consulta y aplica descuentos de recepciones para los consumos; Plan 006 es dueño del catálogo de medicaciones.
+  **General.md**: Seguridad, actor, reloj, errores y eventos.
 
 ### Dentro de cada User Story
 
-- Dominio antes que aplicación.
-- Puertos antes que adaptadores.
-- Casos de uso antes que controladores.
-- Auditoría y eventos dentro de la transacción.
-- Pruebas junto con implementación y checkpoint.
+  Dominio antes que aplicación.
+  Puertos antes que adaptadores.
+  Casos de uso antes que controladores.
+  Auditoría y eventos dentro de la transacción.
+  Pruebas junto con implementación y checkpoint.
 
 ## Notes
 
-- T001 a T035 identifican tareas; US1 a US6 identifican historias.
-- Este plan conserva recepciones; no calcula inventario consolidado.
-- Los movimientos iniciales se crean mediante el contrato público del Plan 010.
-- Código de lote repetido genera recepciones independientes.
-- Una recepción utilizada no se edita.
-
-
+  T001 a T035 identifican tareas; US1 a US6 identifican historias.
+  Este plan conserva recepciones; no calcula inventario consolidado.
+  Los movimientos iniciales se crean mediante el contrato público del Plan 010.
+  Código de lote repetido genera recepciones independientes.
+  Una recepción utilizada no se edita.

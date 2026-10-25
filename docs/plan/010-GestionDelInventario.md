@@ -24,7 +24,7 @@ La consulta de inventario presenta alimentos y medicamentos en secciones separad
 
 **Scale/Scope**: Tres historias del spec 023, libro de movimientos para dos familias de productos, vencimientos, FEFO, resumen de bodega y cobertura de requerimientos.
 
-**Dependencias funcionales**: Recepciones del Plan 002; catálogo de alimentos y medicamentos; requerimientos nutricionales y suministros diarios del Plan 004 (SPEC-014); consumos de medicamentos del Plan 006; consumo y costo del Módulo 3.
+**Dependencias funcionales**: Recepciones del Plan 002; catálogo de alimentos y medicamentos; requerimientos nutricionales del Plan 011 (SPEC-022) y suministros diarios del Plan 004 (SPEC-014); consumos de medicamentos del Plan 012; consumo y costo del Módulo 3.
 
 ### Decisiones específicas
 
@@ -33,7 +33,7 @@ La consulta de inventario presenta alimentos y medicamentos en secciones separad
 3. **Recepción confirmada**: RegistrarEntradaInventarioPort crea el movimiento inicial vinculado a la recepción. El puerto también permite ajustar esa entrada cuando el Plan 002 edita una recepción no utilizada.
 4. **FEFO**: Las salidas y consumos usan primero el saldo vigente con vencimiento más próximo. Cada movimiento referencia la recepción afectada.
 5. **Vencimiento**: Una recepción vencida queda fuera del disponible aunque el scheduler aún no haya creado el movimiento de vencimiento. El scheduler registra ese movimiento de forma idempotente.
-6. **Unidades**: Alimentos se consolidan en kg; medicamentos se conservan en su unidad base y no se mezclan unidades incompatibles.
+6. **Unidades**: Alimentos se consolidan en kg. Medicamentos se normalizan a `GRAMO`, `MILILITRO` o `UNIDAD` según su dimensión; miligramos se convierten a gramos (`1.000 mg = 1 g`) y no se mezclan unidades incompatibles.
 7. **Agrupación**: Alimentos se agrupan por nombre normalizado y tipo. Medicamentos por medicamento, presentación, contenido por presentación y unidad.
 8. **Cobertura**: La demanda de alimento se consulta por puerto. La cobertura es informativa: no reserva, descuenta ni crea movimientos.
 9. **Ocupación**: La ocupación registrada de la bodega se consulta con su unidad y se compara con su capacidad. No se infiere mezclando kg de alimentos con unidades de medicamentos.
@@ -45,8 +45,8 @@ La consulta de inventario presenta alimentos y medicamentos en secciones separad
 ### Alcance documental
 
 - El Plan 002 conserva los datos comerciales de la recepción y llama a RegistrarEntradaInventarioPort.
-- El Plan 006 consume InventarioMedicamentoPort para descontar medicamentos por recepción.
-- El Plan 004 ofrece la demanda alimenticia proyectada.
+- El Plan 012 consume InventarioMedicamentoPort para descontar medicamentos por recepción.
+- El Plan 011 ofrece la demanda alimenticia proyectada para el balance de abastecimiento.
 - El Módulo 3 consume movimientos y detalles históricos para costos.
 - La versión de migración debe ser la siguiente disponible y no debe duplicar las versiones existentes.
 
@@ -149,7 +149,7 @@ La consulta de inventario presenta alimentos y medicamentos en secciones separad
     ├── recepcionId: UUID
     ├── tipo: ENTRADA | SALIDA | APLICACION | CONSUMO | VENCIMIENTO | ANULACION | AJUSTE
     ├── cantidadUnidadBase: BigDecimal
-    ├── unidadBase: String
+    ├── unidadBase: GRAMO | MILILITRO | UNIDAD
     ├── estado: CONFIRMADO | ANULADO
     └── fechaHora: Instant
 
@@ -200,8 +200,8 @@ Las consultas son de solo lectura y responden 200 incluso con inventario vacío.
 
 - [ ] T001 Crear paquetes de dominio, aplicación y adaptadores de inventario.
 - [ ] T002 Acordar con Plan 002 los contratos de RegistrarEntradaInventarioPort, AjustarEntradaRecepcionPort y RecepcionQueryPort.
-- [ ] T003 Acordar con Plan 006 el descuento de medicamentos, unidad base y distribución FEFO.
-- [ ] T004 Acordar con Plan 004 la demanda de alimento y su clave de agrupación.
+- [ ] T003 Acordar con Plan 012 el descuento de medicamentos, unidad base y distribución FEFO.
+- [ ] T004 Acordar con Plan 011 la demanda proyectada y su clave de agrupación para cobertura de abastecimiento.
 - [ ] T005 Acordar eventos de movimiento, vencimiento y disponibilidad, con consumidores idempotentes.
 - [ ] T006 Preparar fixtures de múltiples recepciones, vencimientos, anulaciones, salidas, consumos y unidades incompatibles.
 - [ ] T007 Acordar con Plan 004 el contrato de salida de alimento para suministros diarios, la propagación de su clave idempotente y la atomicidad de suministro más inventario.
@@ -217,7 +217,7 @@ Las consultas son de solo lectura y responden 200 incluso con inventario vacío.
 - [ ] T009 Implementar cálculo de saldo por recepción, consolidación y FEFO.
 - [ ] T010 Definir puertos de recepción, catálogo, nutrición y publicación.
 - [ ] T011 Crear migraciones de bodega, movimientos y eventos procesados.
-- [ ] T012 Implementar listener/adaptador para entradas confirmadas por el Plan 002 y consumos del Plan 006.
+- [ ] T012 Implementar listener/adaptador para entradas confirmadas por el Plan 002 y consumos del Plan 012.
 - [ ] T013 Implementar scheduler idempotente de vencimientos.
 - [ ] T014 Verificar que las consultas no escriban movimientos ni saldos.
 
@@ -354,7 +354,7 @@ La consulta no crea eventos ni modifica saldo.
 
 **Evento producido**: Ninguno.
 
-**Evento consumido**: Demanda proyectada del Plan 004 mediante RequerimientoAlimentoQueryPort.
+**Consulta consumida**: Demanda proyectada del Plan 011 mediante `RequerimientoAlimentoQueryPort`.
 
 La cobertura es solo lectura y nunca genera un movimiento.
 
@@ -403,7 +403,7 @@ La cobertura es solo lectura y nunca genera un movimiento.
 - [ ] T033 Verificar FEFO para consumos y salidas por recepción.
 - [ ] T034 Verificar contrato de costo histórico para el Módulo 3.
 - [ ] T035 Verificar que el Plan 002 no tenga repositorios ni tablas de movimiento.
-- [ ] T036 Verificar que Plan 006 pueda descontar medicamentos usando InventarioMedicamentoPort.
+- [ ] T036 Verificar que Plan 012 pueda descontar medicamentos usando InventarioMedicamentoPort.
 - [ ] T037 Extender comprobaciones arquitectónicas y ejecutar pruebas disponibles.
 
 **Checkpoint**: Inventario, recepción, consumo y cobertura integrados.
@@ -416,14 +416,15 @@ La cobertura es solo lectura y nunca genera un movimiento.
 - Foundation requiere los contratos del Plan 002 y habilita las consultas.
 - La entrada inicial depende de la recepción confirmada.
 - El consumo de medicamentos depende de movimientos y recepciones disponibles.
-- La cobertura depende de demanda del Plan 004.
+- La cobertura depende de demanda del Plan 011.
 - Polish depende de todos los contratos.
 
 ### Dependencias con otros planes
 
 - **Plan 002**: Recepciones y auditoría; usa RegistrarEntradaInventarioPort.
-- **Plan 004**: Demanda alimenticia proyectada.
-- **Plan 006**: Consumo real de medicamentos y descuento de existencias.
+- **Plan 004**: Registros de suministro diario y salidas reales de alimento.
+- **Plan 011**: Demanda alimenticia proyectada para el balance de abastecimiento.
+- **Plan 012**: Consumo real de medicamentos y descuento de existencias.
 - **Módulo 3**: Costos históricos por movimiento y recepción.
 - **General.md**: Seguridad, actor, reloj, errores y eventos.
 
@@ -443,5 +444,4 @@ La cobertura es solo lectura y nunca genera un movimiento.
 - Las existencias vencidas se excluyen aunque el scheduler no haya procesado todavía el movimiento.
 - FEFO conserva la trazabilidad por recepción.
 - Las versiones Flyway deben asignarse según el siguiente número disponible del repositorio.
-
 

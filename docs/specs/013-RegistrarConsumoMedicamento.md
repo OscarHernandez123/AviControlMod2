@@ -57,7 +57,7 @@ Como veterinario, quiero registrar la cantidad de medicamento realmente aplicada
 - **FR-002**: Cada consumo DEBE estar asociado con un único diagnóstico existente.
 - **FR-003**: El sistema DEBE obtener automáticamente desde el diagnóstico el lote, el galpón y la medicación correspondientes; estos datos NO DEBEN ser seleccionados manualmente durante el registro del consumo.
 - **FR-004**: El sistema DEBE identificar el medicamento a partir de la medicación conservada por el diagnóstico y NO DEBE permitir que el veterinario lo sustituya por otro medicamento durante el registro del consumo.
-- **FR-005**: Cada consumo DEBE registrar cantidad ingresada, unidad ingresada, cantidad normalizada, unidad base y fecha de aplicación.
+- **FR-005**: Cada consumo DEBE registrar cantidad ingresada, unidad ingresada, cantidad normalizada, unidad base y fecha de aplicación. Las unidades permitidas son `MILIGRAMO`, `GRAMO`, `MILILITRO` y `UNIDAD`; las unidades de masa se normalizan a `GRAMO` (`1.000 mg = 1 g`), volumen a `MILILITRO` y conteo a `UNIDAD`. El sistema DEBE rechazar unidades de dimensiones incompatibles.
 - **FR-006**: El sistema DEBE utilizar primero las existencias disponibles con fecha de vencimiento más próxima y DEBE poder distribuir un consumo entre varias recepciones del mismo medicamento cuando sea necesario.
 - **FR-007**: Al confirmar el consumo, el sistema DEBE registrar y dejar disponibles para el módulo 3 el identificador del lote de aves, el identificador del galpón, la fecha de aplicación, el medicamento, la cantidad consumida en unidad base y el desglose de cada detalle de consumo con su precio neto histórico de compra por unidad base.
 - **FR-008**: La información suministrada DEBE permitir al módulo 3 calcular el costo de los medicamentos del lote mediante la suma de `cantidad descontada de cada recepción en unidad base × precio neto histórico de compra por unidad base`.
@@ -76,7 +76,7 @@ Como veterinario, quiero registrar la cantidad de medicamento realmente aplicada
 - **Medicación**: Representa el tratamiento seleccionado en el diagnóstico.
   - **Relaciones**: determina el medicamento que puede consumirse para el diagnóstico; el consumo utiliza los datos conservados al registrar ese diagnóstico.
 - **Medicamento**: Representa el producto aplicado y controlado en el inventario.
-  - **Atributos utilizados**: nombre y unidad base definida por su presentación.
+  - **Atributos utilizados**: nombre y unidad base compatible (`GRAMO`, `MILILITRO` o `UNIDAD`) determinada por la unidad de su recepción.
   - **Relaciones**: puede tener múltiples recepciones y puede aparecer en diferentes consumos mediante las medicaciones de los diagnósticos.
 - **Lote**: Representa el grupo de aves que recibió el medicamento.
   - **Relaciones**: queda identificado por el diagnóstico y puede acumular consumos provenientes de uno o varios diagnósticos durante su vida productiva para su costeo final en el módulo 3.

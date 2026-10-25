@@ -74,7 +74,7 @@ Como nutricionista o administrador, quiero que al ingresar un lote a un galpón 
 
 ### User Story 3 - Selección de Alimento Compatible, Bloqueo en Etapa Activa e Integridad con SPEC-022 (Priority: P1)
 
-Como nutricionista, quiero consultar los alimentos compatibles del catálogo y sus existencias en bodega central al planificar una etapa de crianza (diferenciando presentaciones de bulto y excluyendo vencidos/anulados según SPEC-023), asegurando que una vez iniciada la etapa el alimento seleccionado quede estrictamente bloqueado para garantizar que la proyección registrada para el Módulo 3 ([SPEC-022](file:///C:/Users/ESTUDIANTE/IdeaProjects/practicaweb/AviControlMod2/docs/specs/022-ConsultarAlimentoRequeridoPorLote.md)) no sufra distorsiones de insumo o costo unitario.
+Como nutricionista, quiero consultar los alimentos compatibles del catálogo y sus existencias en bodega central al planificar una etapa de crianza (diferenciando presentaciones de bulto y excluyendo vencidos/anulados según SPEC-023), asegurando que una vez iniciada la etapa el alimento seleccionado quede estrictamente bloqueado para garantizar que la proyección registrada para el Módulo 3 ([SPEC-022](022-ConsultarAlimentoRequeridoPorLote.md)) no sufra distorsiones de insumo o costo unitario.
 
 **Why this priority**: Conecta la formulación teórica con la disponibilidad real de inventario y establece una regla unívoca y segura: una etapa se alimenta con un único producto comercial para blindar las proyecciones y liquidaciones contables del Módulo 3.
 
@@ -264,7 +264,7 @@ Como nutricionista, quiero ajustar manualmente los días de duración de una eta
   - *Relaciones*: contiene la lista de `CalendarioEtapaGalpon`.
 - **CalendarioEtapaGalpon**: Configuración de la etapa para un galpón específico.
   - *Atributos*: ID, planGalponId, etapaCrianza (enum `EtapaCrianza`: `PRE_INICIO`, `INICIO`, `ENGORDE`), diaInicio, diaFin, diasBase, diasProrroga, diasEfectivos, estadoEtapa (`OMITIDA`, `ACTIVA`, `COMPLETADA`), alimentoBloqueado (booleano), racionKgPolloDia, alimentoId, pesoNetoKgPorBulto, justificacionAjuste, usuarioAjuste, fechaActivacionEtapa, fechaActualizacion.
-  - *Relaciones*: referencia a `Alimento`, a `TipoAlimento` y se sincroniza con `ProyeccionAlimentoEtapa` ([SPEC-022](file:///C:/Users/ESTUDIANTE/IdeaProjects/practicaweb/AviControlMod2/docs/specs/022-ConsultarAlimentoRequeridoPorLote.md)).
+  - *Relaciones*: referencia a `Alimento`, a `TipoAlimento` y se sincroniza con `ProyeccionAlimentoEtapa`.
 - **TipoAlimento**: Clasificación zootécnica vinculada a la etapa productiva (consistente con SPEC-001).
   - *Atributos*: ID, nombre (ej. Pre-iniciador, Iniciador, Engorde), etapaCrianza (enum `EtapaCrianza`: `PRE_INICIO`, `INICIO`, `ENGORDE`), descripcionNutricional, estado.
 - **Alimento**: Producto comercial específico del catálogo de insumos (consistente con SPEC-001).

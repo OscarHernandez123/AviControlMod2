@@ -11,7 +11,7 @@
 
 ## Summary
 
-Implementar la consulta de edad del lote, el detalle de un galpón, el resumen general del administrador y el listado general de galpones. Un trabajador autorizado puede listar y consultar cualquier galpón; no existe una relación de asignación entre trabajadores y galpones.
+Implementar la consulta de edad del lote, el detalle de un galpón, el resumen general del administrador y el listado general de galpones. Un trabajador autorizado puede listar y consultar cualquier galpón.
 
 `Galpon` y `Lote` se modelan como entidades propias del dominio, con identidad y reglas, organizadas en paquetes de negocio. `Edad` es un objeto de valor; `EstadoGalpon` es un enum. No se utiliza el paquete `consulta` para definir entidades ni nombres como `GalponConsultado` o `LoteConsultado`.
 
@@ -43,8 +43,8 @@ La arquitectura es hexagonal dentro de un monolito modular con eventos internos.
 ### Alcance documental
 
 - El spec 019 corresponde al plan de mortalidad y actualización del inventario vivo. Aquí se muestra la población vigente sin descontarla.
-- La historia 3 del spec 007 permite al trabajador listar y seleccionar cualquier galpón. No existen modelos, puertos, filtros ni reglas de asignación entre trabajadores y galpones.
-- General.md y este plan coinciden en que no existen asignaciones entre trabajadores y galpones. La arquitectura monolítica indicada para esta revisión se aplica mediante interfaces internas.
+- La historia 3 del spec 007 permite al trabajador listar y seleccionar cualquier galpón.
+- La arquitectura monolítica indicada para esta revisión se aplica mediante interfaces internas.
 - El resumen de galpones y aves vivas corresponde a este plan. El resumen de alimentos y medicamentos en bodega permanece en el plan 002 y el spec 023.
 - Los nombres concretos de las interfaces ofrecidas por otras capacidades se acuerdan antes de implementar sus adaptadores; los puertos de este documento pertenecen al consumidor.
 
@@ -58,7 +58,7 @@ docs/
 │   ├── 003-ConsultarEdadPorGalpon.md
 │   └── 007-ConsultarGalpon.md
 └── plan/
-    └── 001-ConsultaYSeguimientoDeGalpones.md
+    └── 001-ConsultaDeGalpones.md
 ```
 
 ### Source Code (repository root)
@@ -445,7 +445,7 @@ Cuando no existen galpones, los tres totales y los seis conteos se devuelven en 
 
 **Goal**: El trabajador visualiza el listado general y puede seleccionar cualquier galpón para consultar su detalle.
 
-**Independent Test**: Con doce galpones registrados, un trabajador autenticado obtiene los doce mediante las páginas correspondientes y puede abrir cualquiera de ellos. La consulta no requiere ni aplica asignaciones.
+**Independent Test**: Con doce galpones registrados, un trabajador autenticado obtiene los doce mediante las páginas correspondientes y puede abrir cualquiera de ellos.
 
 ### Definición del evento para User Story 4
 
@@ -511,7 +511,7 @@ El endpoint devuelve el mismo universo de galpones para todos los roles autoriza
 ### Tests para User Story 4
 
 - [ ] T029 [US4] Probar en `ConsultarListadoGalponesUseCaseTest` listado completo a través de sus páginas, página vacía y metadatos correctos.
-- [ ] T030 [US4] Probar que administrador, trabajador y usuario autorizado reciben el mismo universo de galpones, sin filtros por identidad o asignación.
+- [ ] T030 [US4] Probar que administrador, trabajador y usuario autorizado reciben el mismo universo de galpones, independientemente de quién realiza la consulta.
 - [ ] T031 [US4] Probar límites de `page` y `size`, tamaño máximo y criterios de orden permitidos.
 - [ ] T032 [US4] Probar en `GalponLoteQueryAdaptersTest` orden estable y ausencia de una consulta adicional por cada elemento listado.
 - [ ] T033 [US4] Probar en `GalponControllerTest` el contrato de FR-014 a FR-018, el listado vacío y la selección posterior del detalle.
@@ -524,7 +524,7 @@ El endpoint devuelve el mismo universo de galpones para todos los roles autoriza
 - [ ] T037 [US4] Incorporar el mapeo del listado en `GalponRestMapper` sin exponer entidades JPA.
 - [ ] T038 [US4] Implementar `GET /api/galpones` y asegurar que las rutas fijas `/resumen` y `/{galponId}/edad-lote` no sean absorbidas por `/{galponId}`.
 
-**Checkpoint**: Cualquier trabajador autorizado puede listar y consultar cualquier galpón sin modelos ni reglas de asignación.
+**Checkpoint**: Cualquier trabajador autorizado puede listar y consultar cualquier galpón.
 
 ## Phase 7: Polish & Cross-Cutting Concerns
 
@@ -534,7 +534,7 @@ El endpoint devuelve el mismo universo de galpones para todos los roles autoriza
 - [ ] T040 Completar `ConsultaGalponesIntegrationTest`: ejecutar cambios desde los procesos propietarios, incluyendo población confirmada mediante el flujo de eventos interno, y verificar que una nueva consulta refleja el resultado sin descontarlo otra vez.
 - [ ] T041 Verificar ausencia de escrituras y publicaciones durante consultas, y que los adaptadores no accedan a repositorios privados ajenos.
 - [ ] T042 Extender comprobaciones arquitectónicas existentes: dominio sin frameworks, aplicación sin JPA/HTTP y dependencias internas sin ciclos.
-- [ ] T043 Ejecutar pruebas y tareas de calidad disponibles. El repositorio inspeccionado contiene `pom.xml` y `mvnw.cmd`, mientras General.md declara Gradle: resolver esta diferencia antes de fijar el comando de entrega, sin migrar el sistema de construcción dentro de este plan funcional.
+- [ ] T043 Ejecutar pruebas y tareas de calidad disponibles mediante Gradle Wrapper, conforme a [General.md](General.md).
 - [ ] T044 Medir el objetivo del 95 % en máximo 1 segundo y verificar consultas por conjuntos sin una llamada interna por cada galpón.
 - [ ] T045 Verificar criterios de presentación y usabilidad de los specs en la interfaz consumidora cuando esté disponible; las pruebas de API no acreditan por sí solas tiempos de interacción ni satisfacción.
 
