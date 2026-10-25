@@ -28,9 +28,9 @@ Como trabajador u operario de granja, quiero consultar qué alimento le correspo
    - **And** muestra su equivalencia de 30 bultos (`1.200 kg ÷ 40 kg/bulto`)
 
 3. **Scenario**: Determinación automática de la etapa según la edad del lote
-   - **Given** un lote activo cuya fecha de ingreso fue hace 17 días (edad = 18 días, contando el día de ingreso como día 1) y un plan nutricional donde el rango de 11 a 24 días corresponde a la etapa de "Crecimiento" (o "Engorde", según aplique)
+   - **Given** un lote activo con fecha de ingreso hace 18 días (edad = 18 días) y un plan nutricional donde dicho rango corresponde a la etapa de crianza "Inicio" (bajo el enum `EtapaCrianza`: `PRE_INICIO`, `INICIO`, `ENGORDE`)
    - **When** el trabajador consulta el galpón
-   - **Then** el sistema identifica automáticamente la etapa en que se encuentra el lote y asigna el tipo de alimento configurado para dicha etapa
+   - **Then** el sistema identifica automáticamente la etapa de crianza (`etapaCrianza`) en que se encuentra el lote y asigna el tipo de alimento configurado para dicha etapa
 
 4. **Scenario**: Consulta de disponibilidad en bodega central en kilogramos y bultos
    - **Given** que en la bodega central existen 4.000 kg netos de alimento vigente compatible con la etapa del galpón, con presentación de 40 kg por bulto
@@ -207,8 +207,8 @@ Como trabajador u operario de granja, quiero registrar cada cantidad de alimento
 - **FR-003**: Para el galpón consultado, el sistema DEBE obtener y presentar sus atributos: UUID, Nombre, Aforo máximo y Estado.
 - **FR-004**: El sistema DEBE identificar el lote activo del galpón mediante la llave foránea que referencia al galpón consultado, seleccionando el lote con la fecha de ingreso más reciente.
 - **FR-005**: Para el lote activo, el sistema DEBE utilizar sus atributos: UUID único, Nombre, Población actual (aves vivas) y Fecha de ingreso.
-- **FR-006**: El sistema DEBE calcular la edad del lote en días calendario contando la fecha de ingreso como el día 1, de forma coherente con SPEC-003 y el Plan 001.
-- **FR-007**: El sistema DEBE determinar la etapa en que se encuentra el lote y el tipo de alimento aplicable comparando la edad en días del lote contra los rangos de días establecidos en el plan nutricional.
+- **FR-006**: El sistema DEBE calcular la edad del lote en días a partir de la diferencia entre la fecha actual del sistema y la fecha de ingreso del lote.
+- **FR-007**: El sistema DEBE determinar la etapa de crianza (`etapaCrianza`: enum `EtapaCrianza`: `PRE_INICIO`, `INICIO`, `ENGORDE`) en que se encuentra el lote y el tipo de alimento aplicable comparando la edad en días del lote contra los rangos de días establecidos en el plan nutricional.
 - **FR-008**: El sistema DEBE obtener la ración individual diaria programada en gramos por ave (`gr/ave`) correspondiente a la etapa y edad del lote.
 - **FR-009**: El sistema DEBE calcular el consumo total necesario para el día en kilogramos netos mediante la fórmula: `(Población actual de aves vivas × Ración individual en gr/ave) ÷ 1.000`.
 - **FR-010**: El sistema DEBE convertir el consumo diario requerido a bultos dividiendo el total de kilogramos entre el peso nominal por bulto del tipo de alimento asignado.
@@ -225,13 +225,6 @@ Como trabajador u operario de granja, quiero registrar cada cantidad de alimento
 - **FR-021**: El sistema DEBE evaluar la suficiencia en bodega central para cada tipo de alimento requerido en los galpones seleccionados; si el stock disponible en bodega cubre o supera la cuota diaria requerida, el estado individual DEBE mostrarse como `Suficiente` y el indicador global como favorable (`Bodega Central OK` o `Bodega Central Disponible`), y si es inferior, DEBE mostrarse como `Insuficiente` reflejando la alerta correspondiente.
 - **FR-022**: La conversión de cuota diaria a bultos en la vista consolidada DEBE calcularse dividiendo la cuota en kilogramos entre el peso nominal por bulto configurado para el tipo de alimento (ej. 50 kg/bulto).
 - **FR-023**: El sistema DEBE permitir a usuarios autenticados con rol `ROLE_TRABAJADOR` y administradores autorizados registrar cada suministro físico realizado a un lote durante una jornada.
-- **FR-024**: Cada suministro DEBE conservar UUID, galpón, lote, alimento comercial suministrado, fecha de negocio, fecha y hora de registro, cantidad suministrada en kg y usuario responsable. La fecha de negocio DEBE corresponder a la fecha actual en la zona `America/Bogota`; la fecha y hora de registro corresponden al instante confirmado por el sistema. El galpón, lote y alimento deben obtenerse o validarse contra el lote activo y su etapa nutricional vigente.
-- **FR-025**: El sistema DEBE rechazar cantidades no positivas, alimento incompatible con la etapa vigente, lote inactivo o inexistente, y cualquier suministro que no pueda respaldarse con existencias vigentes suficientes.
-- **FR-026**: La confirmación del suministro y los movimientos de salida del inventario central DEBEN confirmarse o revertirse dentro de una transacción local de la aplicación modular. Una falla o saldo insuficiente NO DEBE dejar un suministro confirmado ni un descuento parcial. No se requiere una transacción distribuida entre módulos.
-- **FR-027**: El Plan 010 DEBE crear los movimientos de salida por recepción, con trazabilidad de cada recepción afectada y aplicación de FEFO. El Plan 004/Spec 014 no debe modificar directamente las tablas de movimientos o saldos del inventario.
-- **FR-028**: La consulta diaria DEBE calcular el suministro acumulado a partir de los suministros confirmados correspondientes al mismo lote, alimento y fecha de negocio. Los registros de jornadas o alimentos diferentes no deben mezclarse.
-- **FR-029**: Los suministros confirmados NO DEBEN borrarse ni editarse de forma destructiva. Una corrección posterior debe conservar auditoría y revertir el efecto de inventario mediante movimientos compensatorios, hasta que se defina un flujo específico de corrección.
-- **FR-030**: El registro de suministro DEBE aceptar una clave de idempotencia generada por el cliente. La repetición de una solicitud con la misma clave y contenido DEBE devolver el resultado previamente confirmado sin crear otro suministro ni descontar inventario por segunda vez; la misma clave con contenido diferente DEBE rechazarse como conflicto.
 
 ### Key Entities 
 
@@ -239,8 +232,8 @@ Como trabajador u operario de granja, quiero registrar cada cantidad de alimento
   - Atributos utilizados: `UUID único`, `Nombre`, `Aforo máximo`, `Estado`.
 - **Lote**: Representa el grupo de aves registrado para un galpón mediante llave foránea.
   - Atributos utilizados: `UUID único`, `Nombre`, `Población actual` (aves vivas), `Fecha de ingreso` (para calcular la edad en días), `Llave foránea del galpón`.
-- **Plan nutricional**: Definición establecida por el nutricionista que asocia rangos de días de edad del lote con una etapa (ej. iniciación, crecimiento, engorde, finalización), un tipo de alimento y una ración diaria en `gr/ave`.
-- **Tipo de alimento**: Clasificación del alimento asociada a una etapa, que define el nombre y el peso nominal por bulto utilizado para la conversión.
+- **Plan nutricional**: Definición establecida por el nutricionista que asocia rangos de días de edad del lote con una etapa de crianza (`etapaCrianza`: enum `EtapaCrianza`: `PRE_INICIO`, `INICIO`, `ENGORDE`), un tipo de alimento y una ración diaria en `gr/ave`.
+- **Tipo de alimento**: Clasificación del alimento asociada a la etapa de crianza (`etapaCrianza`), que define el nombre y el peso nominal por bulto utilizado para la conversión.
 - **Consumo diario requerido**: Cantidad total calculada para el lote en la fecha actual, expresada simultáneamente en kilogramos netos y en bultos equivalentes.
 - **Saldo pendiente del día**: Diferencia calculada en kilogramos y bultos entre el consumo requerido y el alimento suministrado en la fecha.
 - **Bodega central**: Inventario principal del cual se consulta la disponibilidad de existencias netas en kilogramos y bultos compatibles con la etapa del galpón.
