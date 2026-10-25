@@ -534,7 +534,7 @@ El endpoint devuelve el mismo universo de galpones para todos los roles autoriza
 - [ ] T040 Completar `ConsultaGalponesIntegrationTest`: ejecutar cambios desde los procesos propietarios, incluyendo población confirmada mediante el flujo de eventos interno, y verificar que una nueva consulta refleja el resultado sin descontarlo otra vez.
 - [ ] T041 Verificar ausencia de escrituras y publicaciones durante consultas, y que los adaptadores no accedan a repositorios privados ajenos.
 - [ ] T042 Extender comprobaciones arquitectónicas existentes: dominio sin frameworks, aplicación sin JPA/HTTP y dependencias internas sin ciclos.
-- [ ] T043 Ejecutar pruebas y tareas de calidad disponibles mediante Maven Wrapper, conforme a [General.md](General.md).
+- [ ] T043 Ejecutar pruebas y tareas de calidad disponibles mediante Gradle Wrapper, conforme a [General.md](General.md).
 - [ ] T044 Medir el objetivo del 95 % en máximo 1 segundo y verificar consultas por conjuntos sin una llamada interna por cada galpón.
 - [ ] T045 Verificar criterios de presentación y usabilidad de los specs en la interfaz consumidora cuando esté disponible; las pruebas de API no acreditan por sí solas tiempos de interacción ni satisfacción.
 
