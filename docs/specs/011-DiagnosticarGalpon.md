@@ -1,195 +1,129 @@
 # Feature Specification: Diagnosticar un galpón
 
-**Created**: 2026-09-04  
-**Last Updated**: 2026-09-22  
-## User Scenarios & Testing *(mandatory)*
+**Created**: 2026-09-04
+**Last Updated**: 2026-10-26  
 
-### User Story 1 - Registro del Dictamen Clínico de la Parvada Aislada (Priority: P1)
+## User Scenarios & Testing
 
-**Como** Médico Veterinario de la granja,  
-**Quiero** registrar el diagnóstico de un lote alojado en un galpón en estado `aislamiento`, vinculando la enfermedad confirmada y seleccionando el protocolo de medicación o habilitando el sacrificio sanitario,  
-**Para** prescribir la terapia oficial con fecha calculada de reintegro sanitario o proceder a la contención biosegura por sacrificio total.
+### User Story 1 - Registrar el diagnóstico de un galpón (Priority: P1)
 
-**Why this priority**: Es el núcleo resolutivo de la atención médica veterinaria. Sin este dictamen formal, el galpón queda estancado en cuarentena indefinida, no se pueden dispensar tratamientos en campo y se bloquea la erradicación sanitaria en caso de patógenos letales.
+Como veterinario, quiero registrar el diagnóstico de un galpón en estado `aislamiento` identificando la enfermedad y, si esta no requiere sacrificio sanitario, seleccionar la medicación correspondiente para calcular automáticamente la fecha de reintegro a producción, o si requiere sacrificio sanitario, habilitar la emisión de la orden de sacrificio sanitario.
 
-**Independent Test**:
-* **Caso A (Terapéutico)**: Petición `POST /api/v1/sanitary/diagnosticos` con un galpón en `aislamiento`, enfermedad tratable (`requiereSacrificioSanitario = false`) y medicación de 5 días. El sistema persiste el diagnóstico, calcula `fechaReintegro = fechaDiagnostico + 5 días`, persiste el evento en outbox y conserva el galpón en `aislamiento`.
-* **Caso B (Mortal)**: Petición `POST` con galpón en `aislamiento` y enfermedad `requiereSacrificioSanitario = true`. El sistema no admite `medicacionId`, deja `fechaReintegro = null`, emite el evento correspondiente y retorna la habilitación del `Spec 012`.
+**Why this priority**: El diagnóstico formaliza la evaluación clínica del lote aislado. Permite vincular la enfermedad directamente y, según su severidad, aplicar un tratamiento con fecha de retorno a producción o habilitar el sacrificio sanitario total si la enfermedad es mortal.
 
-#### Acceptance Scenarios
+**Independent Test**: Se puede probar diagnosticando un galpón en `aislamiento` con una enfermedad tratable y seleccionando una medicación de 5 días (verificando el cálculo de reintegro y retorno a `productivo`); y alternativamente diagnosticando una enfermedad mortal con indicador de sacrificio sanitario verdadero, verificando que no exija medicación ni retorno a producción y habilite el sacrificio sanitario.
 
-1. **AS-001 - Scenario**: Dictamen clínico exitoso con enfermedad tratable y medicación estándar
-   * **Given** que el galpón referenciado tiene estado vigente `aislamiento` en el Módulo 1 y aloja un lote activo
-   * **And** el Veterinario selecciona una enfermedad activa con `requiereSacrificioSanitario == false` (`Spec 009`)
-   * **And** selecciona una pauta de medicación activa con `diasTratamiento = 5` (`Spec 008`)
-   * **When** el Veterinario confirma el registro del diagnóstico
-   * **Then** el sistema almacena el expediente clínico con `enfermedadId` y `medicacionId`
-   * **And** calcula y fija `fechaReintegro = fechaDiagnostico + 5 días` a medianoche UTC
-   * **And** persiste atómicamente el evento `DiagnosticoRegistradoIntegrationEvent` en `san_outbox` bajo el tópico `sanitary.diagnosis.registered.v1`
-   * **And** registra la firma inmutable en `san_auditoria` con matrícula profesional y justificación técnica
-   * **And** mantiene al galpón en estado `aislamiento` durante el periodo terapéutico
+**Acceptance Scenarios**:
 
-2. **AS-002 - Scenario**: Dictamen clínico con patología letal que exige sacrificio sanitario
-   * **Given** un galpón en estado `aislamiento` con lote activo
-   * **And** el Veterinario selecciona una enfermedad activa con `requiereSacrificioSanitario == true` (ej. Newcastle velogénico o Influenza Aviar)
-   * **When** el Veterinario confirma el diagnóstico sin asociar medicación
-   * **Then** el sistema registra el diagnóstico con `medicacionId = null` y `fechaReintegro = null`
-   * **And** persiste el evento de integración en `san_outbox`
-   * **And** registra el asiento en `san_auditoria`
-   * **And** retorna en el payload la bandera `habilitaSacrificio = true`, habilitando de inmediato la emisión de la orden de sacrificio sanitario total (`Spec 012`)
+1. **Scenario**: Registro de diagnóstico con enfermedad tratable y medicación
+   - **Given** que el galpón continúa en estado `aislamiento`, tiene un lote alojado y se selecciona una enfermedad que no requiere sacrificio sanitario
+   - **When** el veterinario confirma el diagnóstico y selecciona una medicación activa compatible
+   - **Then** el sistema crea el diagnóstico asociado a la enfermedad y a la medicación, y calcula automáticamente la fecha de reintegro sumando los días de medicación a la fecha del diagnóstico
 
-3. **AS-003 - Scenario**: Reintegro automatizado a producción tras cumplir la pauta médica
-   * **Given** un diagnóstico clínico vigente con `fechaReintegro = 2026-09-09` y el galpón continúa en estado `aislamiento`
-   * **When** el proceso programado `DiagnosticoReintegroScheduler` se ejecuta y comprueba que `hoy >= fechaReintegro`
-   * **Then** el sistema invoca al Módulo 1 para transicionar el estado del galpón de `aislamiento` a `productiva`
-   * **And** marca el diagnóstico sanitario como `CERRADO`
-   * **And** persiste el evento `GalponReintegradoIntegrationEvent` en `san_outbox` bajo el tópico `sanitary.galpon.reintegrated.v1`
-   * **And** asienta la traza automática del sistema en `san_auditoria`
+2. **Scenario**: Registro de diagnóstico con enfermedad mortal que requiere sacrificio sanitario
+   - **Given** que el galpón se encuentra en `aislamiento`, tiene un lote alojado y se selecciona una enfermedad cuyo indicador `requiere sacrificio sanitario` es verdadero
+   - **When** el veterinario confirma el diagnóstico sin seleccionar medicación
+   - **Then** el sistema crea el diagnóstico vinculado directamente a la enfermedad, no calcula fecha de reintegro a producción y habilita la emisión de la orden de sacrificio sanitario total
 
-4. **AS-004 - Scenario**: Conservación de cuarentena cuando la fecha de reintegro es futura
-   * **Given** un diagnóstico registrado cuya `fechaReintegro` aún no se ha cumplido (`hoy < fechaReintegro`)
-   * **When** el scheduler periódico evalúa los expedientes
-   * **Then** el sistema no efectúa mutaciones de estado y preserva el galpón en `aislamiento`
+3. **Scenario**: Reintegro automático al cumplirse la fecha en diagnóstico con medicación
+   - **Given** que el galpón se encuentra en estado `aislamiento` y la fecha de reintegro de su diagnóstico con medicación es el 9 de septiembre
+   - **When** la fecha actual alcanza el 9 de septiembre
+   - **Then** el sistema cambia automáticamente el estado del galpón a `productivo`
 
-5. **AS-005 - Scenario**: Rechazo de diagnóstico sobre galpón no aislado
-   * **Given** que el galpón consultado en el Módulo 1 se encuentra en estado `productiva`, `en_cosecha` o `vacio`
-   * **When** el Veterinario intenta emitir un diagnóstico
-   * **Then** el sistema bloquea el guardado, retorna HTTP `409 Conflict` con código `GalponNoAisladoException` y no crea el expediente
+4. **Scenario**: Permanencia en aislamiento antes de la fecha de reintegro
+   - **Given** que el galpón se encuentra en estado `aislamiento` y todavía no se ha cumplido la fecha de reintegro
+   - **When** el sistema verifica la fecha del diagnóstico
+   - **Then** conserva el galpón en estado `aislamiento`
 
-6. **AS-006 - Scenario**: Rechazo por omisión de enfermedad clínica
-   * **Given** un galpón validado en estado `aislamiento`
-   * **When** el Veterinario envía el formulario omitiendo el identificador `enfermedadId`
-   * **Then** el sistema responde con HTTP `400 Bad Request` indicando que la enfermedad nosológica es obligatoria
+5. **Scenario**: Galpón sin aislamiento validado
+   - **Given** que el galpón tiene un estado vigente diferente de `aislamiento`
+   - **When** el veterinario intenta registrar el diagnóstico
+   - **Then** el sistema rechaza la operación, informa que el galpón debe estar en estado `aislamiento` y no crea el diagnóstico
 
-7. **AS-007 - Scenario**: Rechazo por enfermedad tratable sin medicación prescrita
-   * **Given** la selección de una patología con `requiereSacrificioSanitario == false`
-   * **When** el Veterinario intenta guardar el diagnóstico sin suministrar un `medicacionId` válido
-   * **Then** el sistema detiene la transacción, responde con HTTP `400 Bad Request` (`MedicacionRequeridaException`) y no altera el expediente
+6. **Scenario**: Intento de registro sin seleccionar enfermedad
+   - **Given** que el galpón se encuentra en estado `aislamiento`
+   - **When** el veterinario intenta registrar el diagnóstico sin seleccionar una enfermedad
+   - **Then** el sistema rechaza la operación, indica que debe seleccionar una enfermedad y no crea el diagnóstico
 
-8. **AS-008 - Scenario**: Denegación de acceso por rol no veterinario
-   * **Given** un usuario autenticado con rol `TRABAJADOR` o `ADMINISTRADOR`
-   * **When** intenta emitir o confirmar una orden diagnóstica
-   * **Then** el sistema intercepta la solicitud, responde con HTTP `403 Forbidden` y no registra datos clínicos
+7. **Scenario**: Intento de registro con enfermedad tratable sin medicación
+   - **Given** que se selecciona una enfermedad cuyo indicador `requiere sacrificio sanitario` es falso
+   - **When** el veterinario intenta registrar el diagnóstico sin seleccionar una medicación
+   - **Then** el sistema rechaza la operación e indica que debe asociar una medicación para enfermedades tratables
 
----
-
-### User Story 2 - Idempotencia y Blindaje contra Diagnósticos Duplicados (Priority: P2)
-
-**Como** auditor de bioseguridad y aseguramiento de calidad,  
-**Quiero** garantizar que el registro de diagnósticos sea estrictamente idempotente y atómico,  
-**Para** evitar duplicidades en expedientes clínicos, superposición de fechas de reintegro o despacho reiterado de eventos ante reintentos de red.
-
-**Why this priority**: Un doble diagnóstico generaría colisión en los cálculos de cuarentena del lote, desfasaría el seguimiento de periodos de retiro farmacológico y generaría inconsistencias ante las auditorías del ICA.
-
-**Independent Test**: Se envía el mismo comando de diagnóstico dos veces consecutivas bajo la misma cabecera `X-Idempotency-Key`. Se verifica que el segundo llamado retorna la respuesta original almacenada en caché sin crear una segunda fila en `san_diagnosticos`, sin regenerar eventos en `san_outbox` y sin duplicar la auditoría.
-
-#### Acceptance Scenarios
-
-1. **AS-009 - Scenario**: Reintento transparente bajo clave de idempotencia técnica
-   * **Given** un comando de diagnóstico procesado exitosamente bajo la cabecera `X-Idempotency-Key: IDEMP-DIAG-5501`
-   * **When** el cliente HTTP retransmite la misma solicitud debido a un timeout transitorio de la conexión
-   * **Then** el filtro de idempotencia intercepta la petición
-   * **And** retorna la respuesta original almacenada (HTTP 201 Created con el payload original)
-   * **And** no crea registros duplicados en base de datos ni emite mensajes redundantes en Kafka
-
-2. **AS-010 - Scenario**: Rechazo de nuevo diagnóstico sobre lote con diagnóstico activo
-   * **Given** un galpón en aislamiento que ya cuenta con un diagnóstico clínico en estado `ACTIVO`
-   * **When** un veterinario intenta asentar un segundo diagnóstico sin haber cerrado o revertido el anterior
-   * **Then** el sistema responde con HTTP `409 Conflict` informando la preexistencia de un expediente diagnóstico abierto
+8. **Scenario**: Registro por un usuario no autorizado
+   - **Given** que un usuario sin rol de veterinario intenta diagnosticar un galpón
+   - **When** solicita confirmar el registro
+   - **Then** el sistema rechaza la operación y no crea el diagnóstico
 
 ---
 
 ### Edge Cases
 
-* **Cambio de estado del galpón durante la confección del diagnóstico**: Si el galpón deja de estar en `aislamiento` en el Módulo 1 mientras el Veterinario diligencia la pantalla, el sistema revalida el estado antes de abrir la transacción local y aborta con `EstadoGalponIncompatibleException`.
-* **Modificación concurrente de la pauta de medicación**: Si la duración en días de la medicación asignada fue editada en el catálogo (`Spec 008`) antes de confirmar el diagnóstico, el sistema toma la versión vigente al momento del guardado para computar la `fechaReintegro` de forma exacta.
-* **Galpón con estado anómalo al cumplirse la fecha de reintegro**: Si al llegar la `fechaReintegro` el galpón ya no está en `aislamiento` (ej. trasladado forzosamente o vaciado por contingencia), el scheduler no sobreescribe el estado en el Módulo 1, marca el diagnóstico como cerrado y registra una alerta en `san_auditoria`.
-* **Interrupción del servicio durante el vencimiento de cuarentenas**: Si el microservicio experimenta una caída durante la ventana de ejecución del scheduler, al reiniciarse procesa de forma acumulativa todos los diagnósticos cuya `fechaReintegro <= NOW()`, regularizando las transiciones pendientes.
-* **Indisponibilidad del broker Kafka**: El patrón Transactional Outbox garantiza la persistencia local de la entidad y del evento en `san_outbox` bajo la misma transacción; el worker en segundo plano reintenta la publicación hacia Kafka tan pronto como la conectividad se restablezca.
+- **Edge case #1 - Cambio del estado antes de confirmar el diagnóstico**
 
----
+  - ¿Cómo maneja el sistema un galpón que deja de estar en estado `aislamiento` después de ser seleccionado y antes de confirmar el diagnóstico?  
+    El sistema debe verificar nuevamente el estado vigente del galpón, rechazar el registro e informar que ya no cumple la condición requerida.
 
-## Requirements *(mandatory)*
+- **Edge case #2 - Cambio de la duración de la medicación antes de confirmar**
+
+  - ¿Cómo maneja el sistema una medicación cuyo número total de días cambia después de ser seleccionada y antes de confirmar el diagnóstico?  
+    El sistema debe verificar nuevamente la medicación y calcular la fecha de reintegro utilizando el número total de días vigente al momento de confirmar el diagnóstico.
+
+- **Edge case #3 - Galpón con un estado diferente al llegar la fecha de reintegro**
+
+  - ¿Cómo maneja el sistema un galpón que deja de estar en `aislamiento` antes de alcanzar su fecha de reintegro?  
+    El sistema no debe sobrescribir el estado vigente del galpón. La transición automática a `productivo` solo debe realizarse si el galpón continúa en `aislamiento`.
+
+- **Edge case #4 - Sistema no disponible en la fecha de reintegro**
+
+  - ¿Cómo maneja el sistema una fecha de reintegro que se cumple mientras el sistema no está disponible?  
+    Al restablecerse, el sistema debe identificar los diagnósticos cuya fecha de reintegro ya se cumplió y cambiar a `productivo` los galpones que todavía se encuentren en `aislamiento`.
+
+## Requirements
 
 ### Functional Requirements
 
-| ID | Requerimiento Funcional | Justificación Técnica / Trazabilidad |
-| :--- | :--- | :--- |
-| **FR-001** | El registro de diagnósticos clínicos DEBE estar restringido exclusivamente a usuarios autenticados con rol `VETERINARIO`. | Restricción clínica y regulatoria. |
-| **FR-002** | El sistema DEBE validar de forma síncrona contra el Módulo 1 que el estado operativo vigente del galpón sea estrictamente `aislamiento`. | Precondición de aislamiento obligatoria (`Spec 010`). |
-| **FR-003** | Todo diagnóstico DEBE vincularse obligatoriamente a un único `galponId` y al `loteId` activo que se encuentre alojado en él. | Trazabilidad epidemiológica del lote. |
-| **FR-004** | El diagnóstico DEBE asociarse formalmente a una `Enfermedad` existente en el catálogo nosológico en estado activa. | Consistencia con el catálogo maestro (`Spec 009`). |
-| **FR-005** | Si la enfermedad tiene `requiereSacrificioSanitario == false`, el sistema DEBE exigir la selección de una `Medicación` activa en el catálogo terapéutico. | Pauta médica de recuperación (`Spec 008`). |
-| **FR-006** | Para enfermedades con `requiereSacrificioSanitario == false`, el sistema DEBE calcular automáticamente `fechaReintegro = fechaDiagnostico + diasTratamiento`. | Automatización del periodo de cuarentena. |
-| **FR-007** | Si `requiereSacrificioSanitario == true`, el sistema DEBE forzar `medicacionId = null`, omitir la `fechaReintegro` y habilitar la orden de sacrificio sanitario. | Protocolo de erradicación biosegura (`Spec 012`). |
-| **FR-008** | La `fechaDiagnostico` DEBE ser asignada por el sistema con la marca temporal UTC del momento exacto de la confirmación. | Inmutabilidad de auditoría temporal. |
-| **FR-009** | El componente `DiagnosticoReintegroScheduler` DEBE evaluar periódicamente los diagnósticos activos para detectar periodos terapéuticos cumplidos. | Automatización reactiva de reintegro. |
-| **FR-010** | El scheduler DEBE ordenar al Módulo 1 la transición del galpón de `aislamiento` a `productiva` única y exclusivamente si el galpón continúa en `aislamiento`. | Preservación del estado e idempotencia. |
-| **FR-011** | La transición automática a `productiva` DEBE ejecutarse de forma idempotente, cerrando el expediente diagnóstico (`estado = CERRADO`). | Integridad de ciclo de vida del diagnóstico. |
-| **FR-012** | Si el galpón reporta un estado operativo distinto de `aislamiento` al cumplirse la fecha de reintegro, el sistema NO DEBE alterar el estado en el Módulo 1. | Blindaje contra sobreescritura de estados concurrentes. |
-| **FR-013** | Al confirmarse el guardado, el sistema DEBE persistir de forma atómica en `san_outbox` el evento `DiagnosticoRegistradoIntegrationEvent` bajo el tópico `sanitary.diagnosis.registered.v1`. | Publicación garantizada mediante Transactional Outbox. |
-| **FR-014** | Cada diagnóstico DEBE asentar un registro inmutable en `san_auditoria` con usuario responsable, matrícula veterinaria, galpón, lote, enfermedad y medicación asociada. | Trazabilidad legal y de inocuidad alimentaria. |
-| **FR-015** | Queda ESTRICTAMENTE PROHIBIDO el borrado físico (`DELETE` en SQL) sobre las tablas `san_diagnosticos` y `san_auditoria`. | Cumplimiento regulatorio agropecuario. |
-| **FR-016** | El sistema DEBE aplicar control de concurrencia optimista (`@Version`) sobre el expediente y admitir cabeceras `X-Idempotency-Key` retenidas durante 24 horas. | Integridad ante reintentos de red y concurrencia. |
-
-### Non-Functional Requirements
-
-| ID | Categoría | Requerimiento | Métrica |
-| :--- | :--- | :--- | :--- |
-| **NFR-001** | Rendimiento | Latencia de validación, cálculo de reintegro y persistencia | < 250 ms (p95) bajo carga normal |
-| **NFR-002** | Seguridad | Acceso restringido exclusivamente al rol VETERINARIO | HTTP 403 Forbidden a otros roles |
-| **NFR-003** | Integridad | Escritura atómica (diagnóstico + outbox + auditoría) bajo `@Transactional` | 100% de consistencia local |
-| **NFR-004** | Persistencia | Prohibición estricta de sentencias `DELETE` SQL en base de datos | 0% borrados físicos |
-| **NFR-005** | Disponibilidad | Si el Módulo 1 no responde, la transacción se aborta completamente (Rollback) | 0% de inconsistencias por fallo cross-context |
-| **NFR-006** | Automatización | El `DiagnosticoReintegroScheduler` debe procesar diagnósticos vencidos de forma acumulativa tras caídas del servicio | 100% de transiciones pendientes regularizadas |
-
----
+- **FR-001**: El sistema DEBE permitir el registro de diagnósticos de galpón exclusivamente a usuarios con rol de veterinario.
+- **FR-002**: El sistema DEBE permitir el diagnóstico únicamente después de validar el aislamiento, lo cual se comprueba cuando la entidad Galpón proporcionada por el módulo 1 se encuentra en estado `aislamiento`.
+- **FR-003**: El sistema DEBE utilizar la entidad Galpón en `aislamiento` y el lote alojado actualmente en ella.
+- **FR-004**: Cada diagnóstico DEBE corresponder a un único galpón y al lote que este tenga alojado al momento del registro.
+- **FR-005**: El diagnóstico DEBE asociarse directamente a una entidad Enfermedad registrada en el catálogo y conservar una instantánea de su nombre e indicador de sacrificio sanitario.
+- **FR-006**: Cuando la enfermedad diagnosticada NO requiera sacrificio sanitario (`requiere sacrificio sanitario == false`), el sistema DEBE exigir la selección de una Medicación compatible, calcular automáticamente la fecha de reintegro (`fecha del diagnóstico + número total de días de la medicación`) y guardar dicha fecha en el diagnóstico.
+- **FR-007**: Cuando la enfermedad diagnosticada requiera sacrificio sanitario (`requiere sacrificio sanitario == true`), el sistema NO DEBE exigir ni aceptar la selección de una Medicación ni calcular fecha de reintegro a producción, y DEBE habilitar la emisión de una orden de sacrificio sanitario total (SPEC-012).
+- **FR-008**: El sistema DEBE registrar como fecha del diagnóstico la fecha calendario en la que el veterinario confirma el registro.
+- **FR-009**: Para diagnósticos con medicación, mientras la fecha actual sea anterior a la fecha de reintegro, el sistema DEBE conservar el galpón en estado `aislamiento`.
+- **FR-010**: Cuando la fecha actual sea igual o posterior a la fecha de reintegro de un diagnóstico con medicación y el galpón continúe en estado `aislamiento`, el sistema DEBE cambiar automáticamente su estado a `productivo`.
+- **FR-011**: La transición a `productivo` DEBE ejecutarse una sola vez de forma idempotente y NO DEBE requerir una nueva acción del veterinario.
+- **FR-012**: Si el galpón tiene un estado diferente de `aislamiento` al cumplirse la fecha de reintegro, el sistema NO DEBE sobrescribir su estado vigente.
 
 ### Key Entities
 
-```text
-+---------------------------------------------------------------------------------+
-|                                 <<Aggregate Root>>                              |
-|                                    Diagnostico                                  |
-+---------------------------------------------------------------------------------+
-| - id: UUID                                                                      |
-| - galponId: UUID                                     (Ref. Externa Módulo 1)    |
-| - loteId: UUID                                       (Ref. Externa Módulo 1)    |
-| - enfermedadId: UUID                                 (Ref. Spec 009)            |
-| - medicacionId: UUID [0..1]                          (Ref. Spec 008, Nullable)  |
-| - veterinarioId: UUID                                                           |
-| - fechaDiagnostico: Instant                                                     |
-| - fechaReintegro: Instant [0..1]                     (Calculado, Nullable)      |
-| - observaciones: String                                                         |
-| - estado: EstadoDiagnostico                          (ACTIVO, CERRADO)          |
-| - version: Integer                                   (@Version Optimistic Lock) |
-+---------------------------------------------------------------------------------+
-```
+- **Diagnóstico del galpón**: Representa el dictamen clínico registrado por el veterinario después de validar el aislamiento del galpón.
+  - **Atributos**: fecha del diagnóstico, fecha de reintegro calculada (cuando aplica tratamiento) e instantáneas históricas de la enfermedad y días de medicación.
+  - **Relaciones**: corresponde a un único galpón, al lote alojado actualmente, almacena la clave foránea directa de la Enfermedad diagnosticada (`enfermedadId`) y opcionalmente la clave foránea de una Medicación (`medicacionId`, solo para enfermedades tratables).
+  - **Datos accesibles mediante sus relaciones**: accede directamente a los datos y severidad de la Enfermedad, y al tratamiento prescrito si posee Medicación asociada.
+- **Enfermedad**: Representa la patología clínica diagnosticada en el galpón.
+  - **Atributos utilizados**: nombre, indicador booleano `requiere sacrificio sanitario`.
+  - **Relaciones**: es referenciada directamente por el diagnóstico del galpón y cuenta con medicaciones registradas cuando es tratable.
+- **Medicación**: Representa el tratamiento seleccionado para el diagnóstico cuando la enfermedad es tratable.
+  - **Atributos utilizados**: número total de días, dosis, medicamento asociado.
+  - **Relaciones**: es referenciada opcionalmente por el diagnóstico y permite acceder al medicamento y posología correspondientes.
+- **Galpón**: Representa el espacio diagnosticado y es proporcionado por el módulo 1.
+  - **Atributos utilizados**: estado (`aislamiento`, `productivo`, `vaciado sanitario`).
+  - **Relaciones**: tiene un lote alojado actualmente y queda asociado con el diagnóstico.
+  - **Transición de estado**: permanece en `aislamiento` durante el tratamiento y cambia automáticamente a `productivo` cuando se cumple la fecha de reintegro; o pasa a `vaciado sanitario` si se ejecuta una orden de sacrificio sanitario.
+- **Lote**: Representa el grupo de aves alojado en el galpón al momento del diagnóstico.
+  - **Relaciones**: está alojado en el galpón y queda asociado con el diagnóstico para identificar las aves evaluadas.
 
-* **Diagnostico** *(Aggregate Root)*: Entidad médica central del subsistema. Orquesta la relación entre el lote afectado, la enfermedad nosológica y el esquema de tratamiento.
-* **Enfermedad**: Entidad del catálogo nosológico (`Spec 009`). Provee el atributo binario `requiereSacrificioSanitario` que decide la bifurcación clínica.
-* **Medicación**: Entidad del catálogo terapéutico (`Spec 008`). Provee la dosimetría y los `diasTratamiento` para calcular la duración de la cuarentena.
-* **Galpón y Lote**: Entidades externas pertenecientes al Bounded Context del Módulo 1. El Módulo 2 valida su existencia y gestiona sus estados sanitarios.
-* **DiagnosticoRegistradoIntegrationEvent**: Contrato tipado despachado a Kafka (`eventId`, `aggregateId`, `galponId`, `loteId`, `enfermedadId`, `medicacionId`, `fechaReintegro`, `occurredOn`).
-* **Auditoría Sanitaria (`san_auditoria`)**: Asiento inmutable append-only de responsabilidad legal profesional.
-* **Transactional Outbox (`san_outbox`)**: Tabla transaccional para garantizar entrega de mensajería asíncrona sin transacciones distribuidas 2PC.
-
----
-
-## Success Criteria *(mandatory)*
+## Success Criteria
 
 ### Measurable Outcomes
 
-| ID | Criterio de Éxito | Métrica Objetivo | Validación Técnica |
-| :--- | :--- | :--- | :--- |
-| **SC-001** | El 100% de los diagnósticos se asocia formalmente a galpones confirmados en estado `aislamiento`. | 100% de cumplimiento | Intercepción en Use Case contra `GalponQueryPort`. |
-| **SC-002** | El 100% de los diagnósticos registra una clave foránea válida hacia una `Enfermedad` activa. | Cero registros huérfanos | Constraint relacional y validación de dominio (`Spec 009`). |
-| **SC-003** | El 100% de los diagnósticos con patología tratable computa con exactitud matemática `fechaReintegro = fechaDiagnostico + diasTratamiento`. | 100% de exactitud | Test unitario de Aggregate Root y Test de Integración. |
-| **SC-004** | El 100% de los diagnósticos mortales prescinde de medicación y habilita la orden de sacrificio. | Cero asignaciones erróneas | Verificación de invariante en Aggregate Root (`Spec 012`). |
-| **SC-005** | La latencia total para validar y persistir atómicamente el diagnóstico es inferior a 250 milisegundos. | Latencia < 250 ms | Pruebas de rendimiento con Gatling bajo concurrencia. |
-| **SC-006** | El 100% de los intentos de registro por usuarios sin rol `VETERINARIO` son bloqueados. | Cero accesos indebidos | Test de seguridad de capa REST (HTTP 403 Forbidden). |
-| **SC-007** | El 100% de los galpones en `aislamiento` con tratamiento vencido es transicionado a `productiva` por el scheduler. | 100% de efectividad | Test de integración con Testcontainers del job programado. |
-| **SC-008** | Cero duplicidad (0%) en registros de diagnósticos o eventos outbox ante reintentos de red. | Cero duplicados | Validación con `X-Idempotency-Key` y `@Version`. |
-| **SC-009** | Cero incidentes (0%) de borrado físico (`DELETE` SQL) sobre diagnósticos o trazas de auditoría. | 100% de persistencia | Verificación de permisos a nivel de usuario en base de datos. |
-| **SC-010** | El 100% de los eventos de integración se resguarda en `san_outbox` dentro de la misma transacción local. | Atomicidad total | Verificación transaccional rollback con Testcontainers. |
-
+- **SC-001**: Al menos el 90 % de los veterinarios puede registrar un diagnóstico válido en menos de 2 minutos.
+- **SC-002**: El 100 % de los diagnósticos se registra únicamente para galpones cuyo estado vigente es `aislamiento`.
+- **SC-003**: El 100 % de los diagnósticos creados almacena la clave foránea directa de la Enfermedad diagnosticada.
+- **SC-004**: El 100 % de los diagnósticos con enfermedades tratables almacena la referencia a su Medicación y calcula la fecha de reintegro con exactitud.
+- **SC-005**: El 100 % de los diagnósticos con enfermedades de sacrificio sanitario total prescinde de medicación y habilita la orden de sacrificio sanitario.
+- **SC-006**: El 95 % de los diagnósticos válidos queda disponible en un máximo de 1 segundo después de la confirmación.
+- **SC-007**: El 100 % de los intentos realizados por roles distintos al veterinario es rechazado sin crear un diagnóstico.
+- **SC-008**: El 100 % de los galpones con tratamiento que continúan en `aislamiento` cambia automáticamente a `productivo` al cumplirse su fecha de reintegro.
