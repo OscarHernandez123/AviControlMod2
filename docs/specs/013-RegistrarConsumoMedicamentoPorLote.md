@@ -1,7 +1,7 @@
 # Feature Specification: Registrar consumo de medicamento
 
 **Created**: 2026-09-05  
-**Last Updated**: 2026-10-26 
+**Last Updated**: 2026-09-26
 
 ## User Scenarios & Testing
 

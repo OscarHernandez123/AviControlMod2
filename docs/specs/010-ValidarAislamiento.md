@@ -1,7 +1,7 @@
 # Feature Specification: Validar aislamiento de un galpón
 
 **Created**: 2026-09-04
-**Last Updated**: 2026-10-26   
+**Last Updated**: 2026-09-26   
 
 ## User Scenarios & Testing
 

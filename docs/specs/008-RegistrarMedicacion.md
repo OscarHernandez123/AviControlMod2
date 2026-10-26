@@ -1,6 +1,7 @@
 # Feature Specification: Registrar medicación
 
-**Created**: 2026-09-04  
+**Created**: 2026-09-04
+**Last Updated**: 2026-09-26 
 
 ## User Scenarios & Testing
 
