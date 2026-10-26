@@ -1,168 +1,124 @@
 # Feature Specification: Registrar una enfermedad
 
 **Created**: 2026-09-04  
-**Last Updated**: 2026-09-22  
 
-## User Scenarios & Testing *(mandatory)*
+## User Scenarios & Testing
 
-### User Story 1 - Alta de Patología en el Catálogo Nosológico (Priority: P1)
+### User Story 1 - Registrar una enfermedad (Priority: P1)
 
-Como Médico Veterinario de la granja, quiero registrar una patología especificando su código oficial, nombre clínico, nivel de riesgo, tipo etiológico, descripción sintomática y el indicador binario de obligatoriedad de sacrificio sanitario, para consolidar el catálogo nosológico oficial que rige los diagnósticos clínicos (Spec 011), la prescripción de medicaciones (Spec 008) y las órdenes de contingencia sanitaria (Spec 012).
+Como veterinario, quiero registrar una enfermedad con su nombre, nivel de riesgo, tipo de enfermedad, descripción clínica y la indicación de si requiere sacrificio sanitario, para que su información y el manejo sanitario requerido queden disponibles en el sistema.
 
-**Why this priority**: Es el catálogo maestro nosológico del sistema. Sin este registro previo, es inviable emitir diagnósticos en los galpones, asociar esquemas terapéuticos o activar los protocolos de sacrificio sanitario total de la parvada.
+**Why this priority**: El registro permite identificar y describir las enfermedades, además de establecer cuáles son mortales y exigen el sacrificio sanitario de toda la población del lote. También garantiza que únicamente el veterinario pueda incorporar esta información al sistema.
 
-**Independent Test**: Se prueba enviando un comando de creación con todos los campos obligatorios completos y válidos, código único no repetido y selección obligatoria del indicador de sacrificio. El sistema debe persistir la entidad en san_enfermedades, asentar la firma inmutable en san_auditoria, registrar atómicamente el evento de integración en san_outbox para su despacho asíncrono hacia Kafka y dejar la patología disponible para selección clínica inmediata.
+**Independent Test**: Se puede probar autenticando a un veterinario y registrando una enfermedad con nombre, nivel de riesgo, tipo de enfermedad, descripción clínica y una selección explícita que indique si requiere sacrificio sanitario. El sistema debe guardar todos los datos, incluido el indicador booleano. Si falta alguno de ellos o el usuario no tiene rol de veterinario, debe rechazar la operación y no crear la enfermedad.
 
 **Acceptance Scenarios**:
 
-1. **AS-001 - Scenario**: Registro exitoso de una enfermedad de manejo terapéutico (sin sacrificio)
-   - **Given** que un usuario autenticado con rol VETERINARIO accede al módulo de registro de enfermedades
-   - **When** ingresa el código nosológico "ID-ENF-001", nombre "Bronquitis Infecciosa Aviar", nivel de riesgo "Medio", tipo "Viral", descripción clínica "Afecta vías respiratorias superiores, estertores y caída de postura" y selecciona explícitamente No en sacrificio sanitario
-   - **Then** el sistema almacena la enfermedad en estado activa
-   - **And** persiste atómicamente el evento de integración EnfermedadRegistradaIntegrationEvent en san_outbox bajo el tópico sanitary.disease.registered.v1
-   - **And** registra el asiento inmutable en san_auditoria con la matrícula del Veterinario actuante
-   - **And** la patología queda disponible inmediatamente para asociarle pautas de medicación (Spec 008) y emitir diagnósticos (Spec 011)
+1. **Scenario**: Registro correcto de una enfermedad
+   - **Given** que un veterinario autenticado dispone del nombre, nivel de riesgo, tipo de enfermedad y descripción clínica, y determina si la enfermedad requiere sacrificio sanitario
+   - **When** registra todos los datos de la enfermedad
+   - **Then** el sistema crea la enfermedad, guarda el indicador de sacrificio sanitario y muestra la información registrada
 
-2. **AS-002 - Scenario**: Registro exitoso de una patología de notificación oficial (con sacrificio sanitario)
-   - **Given** que el Veterinario identifica una patología crítica de alta contagiosidad (ej. Influenza Aviar de alta patogenicidad o Newcastle velogénico)
-   - **When** ingresa código "ID-ENF-002", nombre "Newcastle Fuerte", nivel de riesgo "Alto", tipo "Viral", descripción clínica "Signos neurológicos, diarrea verdosa y alta mortalidad" y selecciona explícitamente Sí en sacrificio sanitario
-   - **Then** el sistema almacena la enfermedad con el indicador requiereSacrificioSanitario = true
-   - **And** emite el evento correspondiente mediante el Transactional Outbox
-   - **And** habilita esta enfermedad como causal obligatoria para emitir órdenes de sacrificio sanitario total (Spec 012) al diagnosticarse en un galpón
+2. **Scenario**: Intento de registro con datos incompletos
+   - **Given** que el veterinario está registrando una enfermedad
+   - **When** omite el nombre, nivel de riesgo, tipo de enfermedad, descripción clínica o la indicación de si requiere sacrificio sanitario
+   - **Then** el sistema rechaza el registro, identifica los datos que debe completar y no crea la enfermedad
 
-3. **AS-003 - Scenario**: Rechazo de registro por código nosológico duplicado
-   - **Given** que ya existe en el catálogo la enfermedad con código "ID-ENF-001"
-   - **When** el Veterinario intenta registrar una nueva enfermedad usando el mismo código "ID-ENF-001"
-   - **Then** el sistema aborta la operación, retorna un código de error de colisión nosológica y no persiste ningún registro en base de datos
+3. **Scenario**: Intento de registro con datos vacíos
+   - **Given** que el veterinario está registrando una enfermedad
+   - **When** ingresa uno o más datos compuestos únicamente por espacios en blanco
+   - **Then** el sistema los considera vacíos, rechaza el registro e indica los datos que debe corregir
 
-4. **AS-004 - Scenario**: Rechazo por datos obligatorios faltantes o espacios en blanco
-   - **Given** que el Veterinario inicia el formulario de registro
-   - **When** intenta enviar la petición omitiendo el código, el nombre, el nivel de riesgo, el tipo, la descripción o enviando textos compuestos exclusivamente por espacios en blanco ("   ")
-   - **Then** el sistema detiene la transacción, marca los campos mandatorios incompletos y no persiste la entidad
+4. **Scenario**: Registro por un usuario no autorizado
+   - **Given** que un usuario sin rol de veterinario intenta registrar una enfermedad
+   - **When** solicita confirmar el registro
+   - **Then** el sistema rechaza la operación y no crea la enfermedad
 
-5. **AS-005 - Scenario**: Rechazo por falta de selección explícita en el indicador de sacrificio
-   - **Given** que el sistema no aplica valores por defecto en decisiones clínicas críticas
-   - **When** el Veterinario intenta enviar el formulario sin marcar de manera expresa Sí o No en la casilla de sacrificio sanitario
-   - **Then** el sistema bloquea el guardado exigiendo al usuario una decisión clínica afirmativa o negativa
+5. **Scenario**: Registro de una enfermedad mortal
+   - **Given** que el veterinario determina que una enfermedad exige sacrificar toda la población afectada
+   - **When** selecciona Sí en el indicador de sacrificio sanitario y confirma el registro
+   - **Then** el sistema registra la enfermedad con el indicador `requiere sacrificio sanitario` en verdadero
 
-6. **AS-006 - Scenario**: Denegación de acceso a usuarios sin rol veterinario
-   - **Given** un usuario autenticado con rol TRABAJADOR o ADMINISTRADOR
-   - **When** intenta emitir el comando de registro de una enfermedad
-   - **Then** el sistema bloquea la acción por insuficiencia de privilegios sanitarios y retorna HTTP 403 Forbidden
+6. **Scenario**: Registro de una enfermedad que no requiere sacrificio sanitario
+   - **Given** que el veterinario determina que una enfermedad no exige sacrificar toda la población afectada
+   - **When** selecciona No en el indicador de sacrificio sanitario y confirma el registro
+   - **Then** el sistema registra la enfermedad con el indicador `requiere sacrificio sanitario` en falso
 
 ---
 
-### User Story 2 - Actualización del Catálogo y Blindaje Histórico (Priority: P2)
+### User Story 2 - Editar una enfermedad (Priority: P2)
 
-Como Médico Veterinario de la granja, quiero editar los datos de una enfermedad existente (nombre, nivel de riesgo, tipo, descripción clínica o indicador de sacrificio), garantizando que las modificaciones rijan exclusivamente para diagnósticos y parametrizaciones futuras sin alterar ni recalcular retroactivamente los diagnósticos históricos ni los expedientes clínicos cerrados.
+Como veterinario, quiero editar una enfermedad existente para corregir o actualizar su nombre, nivel de riesgo, tipo de enfermedad, descripción clínica o indicador de sacrificio sanitario, de manera que los nuevos datos se utilicen únicamente en diagnósticos futuros.
 
-**Why this priority**: Las pautas nosológicas evolucionan por mutaciones o normativas del ICA; sin embargo, no se deben alterar retroactivamente las auditorías de galpones diagnosticados en el pasado para no viciar la trazabilidad legal sanitaria.
+**Why this priority**: La edición permite mantener actualizada la información sanitaria sin cambiar las enfermedades, medicaciones o decisiones de sacrificio que quedaron registradas en diagnósticos anteriores.
 
-**Independent Test**: Se toma una enfermedad registrada con requiereSacrificioSanitario = false aplicada en el diagnóstico previo de un lote y se modifica en el catálogo a true. Se comprueba que el diagnóstico histórico conserve su estado original de tratamiento, mientras que diagnósticos subsiguientes exijan la derivación a sacrificio sanitario (Spec 012).
-
-**Acceptance Scenarios**:
-
-1. **AS-007 - Scenario**: Edición técnica exitosa de una patología
-   - **Given** una enfermedad registrada en el catálogo nosológico
-   - **When** el Veterinario actualiza su nivel de riesgo a "Crítico" y amplía las observaciones clínicas
-   - **Then** el sistema incrementa la versión optimista de la entidad (version = version + 1)
-   - **And** persiste el evento EnfermedadActualizadaIntegrationEvent en san_outbox
-   - **And** registra el asiento en san_auditoria detallando los valores modificados
-   - **And** aplica los nuevos parámetros exclusivamente a diagnósticos formulados con posterioridad
-
-2. **AS-008 - Scenario**: Inmutabilidad de prescripciones y diagnósticos previos
-   - **Given** un galpón con expediente clínico cerrado basado en la versión 1 de la enfermedad
-   - **When** el Veterinario guarda una modificación de la enfermedad generando la versión 2
-   - **Then** el expediente histórico del galpón mantiene intactos los parámetros diagnósticos originales
-   - **And** el sistema no muta ni recalcula ninguna decisión sanitaria pasada
-
-3. **AS-009 - Scenario**: Rechazo de edición por colisión de concurrencia optimista
-   - **Given** un registro de enfermedad en versión 1
-   - **When** un veterinario confirma una actualización elevando la versión a 2
-   - **And** un segundo veterinario intenta guardar modificaciones basadas en la versión 1 previa
-   - **Then** el sistema rechaza la segunda petición por versión obsoleta (HTTP 409 Conflict)
-   - **And** exige al usuario recargar la información antes de volver a intentar
-
----
-
-### User Story 3 - Integridad Transaccional, Blindaje contra Borrado e Idempotencia (Priority: P3)
-
-Como auditor de inocuidad y responsable sanitario de la granja, quiero garantizar que ninguna patología pueda ser eliminada físicamente de la base de datos y que las operaciones de guardado sean idempotentes ante fallas de red, para asegurar la trazabilidad perpetua de los registros sanitarios.
-
-**Why this priority**: La pérdida o destrucción de un registro de enfermedad en base de datos invalidaría los diagnósticos históricos vinculados a los galpones, vulnerando la trazabilidad del lote ante entes de control zoosanitario.
-
-**Independent Test**: Se ejecutan órdenes de borrado directo (DELETE) sobre la tabla san_enfermedades y se envían peticiones consecutivas idénticas bajo la misma cabecera X-Idempotency-Key.
+**Independent Test**: Se puede probar utilizando una enfermedad que ya está relacionada con un diagnóstico y cambiar su indicador `requiere sacrificio sanitario`. El diagnóstico existente debe conservar la decisión sanitaria original, mientras que los diagnósticos posteriores deben utilizar el valor actualizado.
 
 **Acceptance Scenarios**:
 
-1. **AS-010 - Scenario**: Prohibición absoluta de borrado físico
-   - **Given** una enfermedad existente en el catálogo nosológico
-   - **When** se intenta ejecutar una instrucción HTTP DELETE o sentencia SQL DELETE directa
-   - **Then** el sistema intercepta y rechaza la operación (HTTP 405 Method Not Allowed)
-   - **And** mantiene inalterada la tupla en la base de datos
+1. **Scenario**: Edición correcta de una enfermedad
+   - **Given** que existe una enfermedad registrada
+   - **When** el veterinario modifica el nombre, nivel de riesgo, tipo de enfermedad, descripción clínica o indicador de sacrificio sanitario con datos válidos
+   - **Then** el sistema guarda los cambios y deja la información actualizada disponible para diagnósticos futuros
 
-2. **AS-011 - Scenario**: Prevención de duplicación ante reintentos de red (Idempotencia)
-   - **Given** un comando de alta procesado exitosamente bajo la cabecera "X-Idempotency-Key: IDEMP-ENF-1020"
-   - **When** el cliente retransmite la misma solicitud debido a un timeout transitorio de la red
-   - **Then** el filtro de idempotencia reconoce la clave previamente procesada
-   - **And** responde con la información almacenada originalmente sin crear una entidad duplicada ni encolar un segundo evento en el outbox
+2. **Scenario**: Edición de una enfermedad utilizada en diagnósticos existentes
+   - **Given** que una enfermedad ya está relacionada con uno o varios diagnósticos
+   - **When** el veterinario edita sus datos
+   - **Then** el sistema aplica los cambios únicamente a diagnósticos futuros y conserva sin cambios la información y las decisiones sanitarias de los diagnósticos existentes
+
+3. **Scenario**: Edición por un usuario no autorizado
+   - **Given** que un usuario sin rol de veterinario intenta editar una enfermedad
+   - **When** solicita confirmar los cambios
+   - **Then** el sistema rechaza la operación y conserva la enfermedad sin cambios
 
 ---
 
 ### Edge Cases
 
-- **Intento de desactivación con esquemas terapéuticos activos**: Si el Veterinario inhabilita una enfermedad en el catálogo, pero esta tiene medicaciones vigentes asociadas (Spec 008), las medicaciones existentes se conservan, pero el sistema bloquea la creación de nuevos esquemas de medicación para dicha patología.
-- **Falla en el broker de mensajería (Kafka caído)**: Gracias al patrón Transactional Outbox, si el broker de mensajería no está disponible al momento del guardado, la transacción de base de datos se completa con éxito (san_enfermedades + san_outbox + san_auditoria), garantizando que el worker en segundo plano reintente el envío cuando el broker se restablezca.
-- **Campos de texto con caracteres invisibles**: Cualquier texto compuesto por espacios, tabulaciones o saltos de línea se normaliza mediante .trim(); si la longitud resultante es cero, se rechaza la transacción de inmediato.
+- **Edge case #1 - Datos obligatorios que contienen únicamente espacios**
 
-## Requirements *(mandatory)*
+  - ¿Cómo maneja el sistema un nombre, tipo de enfermedad o descripción clínica que contiene únicamente espacios en blanco?  
+    El sistema debe considerar el dato como vacío, informar que debe corregirse y no crear la enfermedad.
+
+- **Edge case #2 - Interrupción durante el registro**
+
+  - ¿Cómo maneja el sistema una interrupción mientras se guarda la enfermedad?  
+    El sistema debe evitar registros parciales: la enfermedad debe guardarse con todos sus datos o no debe crearse.
+
+## Requirements
 
 ### Functional Requirements
 
-- **FR-001**: El registro y actualización de enfermedades DEBE estar restringido exclusivamente a usuarios autenticados con rol VETERINARIO.
-- **FR-002**: Toda enfermedad DEBE registrar de forma obligatoria: código nosológico único, nombre clínico, nivel de riesgo, tipo etiológico, descripción clínica y el indicador binario requiereSacrificioSanitario.
-- **FR-003**: El código nosológico DEBE ser único en todo el catálogo de la granja (ej. ID-ENF-001).
-- **FR-004**: Los campos de texto nombre, tipo y descripcion NO DEBEN ser nulos, vacíos ni estar compuestos únicamente por espacios en blanco. La descripción clínica DEBE tener un mínimo de 10 caracteres.
-- **FR-005**: El nivel de riesgo DEBE pertenecer estrictamente a la enumeración clínica: BAJO, MEDIO, ALTO o CRITICO.
-- **FR-006**: El tipo de patología DEBE clasificarse según su origen etiológico: VIRAL, BACTERIANA, PARASITARIA o FUNGICA.
-- **FR-007**: El Veterinario DEBE seleccionar explícitamente el indicador requiereSacrificioSanitario (true o false); el sistema NO DEBE admitir valores nulos ni inferir valores por defecto.
-- **FR-008**: Si requiereSacrificioSanitario es verdadero, el sistema DEBE clasificar la enfermedad como letal y habilitar la orden de vaciado sanitario total (Spec 012: Ordenar sacrificio sanitario) al emitirse un diagnóstico.
-- **FR-009**: Si requiereSacrificioSanitario es falso, el sistema DEBE exigir la selección de un protocolo de tratamiento (Spec 008: Registrar medicación) al confirmarse un diagnóstico clínico (Spec 011).
-- **FR-010**: Toda modificación sobre los atributos de una enfermedad DEBE elevar la versión optimista (version = version + 1) y aplicar exclusivamente a diagnósticos y prescripciones futuras, manteniendo la inmutabilidad de los expedientes históricos.
-- **FR-011**: Al confirmarse la persistencia, el sistema DEBE registrar de forma atómica el evento EnfermedadRegistradaIntegrationEvent en la tabla san_outbox para su despacho asíncrono al tópico sanitary.disease.registered.v1.
-- **FR-012**: Cada creación o actualización DEBE registrar un asiento inmutable en la tabla san_auditoria con usuario responsable, fecha, hora y detalle técnico del cambio.
-- **FR-013**: Queda ESTRICTAMENTE PROHIBIDO el borrado físico (DELETE en SQL) sobre las tuplas de la tabla san_enfermedades.
-- **FR-014**: El sistema DEBE implementar control de concurrencia optimista (@Version) y admitir cabeceras de idempotencia técnica X-Idempotency-Key retenidas durante 24 horas.
-- **FR-015**: El sistema DEBE permitir desactivar lógicamente una enfermedad estableciendo `activa = false`, sin eliminar físicamente el registro. Las enfermedades inactivas NO DEBEN poder seleccionarse en nuevos diagnósticos (Spec 011) ni en nuevas medicaciones (Spec 008), pero los expedientes históricos existentes conservan su referencia. Si existen medicaciones vigentes asociadas a la enfermedad, se conservan, pero el sistema bloquea la creación de nuevos esquemas de medicación.
-
-### Non-Functional Requirements
-
-| ID | Categoría | Requerimiento | Métrica |
-| :--- | :--- | :--- | :--- |
-| **NFR-001** | Rendimiento | Latencia de validación, registro y persistencia | < 250 ms (p95) bajo carga normal |
-| **NFR-002** | Seguridad | Acceso restringido exclusivamente al rol VETERINARIO | HTTP 403 Forbidden a otros roles |
-| **NFR-003** | Integridad | Escritura atómica (entidad + outbox + auditoría) bajo `@Transactional` | 100% de consistencia local |
-| **NFR-004** | Persistencia | Prohibición estricta de sentencias `DELETE` SQL en base de datos | 0% borrados físicos |
+- **FR-001**: El sistema DEBE permitir el registro y la edición de enfermedades exclusivamente a usuarios con rol de veterinario.
+- **FR-002**: Cada enfermedad DEBE registrar nombre, nivel de riesgo, tipo de enfermedad, descripción clínica y el indicador booleano `requiere sacrificio sanitario`.
+- **FR-003**: El sistema DEBE considerar obligatorios todos los datos de la enfermedad y rechazar el registro cuando alguno esté ausente o vacío.
+- **FR-004**: El veterinario DEBE seleccionar explícitamente si la enfermedad requiere sacrificio sanitario; el sistema NO DEBE asignar un valor predeterminado.
+- **FR-005**: El valor verdadero del indicador DEBE señalar que la enfermedad es mortal y requiere el sacrificio sanitario de toda la población del lote afectado.
+- **FR-006**: El valor falso del indicador DEBE señalar que la enfermedad es tratable, requiere asociar una medicación al diagnosticarse y no habilita una orden de sacrificio sanitario.
+- **FR-007**: La edición de una enfermedad DEBE aplicarse únicamente a diagnósticos futuros y NO DEBE alterar los datos históricos ni las decisiones de los diagnósticos previamente confirmados.
 
 ### Key Entities
 
-- **Enfermedad**: Aggregate Root nosológico. Atributos: id (UUID), codigo (String único), nombre (String), nivelRiesgo (Enum: BAJO, MEDIO, ALTO, CRITICO), tipo (Enum: VIRAL, BACTERIANA, PARASITARIA, FUNGICA), descripcion (Texto), requiereSacrificioSanitario (Boolean), activa (Boolean), version (Integer), createdAt (Timestamp) y updatedAt (Timestamp).
-- **Medicación**: Entidad de protocolo terapéutico (Spec 008) que vincula una enfermedad no letal con un fármaco de inventario.
-- **Diagnóstico**: Expediente clínico de lote/galpón (Spec 011) que referencia la patología dictaminada.
-- **Orden de Sacrificio Sanitario**: Expediente de contingencia biosegura (Spec 012) habilitado únicamente si la patología diagnosticada tiene requiereSacrificioSanitario = true.
-- **Auditoría Sanitaria (san_auditoria)**: Bitácora inmutable append-only donde queda resguardada la trazabilidad técnica veterinaria.
+- **Enfermedad**: Representa una patología registrada por el veterinario en el catálogo sanitario.
+  - **Atributos**: nombre, nivel de riesgo, tipo de enfermedad, descripción clínica y el indicador booleano `requiere sacrificio sanitario`.
+  - **Relación con Medicación**: una enfermedad tratable puede tener una o varias medicaciones registradas, y cada medicación referencia la enfermedad para la cual fue definida.
+  - **Relación con Diagnóstico del galpón**: se relaciona directamente con el diagnóstico mediante su clave foránea (`enfermedadId`). Además, el diagnóstico conserva una instantánea (*snapshot*) del nombre y del indicador de sacrificio sanitario vigentes al momento de su confirmación.
+  - **Relación con Orden de sacrificio sanitario**: cuando el indicador es verdadero, la enfermedad diagnosticada habilita la emisión de una orden para sacrificar toda la población del lote sin requerir medicación.
+  - **Comportamiento ante ediciones**: los datos actualizados se utilizan únicamente en diagnósticos futuros, mientras que los diagnósticos existentes conservan la información y la decisión sanitaria utilizadas al momento de su registro.
+- **Medicación**: Representa el tratamiento registrado para una enfermedad tratable.
+  - **Relaciones**: referencia una enfermedad y posteriormente puede ser seleccionada opcionalmente por uno o varios diagnósticos de galpón cuando la enfermedad no requiere sacrificio sanitario.
+- **Diagnóstico del galpón**: Representa el resultado de la evaluación de la condición sanitaria de un galpón en estado `aislamiento`.
+  - **Relaciones**: corresponde a un galpón y a su lote activo, referencia directamente una única enfermedad y, cuando esta es tratable, referencia una medicación compatible.
 
-## Success Criteria *(mandatory)*
+## Success Criteria
 
 ### Measurable Outcomes
 
-- **SC-001**: El 100% de las enfermedades creadas quedan disponibles para su selección en medicaciones (Spec 008) y diagnósticos (Spec 011) en menos de 1 segundo tras la confirmación de la transacción.
-- **SC-002**: Cero casos (0%) de modificación retroactiva en diagnósticos clínicos o prescripciones previas tras actualizar una patología en el catálogo.
-- **SC-003**: Cero incidentes (0%) de patologías registradas sin una decisión binaria explícita (Sí / No) sobre el sacrificio sanitario.
-- **SC-004**: El 100% de los intentos de creación o modificación ejecutados por roles distintos a VETERINARIO son bloqueados con HTTP 403 Forbidden.
-- **SC-005**: Cero duplicados (0%) en códigos nosológicos gracias a la restricción única a nivel de dominio y base de datos.
-- **SC-006**: El tiempo de respuesta del sistema para validar y registrar una patología es inferior a 250 milisegundos en condiciones normales de operación.
-- **SC-007**: Cero registros (0%) de enfermedades eliminados físicamente de la base de datos a lo largo de todo el ciclo de vida del software.
-- **SC-008**: El 100% de los eventos de integración son guardados atómicamente en la tabla Outbox dentro de la misma transacción local de base de datos.
-- **SC-009**: El 100% de las enfermedades desactivadas lógicamente quedan excluidas de selección en diagnósticos y medicaciones futuras, conservando de forma íntegra su referencia histórica en expedientes previos.
-
+- **SC-001**: Al menos el 90 % de los veterinarios puede completar el registro de una enfermedad válida en menos de 2 minutos.
+- **SC-002**: El 95 % de los registros válidos queda disponible en un máximo de 1 segundo después de su confirmación.
+- **SC-003**: El 100 % de los intentos realizados por roles distintos al veterinario es rechazado sin crear una enfermedad.
+- **SC-004**: Al menos el 95 % de los veterinarios identifica y corrige los datos obligatorios faltantes en el primer intento durante pruebas de usabilidad.
+- **SC-005**: El 100 % de las enfermedades registra una selección explícita para el indicador `requiere sacrificio sanitario`.
+- **SC-006**: El 100 % de las enfermedades con el indicador verdadero queda identificado como causa de sacrificio sanitario total.
+- **SC-007**: El 100 % de las ediciones realizadas por el veterinario conserva sin cambios los diagnósticos y las decisiones sanitarias existentes.
+- **SC-008**: El 95 % de las ediciones válidas queda disponible para diagnósticos futuros en un máximo de 1 segundo después de su confirmación.
