@@ -2,7 +2,7 @@
 
 **Date**: 28/10/2026
 
-**Last Updated**: 26/10/2026
+**Last Updated**: 28/10/2026
 
 **Arquitectura y tecnologías**: [General.md](General.md)
 
@@ -12,26 +12,26 @@
 
 ## Summary
 
-Permitir al veterinario registrar, editar y consultar (listar) enfermedades con su clasificación clínica y el indicador obligatorio que señala si la enfermedad requiere sacrificio sanitario. Los diagnósticos capturan una instantánea de los datos de esta enfermedad para conservar su significado histórico de forma inmutable.
+Permitir al veterinario registrar, editar y consultar (listar y filtrar) enfermedades con su clasificación clínica y el indicador obligatorio que señala si la enfermedad requiere sacrificio sanitario. Los diagnósticos capturan una instantánea de los datos de esta enfermedad para conservar su significado histórico de forma inmutable.
 
 ## Technical Context
 
 **Performance Goals**: El 95 % de registros, ediciones y consultas responde en menos de 1 segundo.
 
-**Constraints**: Solo `ROLE_VETERINARIO` registra, edita o consulta. Todos los atributos son obligatorios; `requiereSacrificioSanitario` debe enviarse explícitamente. Las ediciones aplican a diagnósticos futuros, utilizando control de concurrencia optimista (`@Version`), y no alteran diagnósticos existentes.
+**Constraints**: Solo `ROLE_VETERINARIO` registra, edita o consulta. Todos los atributos son obligatorios; `requiereSacrificioSanitario` debe enviarse explícitamente. Las ediciones aplican a diagnósticos futuros, utilizando control de concurrencia optimista (`@Version`), y no alteran diagnósticos existentes. Prohibido el borrado físico (`DELETE`).
 
-**Scale/Scope**: SPEC-009, dos historias de escritura (registrar y editar) y una operación de lectura para la UI y otros módulos (listar/consultar); una entidad propia y tres endpoints REST (`POST`, `PUT`, `GET`).
+**Scale/Scope**: SPEC-009, dos historias de escritura (registrar y editar) y una operación de lectura filtrable para la UI y módulos internos; una entidad propia y tres endpoints REST (`POST`, `PUT`, `GET`).
 
 **Dependencias funcionales**: [General.md](General.md) para seguridad, actor, auditoría, errores y transacciones; el Plan 015 consulta este catálogo y conserva snapshots de enfermedad al diagnosticar; el Plan 006 lo consulta al registrar medicaciones; el Plan 008 consume la condición de sacrificio a través del diagnóstico del Plan 015.
 
 ### Decisiones específicas
 
-1. `Enfermedad` almacena identificador (`UUID`), nombre, nivel de riesgo (`NivelRiesgo`), tipo (`TipoEnfermedad`), descripción clínica, `requiereSacrificioSanitario` obligatorio y `version` para control de concurrencia optimista.
+1. `Enfermedad` almacena identificador (`UUID`), nombre (único normalizado), nivel de riesgo (`NivelRiesgo`), tipo (`TipoEnfermedad`), descripción clínica, `requiereSacrificioSanitario` obligatorio y `version` para control de concurrencia optimista.
 2. La edición de una enfermedad eleva su `version` y no modifica snapshots de diagnósticos ya confirmados (Plan 015).
-3. La compatibilidad de medicación y el diagnóstico pertenecen al Plan 015; este plan no prescribe tratamientos, solo provee el catálogo maestro y expone su consulta interna para los Planes 006 y 015.
+3. **Ausencia de Sobre-Ingeniería (YAGNI)**: Este plan no utiliza `IntegrationEventPublisherPort` ni publica eventos en Kafka al crear o editar enfermedades, ya que ningún módulo externo los consume y los Planes 006 y 015 consultan este catálogo de forma síncrona en memoria mediante `ConsultarEnfermedadesUseCase`.
 4. El indicador verdadero (`requiereSacrificioSanitario = true`) significa que la enfermedad habilita una orden sanitaria total, pero este plan no emite la orden (Plan 008).
-5. Se incluye obligatoriamente el endpoint `GET /api/enfermedades` (`SPEC-009 FR-007`) para poblar los selectores y tablas del frontend en los flujos de medicación y diagnóstico.
-6. Persistencia propia y migraciones coordinadas con la secuencia común de Flyway; no se duplican entidades de otros planes y se prohíbe el borrado físico (`DELETE`). Se soporta la cabecera `X-Idempotency-Key` en las escrituras para prevenir duplicados ante reintentos de red.
+5. **Autonomía UX/UI (`SPEC-009 FR-007`)**: Se expone `GET /api/enfermedades?search=texto&requiereSacrificioSanitario=true|false` devolviendo una lista ordenada alfabéticamente por `nombre` para alimentar directamente los selectores (dropdowns) y tablas del frontend sin llamadas adicionales.
+6. **Operatividad y Datos Semilla**: Se incluyen datos semilla base (enfermedades tratables y mortales) para que los Planes 006 y 015 puedan probarse de forma inmediata y autónoma. Se soporta la cabecera `X-Idempotency-Key` en las escrituras mediante el filtro transversal del proyecto.
 
 ### Alcance documental
 
@@ -63,10 +63,10 @@ src/main/java/com/avicontrol/
 │   │   └── NivelRiesgo.java
 │   ├── exception/sanitario/enfermedad/
 │   │   ├── EnfermedadNoEncontradaException.java
+│   │   ├── NombreEnfermedadDuplicadoException.java
 │   │   └── ConcurrenciaEnfermedadException.java
 │   └── port/out/sanitario/enfermedad/
-│       ├── EnfermedadRepositoryPort.java
-│       └── IntegrationEventPublisherPort.java
+│       └── EnfermedadRepositoryPort.java
 ├── application/sanitario/enfermedad/
 │   ├── RegistrarEnfermedadUseCase.java
 │   ├── EditarEnfermedadUseCase.java
@@ -102,14 +102,14 @@ src/test/java/com/avicontrol/
     └── EnfermedadIntegrationTest.java
 ```
 
-**Structure Decision**: El catálogo y sus reglas son propios del dominio sanitario. Los demás planes (Plan 006 y Plan 015) consultan este catálogo mediante interfaces públicas de aplicación y conservan sus snapshots sin modificar esta entidad ni acceder a su repositorio JPA privado.
+**Structure Decision**: El catálogo y sus reglas son propios del dominio sanitario. Los demás planes (Plan 006 y Plan 015) consultan este catálogo mediante la interfaz pública de aplicación (`ConsultarEnfermedadesUseCase`) y conservan sus snapshots sin modificar esta entidad ni acceder a su repositorio JPA privado.
 
 ### Entidades y relación
 
 ```text
 Enfermedad (Aggregate Root)
 ├── id: UUID
-├── nombre: String
+├── nombre: String (único normalizado)
 ├── nivelRiesgo: NivelRiesgo (BAJO, MEDIO, ALTO, CRITICO)
 ├── tipo: TipoEnfermedad (VIRAL, BACTERIANA, PARASITARIA, FUNGICA)
 ├── descripcionClinica: String
@@ -121,20 +121,19 @@ Un diagnóstico (Plan 015) referencia la enfermedad mediante `enfermedadId` y co
 
 ### Contratos de los puertos
 
-| Puerto                          | Responsabilidad                                                                                                                                                      |
-| ------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `EnfermedadRepositoryPort`      | Crear, consultar por ID, editar (con bloqueo optimista) y listar/filtrar enfermedades registradas para el frontend y consultas internas de los Planes 006 y 015.     |
-| `IntegrationEventPublisherPort` | Publicar eventos de dominio internos (`EnfermedadRegistrada`, `EnfermedadActualizada`) y externos si hay consumidores acordados tras confirmar la transacción local. |
+| Puerto                     | Responsabilidad                                                                                                                                                                                            |
+| -------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `EnfermedadRepositoryPort` | Crear, consultar por ID, verificar unicidad de nombre, editar (con bloqueo optimista) y listar/filtrar enfermedades por texto (`search`) e indicador (`requiereSacrificioSanitario`) ordenadas por nombre. |
 
 ### Contratos HTTP propuestos
 
-| Método y ruta                          | Acceso             | Responsabilidad                                                              |
-| -------------------------------------- | ------------------ | ---------------------------------------------------------------------------- |
-| `POST /api/enfermedades`               | `ROLE_VETERINARIO` | Registrar enfermedad en el catálogo (soporta `X-Idempotency-Key`).           |
-| `PUT /api/enfermedades/{enfermedadId}` | `ROLE_VETERINARIO` | Editar enfermedad para diagnósticos futuros (valida `version`).              |
-| `GET /api/enfermedades`                | `ROLE_VETERINARIO` | Listar y filtrar el catálogo de enfermedades para selectores y tablas en UI. |
+| Método y ruta                          | Acceso             | Parámetros / Cabeceras                                               | Responsabilidad                                                              |
+| -------------------------------------- | ------------------ | -------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| `POST /api/enfermedades`               | `ROLE_VETERINARIO` | Header: `X-Idempotency-Key`                                          | Registrar enfermedad en el catálogo.                                         |
+| `PUT /api/enfermedades/{enfermedadId}` | `ROLE_VETERINARIO` | Path: `enfermedadId`                                                 | Editar enfermedad para diagnósticos futuros (valida `version`).              |
+| `GET /api/enfermedades`                | `ROLE_VETERINARIO` | Query (opc): `?search=texto&requiereSacrificioSanitario=true\|false` | Listar y filtrar el catálogo de enfermedades para selectores y tablas en UI. |
 
-Errores usan `application/problem+json` según [General.md](General.md). Campos incompletos o compuestos por espacios responden `400`; usuario no veterinario responde `403`; enfermedad inexistente responde `404`; colisión de concurrencia (`version`) responde `409`.
+Errores usan `application/problem+json` según [General.md](General.md). Campos incompletos o compuestos por espacios responden `400`; usuario no veterinario responde `403`; enfermedad inexistente responde `404`; nombre duplicado o colisión de concurrencia (`version`) responde `409`.
 
 ### JSON común de errores
 
@@ -154,20 +153,20 @@ Errores usan `application/problem+json` según [General.md](General.md). Campos 
 ## Phase 1: Setup (Shared Infrastructure)
 
 - [ ] T001 Acordar catálogo de tipos (`TipoEnfermedad`), niveles de riesgo (`NivelRiesgo`) y campos obligatorios conforme a SPEC-009.
-- [ ] T002 Confirmar roles (`ROLE_VETERINARIO`), actor, auditoría y respuestas de error con General.md.
-- [ ] T003 Acordar con Plan 006 y Plan 015 el contrato público de consulta y los datos de enfermedad que se copian al snapshot del diagnóstico.
+- [ ] T002 Confirmar roles (`ROLE_VETERINARIO`), filtro transversal de `X-Idempotency-Key` y respuestas de error con General.md.
+- [ ] T003 Acordar con Plan 006 y Plan 015 el contrato público de consulta (`ConsultarEnfermedadesUseCase`) y los datos que se copian al snapshot del diagnóstico.
 
-**Checkpoint**: Esquema de enfermedad, concurrencia y frontera de consumo acordados.
+**Checkpoint**: Esquema de enfermedad, concurrencia y frontera de consumo en memoria acordados.
 
 ## Phase 2: Foundational (Blocking Prerequisites)
 
 - [ ] T004 Implementar `Enfermedad`, `TipoEnfermedad` y `NivelRiesgo` con validaciones de dominio en Java puro (normalización `trim()`, campos obligatorios no vacíos e indicador booleano explícito).
-- [ ] T005 Definir `EnfermedadRepositoryPort` y las excepciones del catálogo (`EnfermedadNoEncontradaException`, `ConcurrenciaEnfermedadException`).
-- [ ] T006 Crear la migración Flyway usando la siguiente versión disponible del repositorio, incluyendo la columna `version` y prohibición de borrado físico.
-- [ ] T007 Implementar `EnfermedadEntity`, `SpringDataEnfermedadRepository`, `EnfermedadPersistenceMapper` y `EnfermedadPersistenceAdapter` con soporte para `@Version`.
+- [ ] T005 Definir `EnfermedadRepositoryPort` y las excepciones del catálogo (`EnfermedadNoEncontradaException`, `NombreEnfermedadDuplicadoException`, `ConcurrenciaEnfermedadException`).
+- [ ] T006 Crear la migración Flyway usando la siguiente versión disponible del repositorio, incluyendo columna `version`, restricción única de nombre normalizado y datos semilla iniciales (ej. Coccidiosis Aviar e Influenza Aviar) para pruebas autónomas.
+- [ ] T007 Implementar `EnfermedadEntity`, `SpringDataEnfermedadRepository`, `EnfermedadPersistenceMapper` y `EnfermedadPersistenceAdapter` con soporte para `@Version` y sin borrado físico.
 - [ ] T008 Configurar autorización, beans en `EnfermedadBeanConfiguration` y límites de transacción (`@Transactional`) para escrituras.
 
-**Checkpoint**: Catálogo listo para registrar, editar y listar enfermedades a nivel de base de datos.
+**Checkpoint**: Catálogo listo para registrar, editar y listar enfermedades a nivel de base de datos con semillas iniciales.
 
 ## Phase 3: User Story 1 — Registrar una enfermedad (Priority: P1)
 
@@ -175,7 +174,7 @@ Errores usan `application/problem+json` según [General.md](General.md). Campos 
 
 **Goal**: El veterinario crea una enfermedad con clasificación e indicador de sacrificio explícito.
 
-**Independent Test**: Registro válido devuelve recurso creado (`201 Created`); campos ausentes, textos en blanco, indicador no enviado o actor sin rol veterinario se rechazan sin persistencia; reintentos de red con la misma clave de idempotencia no duplican la enfermedad.
+**Independent Test**: Registro válido devuelve recurso creado (`201 Created`); campos ausentes, textos en blanco, indicador no enviado, nombre duplicado o actor sin rol veterinario se rechazan sin persistencia; reintentos de red con la misma clave de idempotencia no duplican la enfermedad.
 
 ### Definición del endpoint
 
@@ -209,7 +208,7 @@ Errores usan `application/problem+json` según [General.md](General.md). Campos 
 
 ### Tests e implementación
 
-- [ ] T009 [US1] Probar campos obligatorios, normalización de espacios (`trim`), tipos, riesgo, booleano explícito y autorización `ROLE_VETERINARIO`.
+- [ ] T009 [US1] Probar campos obligatorios, normalización de espacios (`trim`), tipos, riesgo, booleano explícito, rechazo de nombre duplicado (`409`) y autorización `ROLE_VETERINARIO`.
 - [ ] T010 [US1] Probar la protección de idempotencia ante reintentos de red.
 - [ ] T011 [US1] Implementar `RegistrarEnfermedadUseCase`, DTOs, mappers y endpoint `POST /api/enfermedades`.
 
@@ -253,24 +252,24 @@ Errores usan `application/problem+json` según [General.md](General.md). Campos 
 
 **Spec**: SPEC-009, FR-001 y FR-007.
 
-**Goal**: Proveer el listado y consulta de enfermedades registradas para poblar los selectores y tablas en la interfaz del veterinario (Spec 008 y Spec 011).
+**Goal**: Proveer el listado y filtrado de enfermedades registradas para poblar los selectores y tablas en la interfaz del veterinario (Spec 008 y Spec 011).
 
 ### Definición del endpoint
 
-`GET /api/enfermedades` permite consultar el catálogo de enfermedades (con filtro opcional por `requiereSacrificioSanitario` o búsqueda por nombre) y responde `200 OK`.
+`GET /api/enfermedades` permite consultar el catálogo de enfermedades con parámetros opcionales `?search=texto&requiereSacrificioSanitario=true|false`, devolviendo la lista ordenada por `nombre` con estado `200 OK`.
 
 ### Tests e implementación
 
-- [ ] T016 Implementar `ConsultarEnfermedadesUseCase` para retornar el listado completo o filtrado y la consulta individual por ID.
+- [ ] T016 Implementar `ConsultarEnfermedadesUseCase` soportando filtrado opcional por texto (`search`), por indicador `requiereSacrificioSanitario` y consulta individual por ID.
 - [ ] T017 Implementar endpoint `GET /api/enfermedades` asegurando acceso exclusivo para `ROLE_VETERINARIO`.
 - [ ] T018 Probar que la consulta opera estrictamente en modo de solo lectura y devuelve el catálogo vigente en menos de 1 segundo.
 
-**Checkpoint**: El frontend puede renderizar los selectores de enfermedades para prescribir medicaciones y registrar diagnósticos.
+**Checkpoint**: El frontend puede renderizar y filtrar los selectores de enfermedades para prescribir medicaciones y registrar diagnósticos.
 
 ## Phase 6: Polish & Cross-Cutting Concerns
 
-- [ ] T019 Documentar los tres endpoints (`POST`, `PUT`, `GET`), seguridad, `X-Idempotency-Key` y códigos de error (`400`, `403`, `404`, `409`) en OpenAPI 3.
-- [ ] T020 Verificar que el Plan 015 consuma adecuadamente los snapshots y que el Plan 006 valide las enfermedades tratables a través del contrato público de consulta.
+- [ ] T019 Documentar los tres endpoints (`POST`, `PUT`, `GET`), parámetros de filtrado (`search`, `requiereSacrificioSanitario`), seguridad, `X-Idempotency-Key` y códigos de error (`400`, `403`, `404`, `409`) en OpenAPI 3.
+- [ ] T020 Verificar que el Plan 015 consuma adecuadamente los snapshots y que el Plan 006 valide las enfermedades tratables a través del contrato público en memoria.
 - [ ] T021 Verificar reglas de arquitectura con ArchUnit conforme a [General.md](General.md).
 - [ ] T022 Medir tiempos de latencia y asegurar el objetivo de `p95 < 1 segundo` para registros, ediciones y consultas.
 
@@ -285,8 +284,8 @@ Errores usan `application/problem+json` según [General.md](General.md). Campos 
 
 ### Dependencias con otros planes
 
-- **Plan 015 (Diagnóstico)**: Consulta la enfermedad para validar su existencia y captura el snapshot (`nombreEnfermedadHistorico` y `requiereSacrificioHistorico`) al confirmar el diagnóstico.
-- **Plan 006 (Medicación)**: Consulta este catálogo para asegurarse de que la enfermedad referenciada existe y es tratable (`requiereSacrificioSanitario == false`) antes de permitir el registro o edición de una medicación.
+- **Plan 015 (Diagnóstico)**: Consulta la enfermedad en memoria para validar su existencia y captura el snapshot (`nombreEnfermedadHistorico` y `requiereSacrificioHistorico`) al confirmar el diagnóstico.
+- **Plan 006 (Medicación)**: Consulta este catálogo en memoria para asegurarse de que la enfermedad referenciada existe y es tratable (`requiereSacrificioSanitario == false`) antes de permitir el registro o edición de una medicación.
 - **Plan 008 (Sacrificio Sanitario)**: Consume de forma indirecta la condición de sacrificio a través del diagnóstico confirmado en el Plan 015.
 - **General.md**: Seguridad, auditoría, errores RFC 9457, persistencia, idempotencia y control de transacciones.
 
