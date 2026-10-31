@@ -1,0 +1,1 @@
+-- Base tecnica inicial. Las tablas de negocio pertenecen a sus planes funcionales.
