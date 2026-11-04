@@ -39,6 +39,7 @@ El código de lote puede repetirse: cada entrega crea una recepción independien
 8. **Seguridad**: Todos los endpoints requieren ROLE_ADMINISTRADOR y el caso de uso valida nuevamente el actor.
 9. **Persistencia**: Este plan crea tablas de recepción y auditoría. No crea tablas de saldo, existencia ni movimiento; esas tablas pertenecen al Plan 010.
 10. **Unidades**: Alimento conserva bultos, peso por bulto y peso total en kg. Medicamento admite `MILIGRAMO`, `GRAMO`, `MILILITRO` y `UNIDAD`; normaliza masa a gramos (`1.000 mg = 1 g`), volumen a mililitros y conteo a unidades. Un medicamento conserva una sola dimensión compatible entre recepciones; no se convierten dimensiones incompatibles.
+11. **Secuencia con inventario**: Este plan no espera a que Plan 010 tenga consultas, FEFO, vencimientos o cobertura terminados. Antes de las escrituras de recepción, Plan 010 entrega únicamente el núcleo propietario (`BodegaCentral`, movimientos, saldos y los puertos `RegistrarEntradaInventarioPort`, `AjustarEntradaRecepcionPort` y `VerificarRecepcionUtilizadaPort`). Las recepciones confirmadas pasan a ser entradas del inventario mediante esos puertos; después Plan 010 completa sus consultas y procesos derivados.
 
 ### Alcance documental
 
@@ -511,7 +512,7 @@ El evento conserva alimento, tipo, lote, fechas, kilogramos totales, precio por 
   Setup precede a Foundation.
   Foundation habilita las seis historias.
   Las historias de registro preceden a sus historias de edición e historial.
-  El Plan 010 debe ofrecer RegistrarEntradaInventarioPort y VerificarRecepcionUtilizadaPort antes de cerrar las historias de escritura.
+  El núcleo del Plan 010 debe ofrecer `RegistrarEntradaInventarioPort`, `AjustarEntradaRecepcionPort` y `VerificarRecepcionUtilizadaPort` antes de cerrar las historias de escritura. No se bloquea por la terminación de consultas, FEFO, vencimientos o cobertura de Plan 010.
   Polish depende de los contratos publicados por ambos planes.
 
 ### Dependencias con otros planes

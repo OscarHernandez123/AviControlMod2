@@ -41,6 +41,7 @@ La consulta de inventario presenta alimentos y medicamentos en secciones separad
 11. **Seguridad**: Todos los endpoints de este plan requieren ROLE_ADMINISTRADOR.
 12. **Persistencia**: Este plan crea tablas de bodega, movimientos y eventos procesados. No crea tablas de recepción.
 13. **Suministro diario de alimento**: Plan 004 solicita la salida al registrar alimento realmente suministrado a un lote. Esta capacidad valida y descuenta las recepciones compatibles mediante FEFO, guarda una operación de salida idempotente y devuelve su referencia y los movimientos generados. La llamada participa en la transacción local que confirma el suministro; no se confirma una deducción parcial.
+14. **Secuencia con recepciones**: Para romper la dependencia circular, este plan se implementa en dos tramos. El primero es el núcleo propietario de bodega, movimientos, saldos, unidades y los puertos que usa Plan 002; no necesita recepciones persistidas para existir. Tras implementar Plan 002, el segundo tramo incorpora las entradas confirmadas como fuente real y completa las consultas, FEFO, vencimientos y cobertura. Plan 010 nunca lee repositorios privados de Plan 002.
 
 ### Alcance documental
 
@@ -88,18 +89,27 @@ La consulta de inventario presenta alimentos y medicamentos en secciones separad
     │       ├── AlimentoCatalogoQueryPort.java
     │       ├── MedicamentoCatalogoQueryPort.java
     │       ├── RequerimientoAlimentoQueryPort.java
+    │       ├── EventoProcesadoRepositoryPort.java
     │       └── InventarioEventPublisherPort.java
     ├── application/inventario/
     │   ├── RegistrarEntradaInventarioUseCase.java
     │   ├── AjustarEntradaRecepcionUseCase.java
+    │   ├── RegistrarSalidaAlimentoUseCase.java
+    │   ├── DescontarMedicamentoUseCase.java
     │   ├── ConsultarInventarioUseCase.java
     │   ├── ConsultarResumenInventarioUseCase.java
     │   ├── ConsultarCoberturaAlimentoUseCase.java
-    │   └── ProcesarRecepcionesVencidasUseCase.java
+    │   ├── ProcesarRecepcionesVencidasUseCase.java
+    │   └── port/
+    │       ├── RegistrarEntradaInventarioPort.java
+    │       ├── AjustarEntradaRecepcionPort.java
+    │       ├── VerificarRecepcionUtilizadaPort.java
+    │       ├── RegistrarSalidaAlimentoPort.java
+    │       └── InventarioMedicamentoPort.java
     └── infrastructure/
         ├── adapter/in/rest/inventario/
         │   └── InventarioController.java
-        ├── adapter/in/scheduling/
+        ├── adapter/in/scheduling/inventario/
         │   └── RecepcionesVencidasScheduler.java
         ├── adapter/in/event/inventario/
         │   └── InventarioEventListener.java
@@ -109,20 +119,31 @@ La consulta de inventario presenta alimentos y medicamentos en secciones separad
         │   ├── MedicamentoCatalogoQueryAdapter.java
         │   └── RequerimientoAlimentoQueryAdapter.java
         ├── adapter/out/persistence/inventario/
+        │   ├── BodegaJpaEntity.java
+        │   ├── MovimientoAlimentoJpaEntity.java
+        │   ├── MovimientoMedicamentoJpaEntity.java
+        │   ├── EventoProcesadoJpaEntity.java
+        │   ├── BodegaJpaRepository.java
+        │   ├── MovimientoAlimentoJpaRepository.java
+        │   ├── MovimientoMedicamentoJpaRepository.java
+        │   ├── EventoProcesadoJpaRepository.java
+        │   ├── InventarioPersistenceMapper.java
         │   ├── BodegaPersistenceAdapter.java
         │   ├── MovimientoAlimentoPersistenceAdapter.java
-        │   └── MovimientoMedicamentoPersistenceAdapter.java
+        │   ├── MovimientoMedicamentoPersistenceAdapter.java
+        │   └── EventoProcesadoPersistenceAdapter.java
         └── config/InventarioBeanConfiguration.java
 
     src/main/resources/db/migration/
-    ├── V__crear_bodega_central.sql
-    ├── V__crear_movimientos_inventario.sql
-    └── V__crear_eventos_procesados_inventario.sql
+    ├── V{n}__crear_bodega_central.sql
+    ├── V{n+1}__crear_movimientos_inventario.sql
+    └── V{n+2}__crear_eventos_procesados_inventario.sql
 
     src/test/java/com/avicontrol/
     ├── domain/inventario/
     ├── application/inventario/
     ├── infrastructure/adapter/in/rest/inventario/
+    ├── infrastructure/adapter/out/persistence/inventario/
     └── integration/InventarioIntegrationTest.java
 
 **Structure Decision**: El libro de movimientos es independiente de las recepciones, pero cada movimiento conserva la referencia a la recepción afectada. Los resultados de existencia, resumen y cobertura son modelos de lectura y no tablas adicionales.
@@ -161,12 +182,17 @@ ExistenciaAlimento, ExistenciaMedicamento y CoberturaRequerimientoAlimento son r
 | --- | --- |
 | BodegaCentralRepositoryPort | Leer capacidad y ocupación de la bodega. |
 | MovimientoAlimentoRepositoryPort | Crear entradas, salidas, vencimientos y ajustes; consultar saldos y FEFO de alimento. |
-| SalidaAlimentoCommand | Comando interno | Registrar una salida atómica solicitada por Plan 004, con clave de idempotencia, producto, cantidad, actor y referencia al suministro; devolver la operación y sus movimientos por recepción. |
 | MovimientoMedicamentoRepositoryPort | Crear entradas, consumos, vencimientos y ajustes; consultar saldos por unidad base. |
 | RecepcionQueryPort | Confirmar recepción existente, fechas, producto y estado. |
 | AlimentoCatalogoQueryPort | Obtener nombre normalizado, tipo y peso nominal. |
 | MedicamentoCatalogoQueryPort | Obtener unidad base y presentación compatible. |
 | RequerimientoAlimentoQueryPort | Consultar demanda proyectada por alimento y tipo. |
+| RegistrarEntradaInventarioPort | Crear una única entrada inicial confirmada, vinculada a una recepción de Plan 002. |
+| AjustarEntradaRecepcionPort | Ajustar la entrada inicial solo cuando no existen movimientos posteriores confirmados. |
+| VerificarRecepcionUtilizadaPort | Informar a Plan 002 si una recepción tiene movimientos posteriores que bloquean su edición. |
+| RegistrarSalidaAlimentoPort | Ejecutar la salida solicitada por Plan 004 mediante FEFO, clave idempotente y referencia al suministro; devolver los movimientos por recepción. |
+| InventarioMedicamentoPort | Descontar medicamento para Plan 012 por FEFO, con unidad compatible, trazabilidad por recepción e idempotencia. |
+| EventoProcesadoRepositoryPort | Registrar y consultar `eventId` de consumidores asíncronos para evitar efectos duplicados. |
 | InventarioEventPublisherPort | Publicar movimientos confirmados y cambios de disponibilidad. |
 
 ### Contratos HTTP propuestos
@@ -217,8 +243,10 @@ Las consultas son de solo lectura y responden 200 incluso con inventario vacío.
 - [ ] T009 Implementar cálculo de saldo por recepción, consolidación y FEFO.
 - [ ] T010 Definir puertos de recepción, catálogo, nutrición y publicación.
 - [ ] T011 Crear migraciones de bodega, movimientos y eventos procesados.
-- [ ] T012 Implementar listener/adaptador para entradas confirmadas por el Plan 002 y consumos del Plan 012.
-- [ ] T013 Implementar scheduler idempotente de vencimientos.
+- [ ] T012 Implementar los puertos síncronos de entrada, ajuste y verificación que consume Plan 002; una recepción confirmada no se procesa también mediante listener, para evitar una entrada duplicada.
+- [ ] T012a Implementar `RegistrarSalidaAlimentoPort` para Plan 004 e `InventarioMedicamentoPort` para Plan 012, ambos con FEFO, idempotencia y trazabilidad por recepción.
+- [ ] T012b Implementar `InventarioEventListener` solo para eventos realmente asíncronos acordados, usando `EventoProcesadoRepositoryPort`; no consume eventos de recepción ya procesados por el puerto síncrono.
+- [ ] T013 Implementar scheduler idempotente de vencimientos y persistencia de eventos procesados.
 - [ ] T014 Verificar que las consultas no escriban movimientos ni saldos.
 
 **Checkpoint**: Libro de movimientos listo para las tres historias de consulta.
@@ -245,7 +273,7 @@ La consulta no crea eventos ni modifica saldo.
 | --- | --- |
 | Método y ruta | GET /api/inventario |
 | Autorización | ROLE_ADMINISTRADOR |
-| Respuesta 200 | Secciones Stock de alimentos y Stock de medicamentos. |
+| Respuesta 200 | Tarjetas de `PRE_INICIO`, `INICIO`, `ENGORDE` y total de alimento disponible, además de secciones Stock de alimentos y Stock de medicamentos. |
 | Alimentos | Agrupados por nombre normalizado y tipo, en kg, con recepciones activas, próximo vencimiento y demanda. |
 | Medicamentos | Agrupados por medicamento, presentación, contenido y unidad compatible. |
 | Errores | 401/403, 409 por datos incompatibles y 503 por fuente no disponible. |
@@ -254,6 +282,12 @@ La consulta no crea eventos ni modifica saldo.
 
 ```json
     {
+      "resumenAlimentosKg": {
+        "preInicio": 300,
+        "inicio": 700,
+        "engorde": 1000,
+        "total": 2000
+      },
       "alimentos": [
         {
           "tipoAlimento": "INICIO",
@@ -405,6 +439,7 @@ La cobertura es solo lectura y nunca genera un movimiento.
 - [ ] T035 Verificar que el Plan 002 no tenga repositorios ni tablas de movimiento.
 - [ ] T036 Verificar que Plan 012 pueda descontar medicamentos usando InventarioMedicamentoPort.
 - [ ] T037 Extender comprobaciones arquitectónicas y ejecutar pruebas disponibles.
+- [ ] T038 Probar con PostgreSQL/Testcontainers las migraciones, FEFO, vencimientos, idempotencia de eventos y atomicidad entre Plan 004 e inventario.
 
 **Checkpoint**: Inventario, recepción, consumo y cobertura integrados.
 
@@ -413,7 +448,8 @@ La cobertura es solo lectura y nunca genera un movimiento.
 ### Phase Dependencies
 
 - Setup precede a Foundation.
-- Foundation requiere los contratos del Plan 002 y habilita las consultas.
+- Foundation construye el núcleo de inventario y publica sus puertos hacia Plan 002; no requiere que Plan 002 esté implementado.
+- Las historias que dependen de entradas confirmadas se completan después de que Plan 002 invoque `RegistrarEntradaInventarioPort`.
 - La entrada inicial depende de la recepción confirmada.
 - El consumo de medicamentos depende de movimientos y recepciones disponibles.
 - La cobertura depende de demanda del Plan 011.

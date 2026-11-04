@@ -30,6 +30,7 @@ Registrar el diagnóstico veterinario de un galpón ya aislado, conservar el sna
 4. Para enfermedad con sacrificio, `medicacionId` y `fechaReintegro` son nulos; se publica el hecho que habilita Plan 008, sin emitir orden aquí.
 5. El scheduler encuentra diagnósticos vencidos y solicita transición AISLAMIENTO → PRODUCTIVO al Módulo 1. Revisa estado en el momento de la transición, procesa una sola vez y no altera otros estados.
 6. Eventos internos y de integración se publican después de confirmar la operación con entrega confiable conforme a General.md.
+7. **Secuencia con medicaciones**: Este plan requiere del Plan 006 únicamente el catálogo confirmado y `MedicacionQueryPort` para consultar compatibilidad, dosis y duración. No depende de los endpoints ni de las consultas diarias de Plan 006, porque estos consumen los diagnósticos que este plan crea. Así, el flujo es Plan 006 (catálogo/puerto) → Plan 015 (diagnóstico) → Plan 006 (consultas diarias).
 
 ### Alcance documental
 
@@ -205,7 +206,7 @@ El scheduler obtiene diagnósticos con `fechaReintegro <= hoy` y reintegro pendi
 ### Phase Dependencies
 
 - Setup precede a Foundational.
-- Diagnóstico depende del aislamiento validado por Plan 014 y puertos de Planes 005/006.
+- Diagnóstico depende del aislamiento validado por Plan 014, del catálogo de Plan 005 y del catálogo/`MedicacionQueryPort` ya publicados por Plan 006; no espera las consultas diarias de Plan 006.
 - Reintegro depende de diagnósticos tratables con fecha vencida.
 - Polish depende de ambos flujos.
 

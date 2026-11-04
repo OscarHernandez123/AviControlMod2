@@ -37,6 +37,7 @@ Galpon y Lote continúan siendo entidades propietarias del Módulo 1. Diagnósti
 6. **Dosis**: La dosis es una instrucción textual; calendarios de días alternos o dosis variables requieren ampliar SPEC-008 antes de implementar su cálculo.
 7. **Eventos**: Las escrituras publican eventos después de confirmar la transacción local. Las consultas no publican eventos.
 8. **Persistencia**: Las migraciones utilizan la siguiente versión disponible del repositorio y no fijan números que puedan colisionar con el Plan 002.
+9. **Secuencia con diagnósticos**: El catálogo de medicaciones, su registro/edición y `MedicacionQueryPort` se implementan antes de Plan 015 y no dependen de diagnósticos existentes. Plan 015 consume ese puerto para validar compatibilidad y duración al registrar un diagnóstico. Solo las consultas diarias individual y consolidada de este plan se implementan después de Plan 015, pues leen diagnósticos ya confirmados; no se crean datos de diagnóstico simulados para romper la dependencia.
 
 ### Alcance documental
 
@@ -425,9 +426,9 @@ El resumen es una agregación de lectura. No se persiste ni publica un evento de
 ### Phase Dependencies
 
 - **Setup**: Acordar disponibilidad de enfermedad y medicamento, roles y estados de tratamiento.
-- **Foundational**: Depende de Setup y habilita registro, edición y consulta.
+- **Foundational**: Depende de Setup y habilita registro, edición y `MedicacionQueryPort`.
 - **US1 y US2**: Definen la medicación que consume el diagnóstico del Plan 015.
-- **US3 y US4**: Dependen de diagnóstico, galpón, lote y reloj; son consultas de solo lectura.
+- **US3 y US4**: Se implementan después de Plan 015, pues dependen de diagnóstico confirmado, galpón, lote y reloj; son consultas de solo lectura.
 - **Polish**: Depende de los contratos y las cuatro historias.
 
 ### Dependencias con otros planes
