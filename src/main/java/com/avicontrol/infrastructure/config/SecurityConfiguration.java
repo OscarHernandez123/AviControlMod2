@@ -33,6 +33,8 @@ public class SecurityConfiguration {
                     .hasRole("ADMINISTRADOR")
                     .requestMatchers("/api/galpones/**")
                     .hasAnyRole("ADMINISTRADOR", "TRABAJADOR", "USUARIO")
+                    .requestMatchers("/api/enfermedades/**")
+                    .hasRole("VETERINARIO")
                     .requestMatchers("/api/**")
                     .authenticated()
                     .anyRequest()
@@ -67,7 +69,8 @@ public class SecurityConfiguration {
       @Value("${avicontrol.security.admin-password}") String adminPassword,
       @Value("${avicontrol.security.nutricionista-password}") String nutricionistaPassword,
       @Value("${avicontrol.security.trabajador-password}") String trabajadorPassword,
-      @Value("${avicontrol.security.usuario-password}") String usuarioPassword) {
+      @Value("${avicontrol.security.usuario-password}") String usuarioPassword,
+      @Value("${avicontrol.security.veterinario-password}") String veterinarioPassword) {
     return new InMemoryUserDetailsManager(
         User.withUsername("administrador")
             .password("{noop}" + adminPassword)
@@ -84,6 +87,10 @@ public class SecurityConfiguration {
         User.withUsername("usuario")
             .password("{noop}" + usuarioPassword)
             .authorities("ROLE_USUARIO")
+            .build(),
+        User.withUsername("veterinario")
+            .password("{noop}" + veterinarioPassword)
+            .authorities("ROLE_VETERINARIO")
             .build());
   }
 }

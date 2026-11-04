@@ -56,16 +56,31 @@ src/main/java/com/avicontrol/
 ├── domain/port/out/sanitario/EnfermedadRepositoryPort.java
 ├── application/sanitario/enfermedad/
 │   ├── RegistrarEnfermedadUseCase.java
-│   └── EditarEnfermedadUseCase.java
+│   ├── EditarEnfermedadUseCase.java
+│   ├── EnfermedadCommand.java
+│   ├── EnfermedadResult.java
+│   └── EnfermedadAuthorization.java
 └── infrastructure/
-    ├── adapter/in/rest/sanitario/EnfermedadController.java
+    ├── adapter/in/rest/sanitario/
+    │   ├── EnfermedadController.java
+    │   ├── EnfermedadRequest.java
+    │   └── EnfermedadResponse.java
     ├── adapter/out/persistence/sanitario/enfermedad/
+    │   ├── EnfermedadJpaEntity.java
+    │   ├── EnfermedadJpaRepository.java
+    │   ├── EnfermedadPersistenceMapper.java
+    │   └── EnfermedadPersistenceAdapter.java
     └── config/EnfermedadBeanConfiguration.java
 
+src/main/resources/db/migration/
+└── V2__crear_catalogo_enfermedades.sql
+
 src/test/java/com/avicontrol/
-├── domain/model/sanitario/enfermedad/
+├── domain/model/sanitario/enfermedad/EnfermedadTest.java
 ├── application/sanitario/enfermedad/
-└── infrastructure/adapter/in/rest/sanitario/
+│   ├── RegistrarEnfermedadUseCaseTest.java
+│   └── EditarEnfermedadUseCaseTest.java
+└── infrastructure/adapter/in/rest/sanitario/EnfermedadControllerTest.java
 ```
 
 **Structure Decision**: El catálogo y sus reglas son propios del dominio sanitario. Los demás planes consultan por puerto y conservan sus snapshots sin modificar esta entidad.
