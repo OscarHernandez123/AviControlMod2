@@ -8,4 +8,8 @@ public interface MovimientoAlimentoRepositoryPort {
   MovimientoAlimento guardar(MovimientoAlimento movimiento);
 
   Optional<MovimientoAlimento> buscarEntradaConfirmada(UUID recepcionId);
+
+  default boolean tieneMovimientosPosterioresConfirmados(UUID recepcionId) {
+    return false;
+  }
 }

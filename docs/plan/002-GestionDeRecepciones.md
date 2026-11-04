@@ -11,7 +11,7 @@
 
 ## Summary
 
-Implementar el registro, edición e historial de recepciones de alimentos y medicamentos que ingresan a la bodega central. Cada recepción conserva el hecho comercial de una entrega, sus datos históricos y sus valores calculados.
+Implementar el catálogo maestro de alimentos y medicamentos, además del registro, edición e historial de sus recepciones en bodega central. El catálogo define los productos activos que pueden recibirse; cada recepción conserva el hecho comercial de una entrega, sus datos históricos y sus valores calculados.
 
 Una recepción confirmada solicita al Plan 010 la creación del movimiento inicial de entrada mediante un puerto público. Este plan no calcula existencias consolidadas ni mantiene un segundo libro de movimientos. La recepción se considera confirmada únicamente cuando la recepción y la entrada correspondiente se confirman dentro de la transacción definida por la capacidad.
 
@@ -21,11 +21,11 @@ El código de lote puede repetirse: cada entrega crea una recepción independien
 
 **Performance Goals**: El 95 % de los registros, ediciones, búsquedas y detalles responde en máximo 2 segundos.
 
-**Constraints**: Solo el administrador registra, edita y consulta recepciones. Las fechas, cantidades, precios e impuestos deben validarse con BigDecimal, precisión y redondeo centralizados. Los catálogos de alimentos y medicamentos son externos a este plan.
+**Constraints**: Solo el administrador administra catálogos y recepciones. Las fechas, cantidades, precios e impuestos deben validarse con BigDecimal, precisión y redondeo centralizados. Un producto inactivo no puede usarse en una recepción nueva, pero permanece consultable para preservar la historia.
 
-**Scale/Scope**: Seis historias de usuario y ocho endpoints REST (registro, edición, listado y detalle para cada tipo de recepción), dos tipos de recepción, cálculos comerciales, historial, auditoría y publicación de eventos de recepción confirmada.
+**Scale/Scope**: Ocho historias de usuario y dieciséis endpoints REST: cuatro de catálogo y cuatro de recepción para alimentos, y los equivalentes para medicamentos. Incluye productos maestros, cálculos comerciales, historial, auditoría y publicación de eventos de recepción confirmada.
 
-**Dependencias funcionales**: Catálogos de alimentos y medicamentos; BodegaCentral y movimientos del Plan 010; autenticación, actor, errores y eventos de General.md.
+**Dependencias funcionales**: BodegaCentral y movimientos del Plan 010; autenticación, actor, errores y eventos de General.md. Los catálogos de alimentos y medicamentos son propiedad de este plan.
 
 ### Decisiones específicas
 
@@ -40,6 +40,7 @@ El código de lote puede repetirse: cada entrega crea una recepción independien
 9. **Persistencia**: Este plan crea tablas de recepción y auditoría. No crea tablas de saldo, existencia ni movimiento; esas tablas pertenecen al Plan 010.
 10. **Unidades**: Alimento conserva bultos, peso por bulto y peso total en kg. Medicamento admite `MILIGRAMO`, `GRAMO`, `MILILITRO` y `UNIDAD`; normaliza masa a gramos (`1.000 mg = 1 g`), volumen a mililitros y conteo a unidades. Un medicamento conserva una sola dimensión compatible entre recepciones; no se convierten dimensiones incompatibles.
 11. **Secuencia con inventario**: Este plan no espera a que Plan 010 tenga consultas, FEFO, vencimientos o cobertura terminados. Antes de las escrituras de recepción, Plan 010 entrega únicamente el núcleo propietario (`BodegaCentral`, movimientos, saldos y los puertos `RegistrarEntradaInventarioPort`, `AjustarEntradaRecepcionPort` y `VerificarRecepcionUtilizadaPort`). Las recepciones confirmadas pasan a ser entradas del inventario mediante esos puertos; después Plan 010 completa sus consultas y procesos derivados.
+12. **Catálogo maestro**: `Alimento` y `Medicamento` son productos maestros de este plan. Se crean, editan, consultan y activan o desactivan sin eliminarse físicamente. Las recepciones conservan una copia histórica de los datos comerciales relevantes y nunca se reescriben por cambios posteriores del catálogo.
 
 ### Alcance documental
 
@@ -63,27 +64,46 @@ El código de lote puede repetirse: cada entrega crea una recepción independien
 
     src/main/java/com/avicontrol/
     ├── domain/
+    │   ├── model/catalogo/
+    │   │   ├── Alimento.java
+    │   │   ├── Medicamento.java
+    │   │   ├── EstadoProductoCatalogo.java
+    │   │   ├── TipoAlimento.java
+    │   │   └── UnidadMedidaMedicamento.java
     │   ├── model/recepcion/
     │   │   ├── RecepcionAlimento.java
     │   │   ├── RecepcionMedicamento.java
     │   │   ├── EstadoRecepcion.java
-    │   │   ├── TipoAlimento.java
     │   │   └── RegistroAuditoriaRecepcion.java
+    │   ├── exception/catalogo/
+    │   │   ├── ProductoNoEncontradoException.java
+    │   │   └── ProductoNoDisponibleException.java
     │   ├── exception/recepcion/
     │   │   ├── RecepcionNoEncontradaException.java
     │   │   ├── RecepcionUtilizadaException.java
     │   │   ├── FechaVencimientoInvalidaException.java
-    │   │   ├── CantidadInvalidaException.java
-    │   │   └── ProductoNoDisponibleException.java
+    │   │   └── CantidadInvalidaException.java
     │   └── port/out/recepcion/
     │       ├── RecepcionAlimentoRepositoryPort.java
     │       ├── RecepcionMedicamentoRepositoryPort.java
     │       ├── AuditoriaRecepcionRepositoryPort.java
+    │       ├── InventarioRecepcionPort.java
+    │       └── RecepcionEventPublisherPort.java
+    │   └── port/out/catalogo/
+    │       ├── AlimentoRepositoryPort.java
+    │       └── MedicamentoRepositoryPort.java
+    ├── application/catalogo/
+    │   ├── alimento/
+    │   │   ├── RegistrarAlimentoUseCase.java
+    │   │   ├── EditarAlimentoUseCase.java
+    │   │   └── ConsultarAlimentosUseCase.java
+    │   ├── medicamento/
+    │   │   ├── RegistrarMedicamentoUseCase.java
+    │   │   ├── EditarMedicamentoUseCase.java
+    │   │   └── ConsultarMedicamentosUseCase.java
+    │   └── port/
     │       ├── AlimentoCatalogoQueryPort.java
-    │       ├── MedicamentoCatalogoQueryPort.java
-    │       ├── RegistrarEntradaInventarioPort.java
-    │       ├── VerificarRecepcionUtilizadaPort.java
-    │       └── ReceptionEventPublisherPort.java
+    │       └── MedicamentoCatalogoQueryPort.java
     ├── application/recepcion/
     │   ├── RegistrarRecepcionAlimentoUseCase.java
     │   ├── EditarRecepcionAlimentoUseCase.java
@@ -98,27 +118,64 @@ El código de lote puede repetirse: cada entrega crea una recepción independien
         │   ├── RecepcionAlimentoController.java
         │   ├── RecepcionMedicamentoController.java
         │   └── mapper/RecepcionRestMapper.java
+        ├── adapter/in/rest/catalogo/
+        │   ├── AlimentoCatalogoController.java
+        │   └── MedicamentoCatalogoController.java
         ├── adapter/out/internal/recepcion/
-        │   ├── RegistrarEntradaInventarioAdapter.java
-        │   └── VerificarRecepcionUtilizadaAdapter.java
+        │   └── InventarioRecepcionAdapter.java
         ├── adapter/out/persistence/recepcion/
+        │   ├── RecepcionAlimentoJpaEntity.java
+        │   ├── RecepcionMedicamentoJpaEntity.java
+        │   ├── RegistroAuditoriaRecepcionJpaEntity.java
+        │   ├── RecepcionAlimentoJpaRepository.java
+        │   ├── RecepcionMedicamentoJpaRepository.java
+        │   ├── RegistroAuditoriaRecepcionJpaRepository.java
+        │   ├── RecepcionPersistenceMapper.java
         │   ├── RecepcionPersistenceAdapter.java
         │   └── AuditoriaRecepcionPersistenceAdapter.java
+        ├── adapter/out/persistence/catalogo/
+        │   ├── AlimentoJpaEntity.java
+        │   ├── MedicamentoJpaEntity.java
+        │   ├── AlimentoJpaRepository.java
+        │   ├── MedicamentoJpaRepository.java
+        │   ├── CatalogoPersistenceMapper.java
+        │   ├── AlimentoPersistenceAdapter.java
+        │   └── MedicamentoPersistenceAdapter.java
         └── config/RecepcionBeanConfiguration.java
 
     src/main/resources/db/migration/
-    ├── V__crear_recepciones.sql
-    └── V__crear_auditoria_recepciones.sql
+    ├── V{n}__crear_catalogos_productos.sql
+    ├── V{n+1}__crear_recepciones.sql
+    └── V{n+2}__crear_auditoria_recepciones.sql
 
     src/test/java/com/avicontrol/
     ├── domain/recepcion/
+    ├── domain/catalogo/
+    ├── application/catalogo/
+    ├── infrastructure/adapter/in/rest/catalogo/
     ├── application/recepcion/
     ├── infrastructure/adapter/in/rest/recepcion/
     └── integration/RecepcionesIntegrationTest.java
 
-**Structure Decision**: Las entidades de recepción y auditoría pertenecen a este plan. El inventario se invoca mediante puertos públicos; ningún controlador ni repositorio de recepción accede directamente a tablas del Plan 010.
+**Structure Decision**: Las entidades de recepción y auditoría pertenecen a este plan. `InventarioRecepcionPort` conserva el límite hexagonal de Recepciones y `InventarioRecepcionAdapter` delega en los puertos públicos de Inventario. Ningún controlador ni repositorio de recepción accede directamente a tablas del Plan 010.
 
 ### Entidades y relaciones
+
+    Alimento
+    ├── id: UUID
+    ├── nombreComercial: String
+    ├── marca: String
+    ├── tipo: TipoAlimento
+    ├── pesoNominalBultoKg: BigDecimal
+    ├── duracionRecomendadaEtapaDias: Integer?
+    └── estado: EstadoProductoCatalogo
+
+    Medicamento
+    ├── id: UUID
+    ├── nombreComercial: String
+    ├── presentacionCompatible: String
+    ├── unidadBase: UnidadMedidaMedicamento
+    └── estado: EstadoProductoCatalogo
 
     RecepcionAlimento
     ├── id: UUID
@@ -164,20 +221,21 @@ El código de lote puede repetirse: cada entrega crea una recepción independien
     ├── valoresAnteriores: JSON
     └── valoresNuevos: JSON
 
-La recepción no contiene una colección de movimientos. Su entrada y uso posterior se consultan mediante los puertos del Plan 010.
+La recepción no contiene una colección de movimientos. Referencia un producto maestro al confirmarse, copia los datos que requiere como snapshot histórico y consulta su entrada y uso posterior mediante los puertos del Plan 010.
 
 ### Contratos de los puertos
 
 | Puerto | Responsabilidad |
 |     |     |
+| AlimentoCatalogoQueryPort | Contrato público del plan para consultar un alimento maestro activo y sus datos vigentes desde Planes 003, 010 y las recepciones. |
+| MedicamentoCatalogoQueryPort | Contrato público del plan para consultar un medicamento maestro activo, su presentación y su unidad compatible desde Planes 006, 010 y las recepciones. |
 | RecepcionAlimentoRepositoryPort | Crear, editar, buscar, filtrar y obtener detalles de recepciones de alimento. |
 | RecepcionMedicamentoRepositoryPort | Crear, editar, buscar, filtrar y obtener detalles de recepciones de medicamento. |
 | AuditoriaRecepcionRepositoryPort | Guardar los valores anteriores y nuevos de cada edición. |
 | AlimentoCatalogoQueryPort | Confirmar alimento activo y obtener nombre/tipo vigentes. |
 | MedicamentoCatalogoQueryPort | Confirmar medicamento activo y obtener nombre/presentación vigentes. |
-| RegistrarEntradaInventarioPort | Crear o ajustar el movimiento inicial de una recepción en el Plan 010. |
-| VerificarRecepcionUtilizadaPort | Indicar si existen movimientos posteriores que bloquean la edición. |
-| ReceptionEventPublisherPort | Publicar eventos versionados después de la confirmación local. |
+| InventarioRecepcionPort | Solicitar al Plan 010 crear o ajustar la entrada inicial e indicar si la recepción tiene movimientos posteriores. Su adaptador delega en los puertos públicos `RegistrarEntradaInventarioPort`, `AjustarEntradaRecepcionPort` y `VerificarRecepcionUtilizadaPort`, que pertenecen a `application/inventario/port/`. |
+| RecepcionEventPublisherPort | Publicar eventos versionados después de la confirmación local. |
 
 ### Contratos HTTP propuestos
 
@@ -191,6 +249,14 @@ La recepción no contiene una colección de movimientos. Su entrada y uso poster
 | PUT /api/recepciones/medicamentos/{recepcionId} | Administrador | Edita una recepción no utilizada. |
 | GET /api/recepciones/medicamentos | Administrador | Historial paginado y filtrado. |
 | GET /api/recepciones/medicamentos/{recepcionId} | Administrador | Detalle de recepción. |
+| POST /api/catalogo/alimentos | Administrador | Crea un alimento maestro activo. |
+| PUT /api/catalogo/alimentos/{alimentoId} | Administrador | Edita o activa/desactiva un alimento maestro. |
+| GET /api/catalogo/alimentos | Administrador | Lista y filtra alimentos maestros. |
+| GET /api/catalogo/alimentos/{alimentoId} | Administrador | Consulta el detalle de un alimento maestro. |
+| POST /api/catalogo/medicamentos | Administrador | Crea un medicamento maestro activo. |
+| PUT /api/catalogo/medicamentos/{medicamentoId} | Administrador | Edita o activa/desactiva un medicamento maestro. |
+| GET /api/catalogo/medicamentos | Administrador | Lista y filtra medicamentos maestros. |
+| GET /api/catalogo/medicamentos/{medicamentoId} | Administrador | Consulta el detalle de un medicamento maestro. |
 
 Las consultas responden 200, los registros 201 y las ediciones 200. Los errores usan application/problem+json. Una recepción utilizada responde 409 y no cambia sus datos.
 
@@ -209,6 +275,29 @@ Las consultas responden 200, los registros 201 y las ediciones 200. Los errores 
     }
 ```
 
+## Phase 0: Catálogos maestros de productos (Blocking Prerequisite)
+
+**Goal**: Disponer de alimentos y medicamentos maestros administrados por el sistema antes de permitir recepciones.
+
+**Reglas**:
+
+  - Un alimento maestro tiene nombre comercial, marca, tipo, peso nominal por bulto, duración recomendada opcional para su etapa y estado.
+  - Un medicamento maestro tiene nombre comercial, presentación compatible, unidad base (`GRAMO`, `MILILITRO` o `UNIDAD`) y estado.
+  - No hay eliminación física: desactivar bloquea nuevas recepciones, pero no altera ni oculta recepciones históricas.
+  - La edición del producto maestro no modifica snapshots ya guardados en recepciones, medicaciones ni consumos.
+
+**Endpoints de catálogo**: Los ocho endpoints `/api/catalogo/alimentos` y `/api/catalogo/medicamentos` definidos arriba requieren `ROLE_ADMINISTRADOR`; sus escrituras responden 201/200 y sus consultas 200.
+
+**Tasks**:
+
+  [ ] CT001 Crear agregados, estados, validaciones y excepciones de catálogo.
+  [ ] CT002 Crear puertos de repositorio y contratos públicos de consulta de catálogo.
+  [ ] CT003 Crear entidades JPA, repositorios, mapper y migración de productos maestros.
+  [ ] CT004 Implementar registro, edición/activación, listado y detalle de ambos catálogos.
+  [ ] CT005 Implementar endpoints REST, seguridad y pruebas de dominio, aplicación, REST y persistencia.
+
+**Checkpoint**: Un administrador puede administrar productos maestros y las recepciones solo aceptan productos activos.
+
 ## Phase 1: Setup (Shared Infrastructure)
 
 **Purpose**: Preparar contratos y configuración de recepción.
@@ -216,7 +305,7 @@ Las consultas responden 200, los registros 201 y las ediciones 200. Los errores 
   [ ] T001 Crear paquetes de dominio, aplicación y adaptadores de recepción.
   [ ] T002 Confirmar contratos públicos del Plan 010 para registrar y ajustar entradas.
   [ ] T003 Configurar precisión, escala y redondeo de cantidades, pesos, porcentajes y valores monetarios.
-  [ ] T004 Confirmar catálogos activos y roles de administrador.
+  [ ] T004 Consumir los contratos internos de catálogos activos y confirmar roles de administrador.
   [ ] T005 Preparar fixtures de alimentos, medicamentos, recepciones repetidas, vencimientos y recepciones utilizadas.
 
 **Checkpoint**: Contratos de recepción, inventario y catálogos definidos.
@@ -227,8 +316,8 @@ Las consultas responden 200, los registros 201 y las ediciones 200. Los errores 
 
   [ ] T006 Implementar RecepcionAlimento, RecepcionMedicamento y sus cálculos derivados.
   [ ] T007 Implementar RegistroAuditoriaRecepcion y serialización de valores anteriores/nuevos.
-  [ ] T008 Definir repositorios, catálogos y RegistrarEntradaInventarioPort.
-  [ ] T009 Crear migraciones de recepciones y auditoría con la siguiente versión Flyway disponible.
+  [ ] T008 Definir repositorios de recepción, `InventarioRecepcionPort` y el adaptador que consume los puertos públicos del Plan 010.
+  [ ] T009 Crear migraciones de recepciones y auditoría después de la migración de catálogos.
   [ ] T010 Implementar validaciones de fechas, cantidades, precios, impuestos, desbordamiento y unidades.
   [ ] T011 Configurar transacciones y publicación idempotente de eventos.
 
@@ -510,16 +599,18 @@ El evento conserva alimento, tipo, lote, fechas, kilogramos totales, precio por 
 ### Phase Dependencies
 
   Setup precede a Foundation.
-  Foundation habilita las seis historias.
+  El catálogo maestro habilita las seis historias de recepción y los consumidores posteriores (Planes 003, 006 y 010).
+  Foundation habilita las seis historias de recepción.
   Las historias de registro preceden a sus historias de edición e historial.
   El núcleo del Plan 010 debe ofrecer `RegistrarEntradaInventarioPort`, `AjustarEntradaRecepcionPort` y `VerificarRecepcionUtilizadaPort` antes de cerrar las historias de escritura. No se bloquea por la terminación de consultas, FEFO, vencimientos o cobertura de Plan 010.
   Polish depende de los contratos publicados por ambos planes.
 
 ### Dependencias con otros planes
 
-  **Plan 010**: Registra entradas, movimientos, saldos y uso posterior de recepciones.
-  **Plan 005**: Proporciona el catálogo de enfermedades. **Plan 006**: Proporciona el catálogo de medicaciones para tratamientos futuros.
-  **Plan 012**: Consulta y aplica descuentos de recepciones para los consumos; Plan 006 es dueño del catálogo de medicaciones.
+  **Plan 010**: Registra entradas, movimientos, saldos y uso posterior de recepciones; consume los contratos públicos de los catálogos maestros de este plan.
+  **Plan 003**: Consume `AlimentoCatalogoQueryPort` para configurar planes nutricionales.
+  **Plan 005**: Proporciona el catálogo de enfermedades. **Plan 006**: Consume `MedicamentoCatalogoQueryPort` para registrar medicaciones futuras.
+  **Plan 012**: Consulta recepciones y aplica descuentos mediante Inventario; no es dueño de los catálogos.
   **General.md**: Seguridad, actor, reloj, errores y eventos.
 
 ### Dentro de cada User Story
@@ -532,8 +623,9 @@ El evento conserva alimento, tipo, lote, fechas, kilogramos totales, precio por 
 
 ## Notes
 
-  T001 a T035 identifican tareas; US1 a US6 identifican historias.
+  CT001 a CT005 cubren el catálogo maestro; T001 a T035 cubren recepciones; US1 a US6 identifican historias de recepción.
   Este plan conserva recepciones; no calcula inventario consolidado.
+  Este plan es propietario de los catálogos maestros de alimentos y medicamentos.
   Los movimientos iniciales se crean mediante el contrato público del Plan 010.
   Código de lote repetido genera recepciones independientes.
   Una recepción utilizada no se edita.

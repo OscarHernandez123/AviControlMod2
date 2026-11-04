@@ -35,6 +35,8 @@ public class SecurityConfiguration {
                     .hasAnyRole("ADMINISTRADOR", "TRABAJADOR", "USUARIO")
                     .requestMatchers("/api/enfermedades/**")
                     .hasRole("VETERINARIO")
+                    .requestMatchers("/api/catalogo/**", "/api/recepciones/**")
+                    .hasRole("ADMINISTRADOR")
                     .requestMatchers("/api/**")
                     .authenticated()
                     .anyRequest()

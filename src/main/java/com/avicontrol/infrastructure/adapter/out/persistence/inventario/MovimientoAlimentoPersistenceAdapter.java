@@ -2,6 +2,7 @@ package com.avicontrol.infrastructure.adapter.out.persistence.inventario;
 
 import com.avicontrol.domain.model.inventario.*;
 import com.avicontrol.domain.port.out.inventario.MovimientoAlimentoRepositoryPort;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.stereotype.Component;
@@ -25,5 +26,12 @@ class MovimientoAlimentoPersistenceAdapter implements MovimientoAlimentoReposito
     return repo.findFirstByRecepcionIdAndTipoAndEstado(
             id, TipoMovimientoInventario.ENTRADA, EstadoMovimientoInventario.CONFIRMADO)
         .map(mapper::toDomain);
+  }
+
+  public boolean tieneMovimientosPosterioresConfirmados(UUID id) {
+    return repo.existsByRecepcionIdAndEstadoAndTipoNotIn(
+        id,
+        EstadoMovimientoInventario.CONFIRMADO,
+        List.of(TipoMovimientoInventario.ENTRADA, TipoMovimientoInventario.AJUSTE));
   }
 }

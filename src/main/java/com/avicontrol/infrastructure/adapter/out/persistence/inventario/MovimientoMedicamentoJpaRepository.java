@@ -10,4 +10,9 @@ interface MovimientoMedicamentoJpaRepository
     extends JpaRepository<MovimientoMedicamentoJpaEntity, UUID> {
   Optional<MovimientoMedicamentoJpaEntity> findFirstByRecepcionIdAndTipoAndEstado(
       UUID recepcionId, TipoMovimientoInventario tipo, EstadoMovimientoInventario estado);
+
+  boolean existsByRecepcionIdAndEstadoAndTipoNotIn(
+      UUID recepcionId,
+      EstadoMovimientoInventario estado,
+      java.util.Collection<TipoMovimientoInventario> tipos);
 }
