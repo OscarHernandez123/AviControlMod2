@@ -1,30 +1,147 @@
-# Plan: Consultar alimento requerido por lote
+# Implementation Plan: Consultar alimento requerido por lote
 
-**Spec**: [022-ConsultarAlimentoRequeridoPorLote.md](../specs/022-ConsultarAlimentoRequeridoPorLote.md)  
+**Date**: 05/11/2026
+**Spec**: [022-ConsultarAlimentoRequeridoPorLote.md](../specs/022-ConsultarAlimentoRequeridoPorLote.md)
 **Arquitectura y tecnologías**: [General.md](General.md)
 
-## Alcance
+## Summary
 
-Proyección histórica por lote y etapa, costo referencial y balance de abastecimiento sin reservar stock.
+Persistir la proyección de alimento de cada etapa del lote al activarse, consultar sus etapas separadas para Finanzas y calcular el balance consolidado de abastecimiento. La proyección conserva población, alimento, cuota y costo de referencia capturados; las prórrogas sólo actualizan duración y kilogramos con historial inmutable.
 
-## Source Code (repository root)
+## Technical Context
+
+**Performance Goals**: generar una proyección en dos segundos y consultar lote o balance en un segundo.
+**Constraints**: las etapas completadas son inmutables; costo capturado no cambia por compras posteriores; costo ausente es `null`, nunca cero; no se reservan existencias.
+**Scale/Scope**: proyección por etapa, ajuste auditado, consulta financiera y balance de compras; no calcula liquidación real ni consume alimento físico.
+
+## Project Structure
+
+### Documentation (this feature)
 
 ```text
-src/main/java/com/avicontrol/domain/model/alimentacion/{ProyeccionAlimentoEtapa,HistorialAjusteProyeccion,BalanceAbastecimientoAlimento}.java
-src/main/java/com/avicontrol/application/alimentacion/{RegistrarProyeccionEtapaUseCase,ActualizarProyeccionPorProrrogaUseCase,ConsultarRequerimientoLoteFinanzasUseCase,ConsultarBalanceAbastecimientoUseCase}.java
-src/main/java/com/avicontrol/infrastructure/adapter/in/rest/alimentacion/{ProyeccionAlimentoLoteController,BalanceAbastecimientoController}.java
+docs/
+├── specs/
+│   └── 022-ConsultarAlimentoRequeridoPorLote.md
+└── plan/
+    └── 022-ConsultarAlimentoRequeridoPorLote.md
 ```
 
-## User Stories y endpoints
+### Source Code (repository root)
 
-| Método y ruta | Roles |
-| --- | --- |
-| `GET /api/lotes/{loteId}/alimento-requerido` | ADMINISTRADOR, NUTRICIONISTA, sistema autorizado |
-| `POST /api/proyecciones/{id}/completar-costo` | ADMINISTRADOR |
-| `GET /api/administracion/balance-abastecimiento` | ADMINISTRADOR, NUTRICIONISTA |
+```text
+src/main/java/com/avicontrol/
+├── domain/model/alimentacion/
+│   ├── BalanceAbastecimientoAlimento.java
+│   ├── HistorialAjusteProyeccion.java
+│   └── ProyeccionAlimentoEtapa.java
+├── domain/port/out/alimentacion/
+│   ├── CostoReferenciaAlimentoQueryPort.java
+│   ├── ProyeccionAlimentoRepositoryPort.java
+│   └── StockAlimentoQueryPort.java
+├── application/alimentacion/
+│   ├── ActualizarProyeccionPorProrrogaUseCase.java
+│   ├── CompletarCostoReferenciaUseCase.java
+│   ├── ConsultarBalanceAbastecimientoUseCase.java
+│   ├── ConsultarRequerimientoLoteFinanzasUseCase.java
+│   └── RegistrarProyeccionEtapaUseCase.java
+└── infrastructure/adapter/in/rest/alimentacion/
+    ├── BalanceAbastecimientoController.java
+    ├── ProyeccionAlimentoLoteController.java
+    ├── dto/
+    │   ├── BalanceAbastecimientoResponse.java
+    │   └── RequerimientoAlimentoLoteResponse.java
+    └── mapper/ProyeccionAlimentoRestMapper.java
+
+src/main/resources/db/migration/
+└── V__crear_proyecciones_alimento_lote.sql
+
+src/test/java/com/avicontrol/
+├── domain/model/alimentacion/ProyeccionAlimentoEtapaTest.java
+├── application/alimentacion/ConsultarRequerimientoLoteFinanzasUseCaseTest.java
+└── infrastructure/adapter/in/rest/alimentacion/ProyeccionAlimentoLoteControllerTest.java
+```
+
+**Structure Decision**: cada proyección pertenece a una etapa y lote, nunca al galpón como unidad financiera. Inventario sólo proporciona stock y costo de referencia de lectura; el costo real sigue siendo responsabilidad del Módulo 3 a partir de consumos reales.
+
+## Phase 1: Setup (Shared Infrastructure)
+
+- [ ] T001 Confirmar eventos de activación y prórroga del Plan 021.
+- [ ] T002 Definir consulta de promedio ponderado de saldos elegibles a la fecha de activación.
+- [ ] T003 Crear migración para proyección, estado, costo nullable y historial de ajustes.
+
+## Phase 2: Foundational (Blocking Prerequisites)
+
+- [ ] T004 Crear `ProyeccionAlimentoEtapa` con fórmula población × cuota × días efectivos.
+- [ ] T005 Capturar alimento, población, cuota, presentación y costo como snapshot inmutable al activar etapa.
+- [ ] T006 Calcular promedio ponderado half-up a dos decimales; si no hay stock elegible guardar `null` y advertencia.
+- [ ] T007 Implementar historial append-only y bloqueo de etapas completadas.
+
+**Checkpoint**: proyecciones de distintas etapas permanecen separadas y los cambios futuros de precio no alteran snapshots.
+
+## Phase 3: User Story 1 - Consultar requerimiento por lote (Priority: P1)
+
+**Goal**: entregar a Finanzas proyecciones individualizadas por etapa, sin sumatoria de alimentos heterogéneos.
+
+**Independent Test**: un lote cerrado devuelve Pre-inicio, Inicio y Engorde con kg y costos de referencia separados.
+
+- [ ] T008 [P] [US1] Probar fórmula, etapa activa/finalizada, costo nulo y respuestas por etapa.
+- [ ] T009 [US1] Implementar consulta de requerimiento y DTO financiero.
+
+## Phase 4: User Story 2 - Generar y ajustar proyección (Priority: P2)
+
+**Goal**: crear la proyección al activar etapa y actualizar sólo días/kg ante prórroga válida.
+
+**Independent Test**: una prórroga de cuatro días cambia 14 a 18 días y conserva alimento, población y costo, agregando historial.
+
+- [ ] T010 [P] [US2] Probar transición de etapa, costo capturado, prórrogas sucesivas e inmutabilidad completada.
+- [ ] T011 [US2] Implementar casos de uso internos de registro y ajuste desde Plan 021.
+- [ ] T012 [US2] Permitir completar una vez el costo nulo mientras la etapa sigue activa y con auditoría de administrador.
+
+## Phase 5: User Story 3 - Consultar balance de abastecimiento (Priority: P2)
+
+**Goal**: agrupar demanda de etapas activas por alimento/presentación y compararla con stock vigente.
+
+**Independent Test**: demanda de 11.942.50 kg frente a stock 8.000 kg devuelve déficit 3.942.50 kg y bultos sugeridos, sin escribir en inventario.
+
+- [ ] T013 [P] [US3] Probar agrupación, déficit, stock vencido excluido y consulta de sólo lectura.
+- [ ] T014 [US3] Implementar `ConsultarBalanceAbastecimientoUseCase`.
+
+## Endpoints
+
+| Método y ruta | Roles | Solicitud | Respuesta |
+| --- | --- | --- | --- |
+| `GET /api/lotes/{loteId}/alimento-requerido` | administrador, nutricionista, sistema Finanzas autorizado | sin cuerpo | `200 OK` con etapas separadas |
+| `POST /api/proyecciones/{proyeccionId}/completar-costo` | `ROLE_ADMINISTRADOR` | costo y justificación | `200 OK` |
+| `GET /api/administracion/balance-abastecimiento` | administrador, nutricionista | sin cuerpo | `200 OK` por alimento/presentación |
 
 ```json
-{"loteId":"uuid","etapas":[{"etapa":"INICIO","kilogramosProyectados":1250,"costoUnitarioReferencia":3200}]}
+{
+  "loteId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+  "etapas": [
+    {
+      "etapa": "INICIO",
+      "kilogramosProyectados": 6142.50,
+      "costoUnitarioKg": 1650.00,
+      "diasBase": 14,
+      "diasProrroga": 0
+    }
+  ]
+}
 ```
 
-Errores: `404` lote/proyección, `409` costo ya completado, `503` stock/precio no disponible. Pruebas: eventos idempotentes, cálculo exacto y concurrencia.
+**Errores**: `400` datos inválidos; `401` no autenticado; `403` sin rol; `404` lote o proyección ausente; `409` costo ya completado o etapa cerrada; `503` stock o precio no disponible.
+
+## Polish & Cross-Cutting Concerns
+
+- [ ] T015 Documentar costo de referencia frente a costo real y la ausencia de reservas.
+- [ ] T016 Ejecutar pruebas de eventos, concurrencia, HTTP y `git diff --check`.
+
+## Dependencies & Execution Order
+
+- **Foundational** depende del Plan 021 y bloquea las tres historias.
+- **US1** consulta proyecciones; **US2** las genera o ajusta; **US3** agrega sólo las activas.
+
+## Notes
+
+- La finalización de etapa fija su costo `null` o capturado para siempre.
+- La liquidación final y costo real corresponden al Módulo 3.
