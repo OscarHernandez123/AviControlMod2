@@ -5,6 +5,10 @@ import com.avicontrol.domain.exception.recepcion.FechaVencimientoInvalidaExcepti
 import com.avicontrol.domain.exception.recepcion.RecepcionNoEditableException;
 import com.avicontrol.domain.exception.recepcion.RecursoNoEncontradoException;
 import com.avicontrol.domain.exception.recepcion.UnidadIncompatibleException;
+import com.avicontrol.domain.exception.sanitario.enfermedad.EnfermedadNoEncontradaException;
+import com.avicontrol.domain.exception.sanitario.medicacion.EnfermedadNoDisponibleException;
+import com.avicontrol.domain.exception.sanitario.medicacion.MedicacionNoEncontradaException;
+import com.avicontrol.domain.exception.sanitario.medicacion.MedicamentoNoDisponibleException;
 import jakarta.servlet.http.HttpServletRequest;
 import java.net.URI;
 import java.util.List;
@@ -43,7 +47,11 @@ public class ApiExceptionHandler {
   @ExceptionHandler(DomainException.class)
   ResponseEntity<ApiErrorResponse> handleDomain(
       DomainException exception, HttpServletRequest request) {
-    if (exception instanceof RecursoNoEncontradoException) {
+    if (exception instanceof RecursoNoEncontradoException
+        || exception instanceof EnfermedadNoEncontradaException
+        || exception instanceof MedicacionNoEncontradaException
+        || exception instanceof EnfermedadNoDisponibleException
+        || exception instanceof MedicamentoNoDisponibleException) {
       return response(
           HttpStatus.NOT_FOUND,
           "RECURSO_NO_ENCONTRADO",
@@ -65,8 +73,8 @@ public class ApiExceptionHandler {
   ResponseEntity<ApiErrorResponse> handleConflict(HttpServletRequest request) {
     return response(
         HttpStatus.CONFLICT,
-        "CONFLICTO_RECEPCION",
-        "La recepción ya existe o viola una restricción de integridad",
+        "CONFLICTO_INTEGRIDAD",
+        "El recurso ya existe o viola una restricción de integridad",
         List.of(),
         request);
   }
@@ -76,7 +84,7 @@ public class ApiExceptionHandler {
     return response(
         HttpStatus.SERVICE_UNAVAILABLE,
         "PERSISTENCIA_NO_DISPONIBLE",
-        "No se pudo confirmar la recepción y su entrada de inventario",
+        "No se pudo completar la operación de persistencia",
         List.of(),
         request);
   }

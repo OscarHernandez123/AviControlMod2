@@ -58,7 +58,7 @@ src/main/java/com/avicontrol/
     └── config/EnfermedadBeanConfiguration.java
 
 src/main/resources/db/migration/
-└── V__crear_catalogo_enfermedades.sql
+└── V9__crear_catalogo_enfermedades.sql
 
 src/test/java/com/avicontrol/
 ├── domain/model/sanitario/enfermedad/EnfermedadTest.java
@@ -125,9 +125,12 @@ src/test/java/com/avicontrol/
   "nombre": "Newcastle",
   "nivelRiesgo": "CRITICO",
   "tipo": "VIRAL",
+  "descripcionClinica": "Signos respiratorios y nerviosos",
   "requiereSacrificioSanitario": true
 }
 ```
+
+Para `PUT /api/enfermedades/{enfermedadId}` se envía el mismo JSON completo del registro. Los valores admitidos para `nivelRiesgo` son `BAJO`, `MODERADO`, `ALTO`, `CRITICO`; para `tipo` son `VIRAL`, `BACTERIANA`, `PARASITARIA`, `FUNGICA`, `OTRA`. `requiereSacrificioSanitario` debe enviarse explícitamente como `true` o `false`.
 
 ---
 
@@ -135,7 +138,7 @@ src/test/java/com/avicontrol/
 
 **Goal**: actualizar el catálogo para diagnósticos futuros sin modificar registros clínicos previos.
 
-**Independent Test**: al cambiar el indicador de una enfermedad vinculada a un diagnóstico, el diagnóstico existente conserva su decisión y los futuros consultan el nuevo valor.
+**Independent Test**: al cambiar el indicador de una enfermedad, el valor original no se muta y el catálogo devuelve el nuevo valor. Cuando el Plan 011 implemente diagnósticos, su prueba de integración verificará la conservación de decisiones previas.
 
 ### Tests for User Story 2
 

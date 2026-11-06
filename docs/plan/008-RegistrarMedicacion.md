@@ -35,6 +35,7 @@ src/main/java/com/avicontrol/
 │   ├── exception/sanitario/medicacion/
 │   │   ├── DatosMedicacionInvalidosException.java
 │   │   ├── EnfermedadNoDisponibleException.java
+│   │   ├── MedicacionNoEncontradaException.java
 │   │   └── MedicamentoNoDisponibleException.java
 │   └── port/out/sanitario/medicacion/
 │       ├── EnfermedadQueryPort.java
@@ -55,11 +56,14 @@ src/main/java/com/avicontrol/
     │   │   ├── MedicacionResponse.java
     │   │   └── RegistrarMedicacionRequest.java
     │   └── mapper/MedicacionRestMapper.java
-    ├── adapter/out/persistence/sanitario/medicacion/MedicacionPersistenceAdapter.java
+    ├── adapter/out/persistence/sanitario/medicacion/
+    │   ├── EnfermedadDisponibleAdapter.java
+    │   ├── MedicacionPersistenceAdapter.java
+    │   └── MedicamentoDisponibleAdapter.java
     └── config/MedicacionBeanConfiguration.java
 
 src/main/resources/db/migration/
-└── V__crear_medicaciones.sql
+└── V10__crear_medicaciones.sql
 
 src/test/java/com/avicontrol/
 ├── domain/model/sanitario/medicacion/MedicacionTest.java
@@ -120,17 +124,32 @@ src/test/java/com/avicontrol/
 }
 ```
 
+La respuesta `201` y la respuesta `200` de edición contienen el siguiente contrato. `PUT /api/medicaciones/{medicacionId}` recibe el mismo JSON completo del registro.
+
+```json
+{
+  "id": "d2a216f9-358a-482f-b735-d794d6431944",
+  "enfermedadId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+  "medicamentoId": "d290f1ee-6c54-4b01-90e6-d701748f0851",
+  "dosis": "0.5 ml por ave",
+  "duracionDias": 5,
+  "descripcion": "Administrar según indicación veterinaria"
+}
+```
+
+El medicamento debe tener saldo positivo en una recepción confirmada y vigente al momento de registrar o editar. Esta verificación no descuenta el saldo.
+
 ---
 
 ## Phase 4: User Story 2 - Editar una medicación (Priority: P2)
 
 **Goal**: actualizar los datos para diagnósticos futuros sin recalcular ni modificar diagnósticos existentes.
 
-**Independent Test**: una medicación usada en un diagnóstico de cinco días se edita a siete; el diagnóstico anterior conserva cinco y el siguiente usa siete.
+**Independent Test**: una medicación de cinco días se edita a siete; el valor anterior no se muta y la nueva lectura devuelve siete. Cuando el Plan 011 implemente diagnósticos, su prueba de integración verificará que las instantáneas previas conservan cinco días.
 
 ### Tests for User Story 2
 
-- [ ] T012 [P] [US2] Probar edición válida y que ningún puerto de diagnóstico sea invocado.
+- [ ] T012 [P] [US2] Probar edición válida sin dependencia de puertos de diagnóstico; la conservación de instantáneas se verificará al implementar el Plan 011.
 - [ ] T013 [P] [US2] Probar autorización y referencias no disponibles.
 
 ### Implementation for User Story 2
