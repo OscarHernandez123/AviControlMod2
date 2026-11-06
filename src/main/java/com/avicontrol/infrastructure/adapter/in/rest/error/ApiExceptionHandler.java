@@ -5,6 +5,13 @@ import com.avicontrol.domain.exception.recepcion.FechaVencimientoInvalidaExcepti
 import com.avicontrol.domain.exception.recepcion.RecepcionNoEditableException;
 import com.avicontrol.domain.exception.recepcion.RecursoNoEncontradoException;
 import com.avicontrol.domain.exception.recepcion.UnidadIncompatibleException;
+import com.avicontrol.domain.exception.sanitario.aislamiento.EstadoGalponNoAislableException;
+import com.avicontrol.domain.exception.sanitario.aislamiento.GalponNoEncontradoException;
+import com.avicontrol.domain.exception.sanitario.aislamiento.LoteActivoNoEncontradoException;
+import com.avicontrol.domain.exception.sanitario.aislamiento.Modulo1NoDisponibleException;
+import com.avicontrol.domain.exception.sanitario.aislamiento.SolicitudAislamientoDuplicadaException;
+import com.avicontrol.domain.exception.sanitario.aislamiento.SolicitudAislamientoNoEncontradaException;
+import com.avicontrol.domain.exception.sanitario.aislamiento.SolicitudAislamientoNoPendienteException;
 import com.avicontrol.domain.exception.sanitario.enfermedad.EnfermedadNoEncontradaException;
 import com.avicontrol.domain.exception.sanitario.medicacion.EnfermedadNoDisponibleException;
 import com.avicontrol.domain.exception.sanitario.medicacion.MedicacionNoEncontradaException;
@@ -47,7 +54,18 @@ public class ApiExceptionHandler {
   @ExceptionHandler(DomainException.class)
   ResponseEntity<ApiErrorResponse> handleDomain(
       DomainException exception, HttpServletRequest request) {
+    if (exception instanceof Modulo1NoDisponibleException) {
+      return response(
+          HttpStatus.SERVICE_UNAVAILABLE,
+          "MODULO1_NO_DISPONIBLE",
+          exception.getMessage(),
+          List.of(),
+          request);
+    }
     if (exception instanceof RecursoNoEncontradoException
+        || exception instanceof GalponNoEncontradoException
+        || exception instanceof LoteActivoNoEncontradoException
+        || exception instanceof SolicitudAislamientoNoEncontradaException
         || exception instanceof EnfermedadNoEncontradaException
         || exception instanceof MedicacionNoEncontradaException
         || exception instanceof EnfermedadNoDisponibleException
@@ -58,6 +76,12 @@ public class ApiExceptionHandler {
           exception.getMessage(),
           List.of(),
           request);
+    }
+    if (exception instanceof SolicitudAislamientoDuplicadaException
+        || exception instanceof SolicitudAislamientoNoPendienteException
+        || exception instanceof EstadoGalponNoAislableException) {
+      return response(
+          HttpStatus.CONFLICT, "CONFLICTO_AISLAMIENTO", exception.getMessage(), List.of(), request);
     }
     if (exception instanceof UnidadIncompatibleException
         || exception instanceof RecepcionNoEditableException

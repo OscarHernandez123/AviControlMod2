@@ -37,6 +37,7 @@ src/main/java/com/avicontrol/
 │   │   └── SolicitudAislamiento.java
 │   ├── exception/sanitario/aislamiento/
 │   │   ├── EstadoGalponNoAislableException.java
+│   │   ├── Modulo1NoDisponibleException.java
 │   │   ├── SolicitudAislamientoNoEncontradaException.java
 │   │   └── SolicitudAislamientoNoPendienteException.java
 │   └── port/out/
@@ -57,6 +58,9 @@ src/main/java/com/avicontrol/
     │   │   └── ValidarAislamientoRequest.java
     │   └── mapper/AislamientoRestMapper.java
     ├── adapter/out/persistence/sanitario/aislamiento/SolicitudAislamientoPersistenceAdapter.java
+    ├── adapter/out/integration/modulo1/
+    │   ├── GalponLocalAdapter.java
+    │   └── GalponNoDisponibleAdapter.java
     └── config/AislamientoBeanConfiguration.java
 
 src/test/java/com/avicontrol/
@@ -157,3 +161,4 @@ src/test/java/com/avicontrol/
 
 - Un galpón ya en `aislamiento` no se valida de nuevo.
 - Si la actualización remota falla, la solicitud no debe permanecer incorrectamente como aceptada; se requiere transacción distribuida, compensación o reintento seguro documentado.
+- La implementación de `local` y `test` usa una única base de datos: el cambio condicional de estado y la resolución condicional de solicitud comparten transacción. Fuera de esos perfiles el adaptador del Módulo 1 devuelve `503`; para conectar el servicio remoto debe definirse un mecanismo de compensación o reintento antes de habilitar la aceptación.

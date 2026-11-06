@@ -33,8 +33,13 @@ src/main/java/com/avicontrol/
 ├── domain/
 │   ├── model/sanitario/aislamiento/
 │   │   ├── EstadoSolicitudAislamiento.java
+│   │   ├── GalponLoteAislamiento.java
 │   │   └── SolicitudAislamiento.java
 │   ├── exception/sanitario/aislamiento/
+│   │   ├── EstadoGalponNoAislableException.java
+│   │   ├── GalponNoEncontradoException.java
+│   │   ├── LoteActivoNoEncontradoException.java
+│   │   ├── Modulo1NoDisponibleException.java
 │   │   ├── SolicitudAislamientoDuplicadaException.java
 │   │   └── SolicitudAislamientoInvalidaException.java
 │   └── port/out/sanitario/aislamiento/
@@ -52,10 +57,13 @@ src/main/java/com/avicontrol/
     │   │   └── SolicitudAislamientoResponse.java
     │   └── mapper/SolicitudAislamientoRestMapper.java
     ├── adapter/out/persistence/sanitario/aislamiento/SolicitudAislamientoPersistenceAdapter.java
+    ├── adapter/out/integration/modulo1/
+    │   ├── GalponLocalAdapter.java
+    │   └── GalponNoDisponibleAdapter.java
     └── config/SolicitudAislamientoBeanConfiguration.java
 
 src/main/resources/db/migration/
-└── V__crear_solicitudes_aislamiento.sql
+└── V11__crear_solicitudes_aislamiento.sql
 
 src/test/java/com/avicontrol/
 ├── domain/model/sanitario/aislamiento/SolicitudAislamientoTest.java
@@ -103,6 +111,8 @@ src/test/java/com/avicontrol/
 | Método y ruta | Roles | Solicitud | Respuesta |
 | --- | --- | --- | --- |
 | `POST /api/galpones/{galponId}/solicitudes-aislamiento` | `ROLE_TRABAJADOR`, `ROLE_ADMINISTRADOR` | `CrearSolicitudAislamientoRequest` | `201 Created` con solicitud pendiente |
+| `GET /api/solicitudes-aislamiento/pendientes` | `ROLE_VETERINARIO` | — | `200 OK` con solicitudes pendientes |
+| `GET /api/solicitudes-aislamiento/{solicitudId}` | `ROLE_VETERINARIO` | — | `200 OK` con detalle de solicitud |
 
 ```json
 {
@@ -117,9 +127,19 @@ src/test/java/com/avicontrol/
   "estado": "PENDIENTE_VALIDACION",
   "galponId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
   "loteId": "d290f1ee-6c54-4b01-90e6-d701748f0851",
-  "poblacionVivaReportada": 7960
+  "motivo": "Signos respiratorios",
+  "signosClinicos": "Tos y decaimiento",
+  "poblacionVivaReportada": 7960,
+  "edadDiasReportada": 6,
+  "trabajador": "trabajador",
+  "fechaEmision": "2026-11-06T12:00:00Z",
+  "observaciones": null,
+  "veterinario": null,
+  "fechaDecision": null
 }
 ```
+
+En `local` y `test`, el Módulo 1 se sustituye por un galpón de revisión con UUID `550e8400-e29b-41d4-a716-446655440101` y lote `550e8400-e29b-41d4-a716-446655440102`. El estado se guarda en la tabla local `modulo1_galpon_local`. Fuera de esos perfiles la consulta responde `503` hasta conectar el contrato real del Módulo 1.
 
 **Errores**: `400` textos o UUID inválidos; `401` no autenticado; `403` sin rol; `404` galpón o lote ausente; `409` estado, población o solicitud pendiente incompatible; `503` Módulo 1 no disponible.
 
@@ -136,5 +156,5 @@ src/test/java/com/avicontrol/
 
 ## Notes
 
-- Una solicitud enviada no se edita, anula ni retira.
+- Los datos enviados y sus snapshots no se editan, anulan ni retiran; únicamente el Plan 010 resuelve el estado de la solicitud.
 - El Plan 010 consume la solicitud pendiente y decide la validación veterinaria.
