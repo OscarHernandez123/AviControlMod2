@@ -78,23 +78,32 @@ src/test/java/com/avicontrol/
 
 **Checkpoint**: la aplicación sabe listar cada tratamiento activo sin producir consumo alguno.
 
-## Phase 3: User Story 1 - Consultar medicación del galpón (Priority: P1)
+## Phase 3: User Story 1 - Consultar medicación activa del galpón (Priority: P1)
 
-**Goal**: mostrar las instrucciones médicas activas del día o comunicar claramente que no existen.
+**Goal**: mostrar las instrucciones médicas activas del día.
 
 **Independent Test**: un tratamiento de cinco días iniciado ayer muestra `Día 2 de 5`; sin tratamiento vigente devuelve `Sin medicación activa para hoy` y ninguna cantidad.
 
-- [ ] T007 [P] [US1] Probar tratamiento vigente, finalizado, galpón sin lote, población cero y múltiples tratamientos.
+- [ ] T007 [P] [US1] Probar tratamiento vigente, población cero y múltiples tratamientos.
 - [ ] T008 [US1] Implementar `ConsultarMedicacionDiariaGalponUseCase` y DTO de detalle.
 
-## Phase 4: User Story 2 - Consultar resumen consolidado (Priority: P2)
+## Phase 4: User Story 2 - Consultar galpón sin medicación activa (Priority: P1)
+
+**Goal**: distinguir la ausencia de tratamiento activo de un error o de la ausencia de lote.
+
+**Independent Test**: un galpón con lote y sin tratamientos vigentes devuelve `200 OK`, `estado: SIN_MEDICACION_ACTIVA` y una lista vacía; un galpón inexistente conserva `404`.
+
+- [ ] T009 [P] [US2] Probar tratamiento finalizado, día sin aplicación, galpón sin lote y ausencia de tratamientos.
+- [ ] T010 [US2] Devolver el estado explícito y una colección vacía sin registrar consumos ni movimientos.
+
+## Phase 5: User Story 3 - Consultar resumen consolidado (Priority: P2)
 
 **Goal**: presentar la tarjeta de galpones con tratamiento y tarjetas individuales para los galpones seleccionados.
 
 **Independent Test**: si sólo un galpón seleccionado tiene tratamiento, el resumen muestra un galpón y un tratamiento; sin tratamientos muestra cero y lista vacía.
 
-- [ ] T009 [P] [US2] Probar selección de galpones, conteo de galpones distinto del conteo de tratamientos y selección vacía.
-- [ ] T010 [US2] Implementar `ConsultarResumenMedicacionDiariaUseCase`.
+- [ ] T011 [P] [US3] Probar selección de galpones, conteo de galpones distinto del conteo de tratamientos y selección vacía.
+- [ ] T012 [US3] Implementar `ConsultarResumenMedicacionDiariaUseCase`.
 
 ## Endpoints
 
@@ -120,19 +129,45 @@ src/test/java/com/avicontrol/
 }
 ```
 
+Respuesta de US2 para un galpón existente sin tratamiento vigente:
+
+```json
+{
+  "galponId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+  "estado": "SIN_MEDICACION_ACTIVA",
+  "tratamientos": []
+}
+```
+
+Respuesta de US3:
+
+```json
+{
+  "fecha": "2026-11-05",
+  "galponesConTratamiento": 1,
+  "galpones": [
+    {
+      "galponId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+      "estado": "CON_MEDICACION_ACTIVA",
+      "cantidadTratamientos": 1
+    }
+  ]
+}
+```
+
 **Errores**: `400` identificadores o fecha inválidos; `401` no autenticado; `403` sin rol; `404` galpón inexistente; `503` datos clínicos o Módulo 1 no disponibles.
 
 ## Polish & Cross-Cutting Concerns
 
-- [ ] T011 Documentar que esta consulta no registra el consumo real ni descuenta inventario.
-- [ ] T012 Probar `401`, `403`, listado vacío y formato JSON mediante MockMvc.
-- [ ] T013 Ejecutar pruebas y `git diff --check`.
+- [ ] T013 Documentar que esta consulta no registra el consumo real ni descuenta inventario.
+- [ ] T014 Probar `401`, `403`, listado vacío y formato JSON mediante MockMvc.
+- [ ] T015 Ejecutar pruebas y `git diff --check`.
 
 ## Dependencies & Execution Order
 
 - **Setup** confirma las fuentes clínicas y de galpón.
 - **Foundational** crea cálculo y puertos de sólo lectura.
-- **US1** ofrece detalle; **US2** agrega únicamente los resultados de los galpones seleccionados.
+- **US1** ofrece detalle; **US2** explicita la ausencia de medicación; **US3** agrega únicamente los resultados de los galpones seleccionados.
 
 ## Notes
 

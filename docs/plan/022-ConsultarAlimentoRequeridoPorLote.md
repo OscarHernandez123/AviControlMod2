@@ -30,35 +30,17 @@ docs/
 
 ```text
 src/main/java/com/avicontrol/
-├── domain/model/alimentacion/
-│   ├── BalanceAbastecimientoAlimento.java
-│   ├── HistorialAjusteProyeccion.java
-│   └── ProyeccionAlimentoEtapa.java
-├── domain/port/out/alimentacion/
-│   ├── CostoReferenciaAlimentoQueryPort.java
-│   ├── ProyeccionAlimentoRepositoryPort.java
-│   └── StockAlimentoQueryPort.java
-├── application/alimentacion/
-│   ├── ActualizarProyeccionPorProrrogaUseCase.java
-│   ├── CompletarCostoReferenciaUseCase.java
-│   ├── ConsultarBalanceAbastecimientoUseCase.java
-│   ├── ConsultarRequerimientoLoteFinanzasUseCase.java
-│   └── RegistrarProyeccionEtapaUseCase.java
-└── infrastructure/adapter/in/rest/alimentacion/
-    ├── BalanceAbastecimientoController.java
-    ├── ProyeccionAlimentoLoteController.java
-    ├── dto/
-    │   ├── BalanceAbastecimientoResponse.java
-    │   └── RequerimientoAlimentoLoteResponse.java
-    └── mapper/ProyeccionAlimentoRestMapper.java
+├── application/alimentacion/ProyeccionAlimentoUseCase.java
+├── application/alimentacion/port/ProyeccionAlimentoRepositoryPort.java
+├── infrastructure/adapter/in/rest/alimentacion/ProyeccionAlimentoController.java
+├── infrastructure/adapter/out/persistence/alimentacion/ProyeccionAlimentoPersistenceAdapter.java
+└── infrastructure/adapter/out/integration/inventario/DemandaAlimentoQueryAdapter.java
 
 src/main/resources/db/migration/
-└── V__crear_proyecciones_alimento_lote.sql
+└── V7__crear_planes_y_proyecciones_alimento.sql
 
 src/test/java/com/avicontrol/
-├── domain/model/alimentacion/ProyeccionAlimentoEtapaTest.java
-├── application/alimentacion/ConsultarRequerimientoLoteFinanzasUseCaseTest.java
-└── infrastructure/adapter/in/rest/alimentacion/ProyeccionAlimentoLoteControllerTest.java
+└── application/alimentacion/NutricionInventarioIntegrationTest.java
 ```
 
 **Structure Decision**: cada proyección pertenece a una etapa y lote, nunca al galpón como unidad financiera. Inventario sólo proporciona stock y costo de referencia de lectura; el costo real sigue siendo responsabilidad del Módulo 3 a partir de consumos reales.
@@ -101,10 +83,10 @@ src/test/java/com/avicontrol/
 
 **Goal**: agrupar demanda de etapas activas por alimento/presentación y compararla con stock vigente.
 
-**Independent Test**: demanda de 11.942.50 kg frente a stock 8.000 kg devuelve déficit 3.942.50 kg y bultos sugeridos, sin escribir en inventario.
+**Independent Test**: demanda de 11.942,50 kg frente a stock de 8.000 kg devuelve déficit de 3.942,50 kg y bultos sugeridos, sin escribir en inventario.
 
 - [ ] T013 [P] [US3] Probar agrupación, déficit, stock vencido excluido y consulta de sólo lectura.
-- [ ] T014 [US3] Implementar `ConsultarBalanceAbastecimientoUseCase`.
+- [ ] T014 [US3] Implementar la consulta de balance en `ProyeccionAlimentoUseCase`.
 
 ## Endpoints
 
@@ -116,14 +98,67 @@ src/test/java/com/avicontrol/
 
 ```json
 {
+  "codigoLote": "LDP-005",
   "loteId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+  "galponId": "cdb7993a-e208-4ea8-9f90-a611e3e82a4c",
+  "estadoCiclo": "EN_PROGRESO",
+  "fechaConsulta": "2026-11-05T10:30:00-05:00",
   "etapas": [
     {
-      "etapa": "INICIO",
-      "kilogramosProyectados": 6142.50,
+      "etapaCrianza": "INICIO",
+      "tipoAlimento": "INICIO",
+      "alimentoComercial": "Alimento Inicio Broiler",
+      "pesoNominalPorBultoKg": 40,
+      "poblacionInicioEtapa": 10000,
+      "cuotaKgAveDia": 0.0430,
+      "estadoEtapa": "ACTIVA",
+      "kilogramosProyectados": 6020.00,
       "costoUnitarioKg": 1650.00,
+      "fuenteCosto": "PROMEDIO_PONDERADO_STOCK",
+      "fechaCapturaCosto": "2026-11-05T08:00:00-05:00",
+      "advertenciaCosto": null,
       "diasBase": 14,
-      "diasProrroga": 0
+      "diasProrroga": 0,
+      "diasEfectivos": 14,
+      "motivoProrroga": null,
+      "justificacion": null,
+      "historialAjustes": []
+    }
+  ]
+}
+```
+
+Solicitud y respuesta de `completar-costo` (solo una vez en etapa activa):
+
+```json
+{
+  "costoUnitarioKg": 1650.00,
+  "justificacion": "Precio histórico de las recepciones vigentes al activar la etapa"
+}
+```
+
+```json
+{
+  "proyeccionId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+  "costoUnitarioKg": 1650.00,
+  "fuenteCosto": "COMPLETADO_MANUALMENTE",
+  "costoCompletadoManualmente": true
+}
+```
+
+Respuesta de `balance-abastecimiento`:
+
+```json
+{
+  "alimentos": [
+    {
+      "alimentoId": "550e8400-e29b-41d4-a716-446655440000",
+      "pesoNominalPorBultoKg": 40,
+      "demandaConsolidadaKg": 11942.50,
+      "existenciaDisponibleKg": 8000,
+      "balanceKg": -3942.50,
+      "estado": "REABASTECIMIENTO_NECESARIO",
+      "bultosSugeridos": 99
     }
   ]
 }
@@ -145,3 +180,4 @@ src/test/java/com/avicontrol/
 
 - La finalización de etapa fija su costo `null` o capturado para siempre.
 - La liquidación final y costo real corresponden al Módulo 3.
+- Si una etapa transcurrió completamente durante una caída y no se capturó el precio al activarse, la recuperación la registra con `costoUnitarioKg = null` y advertencia. No usa el precio vigente como si fuera histórico; una etapa ya cerrada no admite completar ese costo.

@@ -31,35 +31,37 @@ docs/
 ```text
 src/main/java/com/avicontrol/
 ├── domain/model/inventario/
-│   ├── CoberturaRequerimientoAlimento.java
-│   ├── EstadoCoberturaAlimento.java
 │   ├── ExistenciaAlimento.java
-│   └── ExistenciaMedicamento.java
+│   ├── ExistenciaMedicamento.java
+│   └── InventarioActual.java
 ├── domain/port/out/inventario/
 │   ├── DemandaAlimentoQueryPort.java
-│   └── InventarioMovimientoQueryPort.java
+│   ├── InventarioMovimientoQueryPort.java
+│   └── ResumenInventarioQueryPort.java
 ├── application/inventario/
 │   ├── ConsultarCoberturaAlimentoUseCase.java
 │   ├── ConsultarInventarioUseCase.java
-│   ├── ConsultarResumenInventarioUseCase.java
-│   └── result/
-│       ├── InventarioResult.java
-│       └── ResumenInventarioResult.java
-└── infrastructure/adapter/in/rest/inventario/
-    ├── InventarioController.java
-    ├── dto/
-    │   ├── CoberturaAlimentoResponse.java
-    │   ├── InventarioResponse.java
-    │   └── ResumenInventarioResponse.java
-    └── mapper/InventarioRestMapper.java
+│   └── ConsultarResumenInventarioUseCase.java
+└── infrastructure/
+    ├── adapter/in/rest/inventario/InventarioController.java
+    ├── adapter/out/persistence/inventario/
+    │   ├── InventarioMovimientoQueryAdapter.java
+    │   └── ResumenInventarioQueryAdapter.java
+    └── adapter/out/integration/inventario/DemandaAlimentoQueryAdapter.java
+
+src/main/java/db/migration/V8__permitir_movimientos_repetidos.java
 
 src/test/java/com/avicontrol/
-├── domain/model/inventario/ExistenciaAlimentoTest.java
-├── application/inventario/ConsultarInventarioUseCaseTest.java
-└── infrastructure/adapter/in/rest/inventario/InventarioControllerTest.java
+├── application/alimentacion/NutricionInventarioIntegrationTest.java
+├── application/inventario/ConsultarCoberturaAlimentoUseCaseTest.java
+└── infrastructure/adapter/in/rest/inventario/InventarioNutricionControllerTest.java
 ```
 
 **Structure Decision**: son modelos de lectura; no hay repositorio ni migración para existencias consolidadas. Los puertos calculan una vista consistente desde recepciones y movimientos, y consultan demanda del Plan 022.
+
+La migración V8 elimina la unicidad antigua de tipo de movimiento por recepción para permitir más de una salida o consumo confirmado contra la misma recepción. No crea una tabla de existencias derivadas.
+
+La capacidad y ocupación física de la bodega se reciben de la fuente de bodega mediante `AVICONTROL_BODEGA_CAPACIDAD_KG` y `AVICONTROL_BODEGA_OCUPACION_KG` en la revisión local. Si alguna no está disponible, `porcentajeOcupacion` es `null`; no se presenta una ocupación parcial de alimento como ocupación total de bodega. La integración con la fuente compartida sustituirá esta configuración.
 
 ## Phase 1: Setup (Shared Infrastructure)
 
@@ -116,18 +118,60 @@ src/test/java/com/avicontrol/
   "alimentos": [
     {
       "alimentoId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+      "alimento": "Alimento Inicio Broiler",
       "etapaCrianza": "INICIO",
+      "recepcionesActivas": 2,
+      "proximoVencimiento": "2027-01-15",
       "stockActualKg": 1000,
+      "demandaKg": 1250,
       "estadoCobertura": "COBERTURA_PARCIAL"
     }
   ],
-  "medicamentos": []
+  "medicamentos": [
+    {
+      "medicamentoId": "550e8400-e29b-41d4-a716-446655440000",
+      "medicamento": "Amprolio",
+      "presentacion": "Frasco",
+      "cantidad": 10,
+      "contenidoPorPresentacion": 100,
+      "unidad": "MILILITRO",
+      "stockActual": 1000
+    }
+  ],
+  "tarjetasAlimentoKg": {
+    "PRE_INICIO": 0,
+    "INICIO": 1000,
+    "ENGORDE": 0,
+    "TOTAL": 1000
+  }
+}
+```
+
+Respuesta de `GET /api/inventario/resumen`:
+
+```json
+{
+  "capacidadMaximaKg": 10000,
+  "ocupacionActualKg": 2500,
+  "porcentajeOcupacion": 25.00,
+  "recepcionesAlimentoRecientes": [
+    {
+      "codigoLote": "L-2026-11",
+      "alimento": "Alimento Inicio Broiler",
+      "cantidadBultos": 25,
+      "precioPorBulto": 66000,
+      "pesoPorBultoKg": 40,
+      "fechaIngreso": "2026-11-05"
+    }
+  ]
 }
 ```
 
 ```json
 {
   "alimentoId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+  "alimento": "Alimento Inicio Broiler",
+  "etapaCrianza": "INICIO",
   "stockActualKg": 1000,
   "demandaKg": 1250,
   "estado": "COBERTURA_PARCIAL"

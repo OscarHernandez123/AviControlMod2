@@ -31,37 +31,35 @@ docs/
 ```text
 src/main/java/com/avicontrol/
 ├── domain/model/nutricion/
-│   ├── CalendarioEtapaGalpon.java
-│   ├── EtapaCrianza.java
-│   ├── HistorialAjusteEtapa.java
+│   ├── AuditoriaPlanNutricional.java
 │   ├── PlanNutricionalGalpon.java
 │   └── PlanNutricionalPlantilla.java
 ├── domain/port/out/nutricion/
+│   ├── AlimentoComercialRepositoryPort.java
 │   ├── AlimentoCompatibleQueryPort.java
 │   ├── PlanNutricionalGalponRepositoryPort.java
 │   └── PlanNutricionalPlantillaRepositoryPort.java
 ├── application/nutricion/
-│   ├── AjustarDuracionEtapaUseCase.java
-│   ├── AsignarPlanNutricionalUseCase.java
-│   ├── CrearPlantillaPlanNutricionalUseCase.java
-│   ├── SustituirPlanNutricionalUseCase.java
-│   └── result/PlanNutricionalResult.java
-└── infrastructure/adapter/in/rest/nutricion/
-    ├── PlanNutricionalGalponController.java
-    ├── PlanNutricionalPlantillaController.java
-    ├── dto/
-    │   ├── AjustarDuracionEtapaRequest.java
-    │   ├── CrearPlantillaPlanNutricionalRequest.java
-    │   └── PlanNutricionalResponse.java
-    └── mapper/PlanNutricionalRestMapper.java
+│   ├── GestionarPlantillasUseCase.java
+│   ├── PlanNutricionalLoteUseCase.java
+│   └── RegistrarAlimentoComercialUseCase.java
+└── infrastructure/
+    ├── adapter/in/rest/nutricion/
+    │   ├── AlimentoComercialController.java
+    │   ├── PlanNutricionalGalponController.java
+    │   └── PlanNutricionalPlantillaController.java
+    └── adapter/out/persistence/nutricion/
+        ├── AlimentoComercialPersistenceAdapter.java
+        ├── AlimentoCompatibleQueryAdapter.java
+        ├── PlanNutricionalGalponPersistenceAdapter.java
+        └── PlanNutricionalPlantillaPersistenceAdapter.java
 
 src/main/resources/db/migration/
-└── V__crear_planes_nutricionales.sql
+└── V7__crear_planes_y_proyecciones_alimento.sql
 
 src/test/java/com/avicontrol/
-├── domain/model/nutricion/PlanNutricionalGalponTest.java
-├── application/nutricion/AjustarDuracionEtapaUseCaseTest.java
-└── infrastructure/adapter/in/rest/nutricion/PlanNutricionalControllerTest.java
+├── application/alimentacion/NutricionInventarioIntegrationTest.java
+└── infrastructure/adapter/in/rest/inventario/InventarioNutricionControllerTest.java
 ```
 
 **Structure Decision**: la plantilla es catálogo y la instancia por lote es independiente. La etapa activa conserva alimento, ración y costo; ajustes se anexan al historial y sólo cambian duración/cascada.
@@ -88,7 +86,7 @@ src/test/java/com/avicontrol/
 **Independent Test**: tres etapas 1-7, 8-21 y 22-45 se aceptan; una etapa solapada o ración cero se rechaza; otro predeterminado se desmarca.
 
 - [ ] T008 [P] [US1] Probar continuidad, ración y predeterminado único.
-- [ ] T009 [US1] Implementar creación, consulta y edición de plantillas.
+- [ ] T009 [US1] Implementar creación, listado, detalle y edición de plantillas.
 
 ## Phase 4: User Story 2 - Asignar o sustituir plan (Priority: P1)
 
@@ -116,14 +114,19 @@ src/test/java/com/avicontrol/
 
 - [ ] T014 [P] [US4] Probar cascada, ajustes sucesivos, justificación y etapa completada.
 - [ ] T015 [US4] Implementar ajuste, auditoría y notificación/recalculo al Plan 022.
+- [ ] T016 [US3] Calcular demanda diaria en kg y bultos equivalentes, y días de autonomía con stock vigente; demanda cero no divide por cero.
 
 ## Endpoints
 
 | Método y ruta | Rol | Solicitud | Respuesta |
 | --- | --- | --- | --- |
 | `POST /api/nutricion/plantillas` | `ROLE_NUTRICIONISTA` | plantilla con etapas | `201 Created` |
+| `POST /api/nutricion/alimentos` | `ROLE_NUTRICIONISTA` | producto comercial y perfil | `201 Created`; permite cargar el catálogo local para revisión |
 | `PUT /api/nutricion/plantillas/{id}` | `ROLE_NUTRICIONISTA` | plantilla con etapas | `200 OK` |
+| `GET /api/nutricion/plantillas` | nutricionista, administrador | sin cuerpo | `200 OK` con plantillas |
+| `GET /api/nutricion/plantillas/{id}` | nutricionista, administrador | sin cuerpo | `200 OK` con plantilla y etapas |
 | `GET /api/galpones/{galponId}/plan-nutricional` | nutricionista, administrador | sin cuerpo | `200 OK` |
+| `PUT /api/galpones/{galponId}/plan-nutricional/asignacion` | `ROLE_NUTRICIONISTA` | plantilla y lote vigentes | `200 OK` con plan asignado; resuelve estado pendiente |
 | `PUT /api/galpones/{galponId}/plan-nutricional/sustituir` | `ROLE_NUTRICIONISTA` | nuevo plan | `200 OK` |
 | `GET /api/nutricion/alimentos-compatibles` | nutricionista, administrador | filtros | `200 OK` |
 | `PUT /api/galpones/{galponId}/plan-nutricional/etapas/{etapaId}/alimento` | `ROLE_NUTRICIONISTA` | alimento | `200 OK` |
@@ -137,12 +140,140 @@ src/test/java/com/avicontrol/
 }
 ```
 
-**Errores**: `400` ración, rangos o justificación inválidos; `401` no autenticado; `403` sin rol; `404` plan o etapa; `409` etapa activa/completada incompatible; `422` calendario no contiguo.
+La creación y edición de plantillas usan este cuerpo; listado y detalle devuelven la misma estructura por plantilla:
+
+```json
+{
+  "nombre": "Plan Estándar Broiler",
+  "tipoAve": "BROILER",
+  "esPredeterminado": true,
+  "etapas": [
+    {
+      "etapaCrianza": "PRE_INICIO",
+      "diaInicio": 1,
+      "diaFin": 7,
+      "racionKgAveDia": 0.0250,
+      "tipoAlimento": "PRE_INICIO",
+      "alimentoId": null,
+      "pesoNominalPorBultoKg": 40
+    },
+    {
+      "etapaCrianza": "INICIO",
+      "diaInicio": 8,
+      "diaFin": 21,
+      "racionKgAveDia": 0.0800,
+      "tipoAlimento": "INICIO",
+      "alimentoId": "550e8400-e29b-41d4-a716-446655440000",
+      "pesoNominalPorBultoKg": 40
+    },
+    {
+      "etapaCrianza": "ENGORDE",
+      "diaInicio": 22,
+      "diaFin": 45,
+      "racionKgAveDia": 0.1200,
+      "tipoAlimento": "ENGORDE",
+      "alimentoId": null,
+      "pesoNominalPorBultoKg": 40
+    }
+  ]
+}
+```
+
+Registro de alimento comercial para revisión local (el identificador debe estar habilitado también en el catálogo de recepciones):
+
+```json
+{
+  "id": "550e8400-e29b-41d4-a716-446655440000",
+  "nombre": "Alimento Inicio Broiler",
+  "tipoAlimento": "INICIO",
+  "pesoNominalPorBultoKg": 40,
+  "proteinaPorcentaje": 20.0,
+  "energiaKcalKg": 3100,
+  "duracionRecomendadaEtapaDias": 14
+}
+```
+
+Asignación manual local cuando el galpón quedó pendiente. El contexto del lote se reemplazará por la consulta confiable del Módulo 1 al integrarlo:
+
+```json
+{
+  "plantillaId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+  "loteId": "1f6f2df9-24af-4f12-8671-cd1cfbdf2020",
+  "codigoLote": "LDP-005",
+  "tipoAve": "BROILER",
+  "fechaIngreso": "2026-11-05",
+  "edadIngresoDias": 8,
+  "poblacionViva": 10000,
+  "justificacion": "Asignación nutricional inicial"
+}
+```
+
+Sustitución de etapas futuras:
+
+```json
+{
+  "plantillaId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+  "justificacion": "Ajuste del programa nutricional"
+}
+```
+
+Consulta de alimentos compatibles (`GET /api/nutricion/alimentos-compatibles?tipoAlimento=INICIO`) y selección de una presentación futura:
+
+```json
+[
+  {
+    "id": "550e8400-e29b-41d4-a716-446655440000",
+    "nombre": "Alimento Inicio Broiler",
+    "tipoAlimento": "INICIO",
+    "pesoNominalPorBultoKg": 40,
+    "proteinaPorcentaje": 20.0,
+    "energiaKcalKg": 3100,
+    "duracionRecomendadaEtapaDias": 14,
+    "stockDisponibleKg": 800,
+    "stockDisponibleBultos": 20,
+    "estadoStock": "DISPONIBLE"
+  }
+]
+```
+
+```json
+{
+  "alimentoId": "550e8400-e29b-41d4-a716-446655440000"
+}
+```
+
+La consulta del plan devuelve etapas, historial y, para la etapa activa, demanda diaria en kg y bultos y días de autonomía:
+
+```json
+{
+  "galponId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+  "loteId": "1f6f2df9-24af-4f12-8671-cd1cfbdf2020",
+  "estado": "ACTIVO",
+  "fechaSalidaProyectada": "2026-12-12",
+  "etapas": [
+    {
+      "id": "edb5bd75-0a93-4347-a3fb-2e5e7080bd48",
+      "etapaCrianza": "INICIO",
+      "estadoEtapa": "ACTIVA",
+      "diaInicio": 8,
+      "diaFin": 21,
+      "racionKgAveDia": 0.0800,
+      "alimentoId": "550e8400-e29b-41d4-a716-446655440000",
+      "demandaDiariaKg": 800,
+      "demandaDiariaBultos": 20,
+      "diasAutonomia": 1
+    }
+  ],
+  "historialAjustes": []
+}
+```
+
+**Errores**: `400` ración, calendario no contiguo o justificación inválidos; `401` no autenticado; `403` sin rol; `404` plan o etapa; `409` etapa activa/completada incompatible.
 
 ## Polish & Cross-Cutting Concerns
 
-- [ ] T016 Documentar fórmulas de demanda y que no existen reservas ni movimientos de inventario.
-- [ ] T017 Ejecutar pruebas de dominio, HTTP y `git diff --check`.
+- [ ] T017 Documentar fórmulas de demanda y que no existen reservas ni movimientos de inventario.
+- [ ] T018 Ejecutar pruebas de dominio, HTTP y `git diff --check`.
 
 ## Dependencies & Execution Order
 
@@ -153,3 +284,5 @@ src/test/java/com/avicontrol/
 
 - Sin predeterminado, el lote queda pendiente de asignación y demanda cero hasta configuración manual.
 - El Plan 022 consume proyecciones e historial, sin permitir reescribir costos bloqueados.
+- El Módulo 1 aún no está conectado: `PlanNutricionalLoteUseCase.asignarAlAlojar` recibe el alojamiento confirmado y publica el evento de pendiente cuando falta plantilla; el endpoint de asignación manual acepta contexto del lote para revisión local. La integración definitiva deberá sustituir ese contexto por una consulta confiable al Módulo 1.
+- El catálogo `alimentos_comerciales_nutricion` conserva producto, perfil y duración. El endpoint de carga permite revisarlo localmente; el catálogo compartido deberá sustituirlo o sincronizarlo al integrar el sistema.
