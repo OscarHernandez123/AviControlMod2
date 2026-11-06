@@ -1,49 +1,183 @@
-# Plan: Ordenar sacrificio sanitario
+# Implementation Plan: Ordenar sacrificio sanitario
 
-**Spec**: [012-OrdenarSacrificioSanitario.md](../specs/012-OrdenarSacrificioSanitario.md)  
+**Date**: 05/11/2026
+**Spec**: [012-OrdenarSacrificioSanitario.md](../specs/012-OrdenarSacrificioSanitario.md)
 **Arquitectura y tecnologías**: [General.md](General.md)
 
-## Alcance
+## Summary
 
-El veterinario emite y confirma una orden sanitaria total basada en diagnóstico elegible.
+Permitir a un veterinario emitir una orden de sacrificio sanitario total a partir de un diagnóstico elegible. La orden queda pendiente sin cambiar lote ni galpón; al confirmar la ejecución usa la población vigente, la establece en cero, cambia el galpón de `aislamiento` a `vaciado sanitario` y marca la orden como ejecutada una sola vez.
 
-## Fuera de alcance
+## Technical Context
 
-Diagnóstico, sacrificio productivo, peso final y liquidación comercial.
+**Performance Goals**: completar el 95 % de confirmaciones válidas en un segundo.
+**Constraints**: exclusivo de `ROLE_VETERINARIO`; diagnóstico con enfermedad que requiere sacrificio sanitario, galpón aislado y población mayor que cero.
+**Scale/Scope**: orden total por diagnóstico, emisión y confirmación; no registra diagnóstico, sacrificio productivo, peso final ni liquidación.
 
-## Dependencias
+## Project Structure
 
-Plan 011 y Módulo 1 para estado/población vigente.
-
-## Source Code (repository root)
+### Documentation (this feature)
 
 ```text
-src/main/java/com/avicontrol/domain/model/sacrificio/sanitario/{OrdenSacrificioSanitario,EstadoOrdenSanitaria}.java
-src/main/java/com/avicontrol/application/sacrificio/sanitario/{EmitirOrdenSacrificioSanitarioUseCase,ConfirmarEjecucionSacrificioSanitarioUseCase,ConsultarOrdenSacrificioSanitarioUseCase}.java
-src/main/java/com/avicontrol/infrastructure/adapter/in/rest/sacrificio/sanitario/OrdenSacrificioSanitarioController.java
-src/main/resources/db/migration/V__crear_ordenes_sacrificio_sanitario.sql
+docs/
+├── specs/
+│   └── 012-OrdenarSacrificioSanitario.md
+└── plan/
+    └── 012-OrdenarSacrificioSanitario.md
 ```
 
-## User Story 1 — Emitir orden
+### Source Code (repository root)
 
-| Método y ruta | Rol |
-| --- | --- |
-| `POST /api/galpones/{galponId}/ordenes-sacrificio-sanitario` | `ROLE_VETERINARIO` |
+```text
+src/main/java/com/avicontrol/
+├── domain/
+│   ├── model/sacrificio/sanitario/
+│   │   ├── EstadoOrdenSacrificioSanitario.java
+│   │   └── OrdenSacrificioSanitario.java
+│   ├── exception/sacrificio/sanitario/
+│   │   ├── DiagnosticoNoElegibleException.java
+│   │   ├── OrdenSanitariaNoPendienteException.java
+│   │   └── PoblacionNoSacrificableException.java
+│   └── port/out/
+│       ├── modulo1/
+│       │   ├── GalponQueryPort.java
+│       │   ├── GalponUpdatePort.java
+│       │   └── LoteUpdatePort.java
+│       └── sacrificio/sanitario/
+│           ├── DiagnosticoSanitarioQueryPort.java
+│           └── OrdenSacrificioSanitarioRepositoryPort.java
+├── application/
+│   └── sacrificio/sanitario/
+│       ├── ConfirmarEjecucionSacrificioSanitarioUseCase.java
+│       ├── EmitirOrdenSacrificioSanitarioUseCase.java
+│       └── result/OrdenSacrificioSanitarioResult.java
+└── infrastructure/
+    ├── adapter/in/rest/sacrificio/sanitario/
+    │   ├── OrdenSacrificioSanitarioController.java
+    │   ├── dto/OrdenSacrificioSanitarioResponse.java
+    │   └── mapper/OrdenSacrificioSanitarioRestMapper.java
+    ├── adapter/out/persistence/sacrificio/sanitario/OrdenSacrificioSanitarioPersistenceAdapter.java
+    └── config/SacrificioSanitarioBeanConfiguration.java
 
-## User Story 2 — Ejecutar y consultar
+src/main/resources/db/migration/
+└── V__crear_ordenes_sacrificio_sanitario.sql
 
-| Método y ruta | Roles |
-| --- | --- |
-| `POST /api/ordenes-sacrificio-sanitario/{ordenId}/ejecucion` | `ROLE_VETERINARIO` |
-| `GET /api/ordenes-sacrificio-sanitario/{ordenId}` | `ROLE_VETERINARIO`, `ROLE_ADMINISTRADOR` |
+src/test/java/com/avicontrol/
+├── domain/model/sacrificio/sanitario/OrdenSacrificioSanitarioTest.java
+├── application/sacrificio/sanitario/
+│   ├── ConfirmarEjecucionSacrificioSanitarioUseCaseTest.java
+│   └── EmitirOrdenSacrificioSanitarioUseCaseTest.java
+└── infrastructure/adapter/in/rest/sacrificio/sanitario/OrdenSacrificioSanitarioControllerTest.java
+```
+
+**Structure Decision**: la orden sanitaria es un agregado local con transición pendiente a ejecutada. Diagnóstico, lote y galpón se verifican por puertos del Plan 011/Módulo 1; las actualizaciones remotas se coordinan de forma idempotente.
+
+## Phase 1: Setup (Shared Infrastructure)
+
+**Purpose**: definir contratos y persistencia de la orden sanitaria.
+
+- [ ] T001 Confirmar el puerto de diagnóstico elegible del Plan 011 y contratos de consulta/actualización de lote y galpón.
+- [ ] T002 Crear la migración con referencias a diagnóstico, lote y galpón, estado y control de versión.
+- [ ] T003 Preparar fixtures para diagnóstico mortal, tratable, galpón fuera de aislamiento, población cero y orden ejecutada.
+
+---
+
+## Phase 2: Foundational (Blocking Prerequisites)
+
+**Purpose**: proteger el ciclo de vida y la ejecución única.
+
+- [ ] T004 Crear `OrdenSacrificioSanitario` con alcance total implícito y transición única pendiente a ejecutada.
+- [ ] T005 Definir repositorio con restricción de orden por diagnóstico y bloqueo para confirmaciones simultáneas.
+- [ ] T006 Implementar excepciones y puertos de diagnóstico, galpón y lote.
+
+**Checkpoint**: ninguna orden puede ejecutar dos veces ni abarcar una cantidad parcial.
+
+---
+
+## Phase 3: User Story 1 - Emitir una orden sanitaria total (Priority: P1)
+
+**Goal**: crear una orden pendiente sin alterar población ni estado.
+
+**Independent Test**: con diagnóstico mortal, galpón aislado y población positiva se crea una orden pendiente; un diagnóstico tratable o galpón fuera de aislamiento no crea orden.
+
+### Tests for User Story 1
+
+- [ ] T007 [P] [US1] Probar elegibilidad, población, orden duplicada y autorización.
+- [ ] T008 [P] [US1] Probar el endpoint de emisión con MockMvc.
+
+### Implementation for User Story 1
+
+- [ ] T009 [US1] Implementar `EmitirOrdenSacrificioSanitarioUseCase` y verificar diagnóstico, estado y población vigentes.
+- [ ] T010 [US1] Exponer `POST /api/galpones/{galponId}/ordenes-sacrificio-sanitario` para veterinario.
+
+**Checkpoint**: la orden pendiente no modifica lote ni galpón.
+
+---
+
+## Phase 4: User Story 2 - Confirmar ejecución sanitaria total (Priority: P2)
+
+**Goal**: al confirmar, establecer población en cero, estado en `vaciado sanitario` y orden ejecutada como una única operación.
+
+**Independent Test**: una orden pendiente con galpón aislado y población vigente positiva termina ejecutada; otra confirmación no hace cambios adicionales.
+
+### Tests for User Story 2
+
+- [ ] T011 [P] [US2] Probar ejecución única, población que cambió tras emisión y fallo parcial de integración.
+- [ ] T012 [P] [US2] Probar HTTP, autorización y orden ya ejecutada.
+
+### Implementation for User Story 2
+
+- [ ] T013 [US2] Implementar `ConfirmarEjecucionSacrificioSanitarioUseCase` consultando estado y población vigentes.
+- [ ] T014 [US2] Coordinar actualización del lote a cero, del galpón a `vaciado sanitario` y de la orden con compensación o reintento seguro.
+- [ ] T015 [US2] Exponer `POST /api/ordenes-sacrificio-sanitario/{ordenId}/ejecucion`.
 
 ```json
-{"id":"uuid","estado":"EJECUTADA","galponId":"uuid","poblacionSacrificada":7960}
+{
+  "id": "b07f5fd4-3b77-4e9a-a4eb-5d54f907c8a4",
+  "estado": "EJECUTADA",
+  "galponId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+  "poblacionSacrificada": 7960
+}
 ```
 
-Errores: `404` orden/diagnóstico, `409` diagnóstico no elegible, sin población o ejecución repetida.
+**Checkpoint**: sólo la confirmación cambia los recursos y toda repetición es segura.
 
-## Pruebas y Definition of Done
+---
 
-- Orden pendiente, ejecución única, población a cero y transición `VACIADO_SANITARIO` atómica.
-- Integración de evento y pruebas HTTP/OpenAPI verdes.
+## Endpoints
+
+### Emitir orden
+
+| Método y ruta | Rol | Solicitud | Respuesta |
+| --- | --- | --- | --- |
+| `POST /api/galpones/{galponId}/ordenes-sacrificio-sanitario` | `ROLE_VETERINARIO` | Sin cuerpo | `201 Created` con orden pendiente |
+
+### Confirmar ejecución
+
+| Método y ruta | Rol | Solicitud | Respuesta |
+| --- | --- | --- | --- |
+| `POST /api/ordenes-sacrificio-sanitario/{ordenId}/ejecucion` | `ROLE_VETERINARIO` | Sin cuerpo | `200 OK` con orden ejecutada |
+
+**Errores**: `400` identificador inválido; `401` no autenticado; `403` sin rol; `404` orden o diagnóstico ausente; `409` diagnóstico no elegible, población inválida o ejecución repetida; `503` Módulo 1 no disponible.
+
+---
+
+## Polish & Cross-Cutting Concerns
+
+- [ ] T016 Mapear `400` dato inválido, `401` no autenticado, `403` sin rol, `404` orden/diagnóstico ausente, `409` precondición, población o ejecución repetida y `503` dependencia no disponible.
+- [ ] T017 Documentar consistencia, idempotencia y los dos endpoints en OpenAPI.
+- [ ] T018 Ejecutar pruebas y `git diff --check`.
+
+---
+
+## Dependencies & Execution Order
+
+- **Setup** depende del diagnóstico del Plan 011 y del Módulo 1.
+- **Foundational** bloquea la emisión y ejecución.
+- **US1** crea la orden; **US2** sólo opera sobre una orden pendiente.
+- **Polish** termina seguridad y observabilidad.
+
+## Notes
+
+- La población sacrificial corresponde a la población vigente al confirmar, no a una cantidad indicada por el veterinario ni a un valor congelado al emitir.
+- La orden pendiente nunca cambia por sí sola el galpón o el lote.
