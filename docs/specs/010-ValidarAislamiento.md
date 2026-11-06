@@ -1,152 +1,116 @@
-# Feature Specification: Validar aislamiento de un galpón
+# Feature Specification: 010 - Validar aislamiento de un galpón
 
 **Created**: 2026-09-04  
-**Last Updated**: 2026-09-22  
+**Last Updated**: 2026-10-28
 
-## User Scenarios & Testing *(mandatory)*
+## User Scenarios & Testing
 
-### User Story 1 - Evaluación y Confirmación de Aislamiento Sanitario (Priority: P1)
+### User Story 1 - Evaluar y validar o rechazar el aislamiento solicitado (Priority: P1)
 
-Como Médico Veterinario de la granja, quiero acceder a la bandeja de solicitudes de revisión emitidas por los trabajadores de campo, evaluar los signos clínicos del galpón reportado y confirmar su aislamiento preventivo cuando su estado vigente sea `productiva`, para contener la propagación biológica y habilitar de forma inmediata el diagnóstico del lote (`Spec 011`).
+Como veterinario, quiero recibir y consultar las solicitudes de revisión enviadas por los trabajadores y evaluar el galpón proporcionado por el módulo 1, para aprobar su aislamiento cuando corresponda cambiando su estado de `productivo` a `aislamiento`, o rechazar la solicitud si se descarta el riesgo conservando su estado `productivo`.
 
-**Why this priority**: Es la compuerta de contención biológica de la granja. Ningún lote puede ser puesto en cuarentena sin la evaluación técnica vinculante del Veterinario. A su vez, el aislamiento es el prerrequisito obligatorio para que el sistema permita ejecutar el caso de uso `Diagnosticar galpón` (`<<include>>`).
+**Why this priority**: La solicitud del trabajador permite alertar una sospecha en campo, pero la evaluación clínica y la decisión de aislar el galpón o desestimar la solicitud son responsabilidades exclusivas del veterinario antes de proceder al diagnóstico (Spec 011).
 
-**Independent Test**: Se prueba ingresando al sistema con el rol `VETERINARIO` frente a una solicitud en estado `PENDIENTE` asociada a un galpón confirmado en estado `productiva` por el Módulo 1. Al confirmar el aislamiento, el sistema cambia el estado de la solicitud a `ATENDIDA`, registra el aislamiento en el subsistema sanitario, commitea el cambio de estado del galpón a `aislamiento` en el Módulo 1, persiste el evento en `san_outbox`, asienta la firma en `san_auditoria` y redirecciona al formulario de diagnóstico clínico (`Spec 011`). La mera emisión o consulta de la solicitud no modifica el galpón.
-
-**Acceptance Scenarios**:
-
-1. **AS-001 - Scenario**: Aislamiento exitoso de un galpón productivo con derivación a diagnóstico
-   - **Given** que existe una solicitud de revisión en estado `PENDIENTE` enviada por un trabajador para un galpón específico
-   - **And** el Módulo 1 confirma que el estado operativo vigente de dicho galpón es `productiva`
-   - **And** el usuario autenticado posee el rol `VETERINARIO`
-   - **When** el Veterinario confirma la orden de aislamiento preventivo ingresando las observaciones de campo
-   - **Then** el sistema actualiza el estado del galpón a `aislamiento` en el Módulo 1
-   - **And** marca la solicitud de revisión como `ATENDIDA`
-   - **And** persiste atómicamente el evento de integración `AislamientoValidadoIntegrationEvent` en la tabla `san_outbox` bajo el tópico `sanitary.isolation.validated.v1`
-   - **And** asienta la traza inmutable en `san_auditoria` con matrícula, usuario, fecha y hora
-   - **And** habilita automáticamente el flujo de diagnóstico clínico inmediato (`Spec 011`) para dicho galpón
-
-2. **AS-002 - Scenario**: Rechazo clínico de la sospecha (Desestimación del aislamiento)
-   - **Given** una solicitud de revisión en estado `PENDIENTE` para un galpón en estado `productiva`
-   - **When** el Veterinario realiza la inspección, concluye que no hay cuadro infectocontagioso y selecciona la opción `Rechazar validación` ingresando una justificación técnica obligatoria
-   - **Then** el sistema actualiza la solicitud a estado `RECHAZADA` almacenando la justificación del descarte
-   - **And** mantiene inalterado el estado del galpón como `productiva` en el Módulo 1
-   - **And** registra el asiento de auditoría en `san_auditoria`
-   - **And** no genera eventos de aislamiento ni deriva al flujo de diagnóstico
-
-3. **AS-003 - Scenario**: Bloqueo por ausencia de solicitud de revisión previa
-   - **Given** un galpón operativo en estado `productiva` que no posee ninguna solicitud de revisión registrada por un trabajador
-   - **When** el Veterinario intenta forzar una orden de aislamiento directa
-   - **Then** el sistema deniega la acción, notificando que todo aislamiento requiere como antecedente administrativo una solicitud formal de revisión de campo
-
-4. **AS-004 - Scenario**: Bloqueo por estado incompatible del galpón en Módulo 1
-   - **Given** una solicitud de revisión pendiente, pero el Módulo 1 reporta que el estado actual del galpón es `aislamiento`, `en_cosecha`, `vaciado_sanitario` o `inactivo`
-   - **When** el Veterinario intenta evaluar o confirmar el aislamiento
-   - **Then** el sistema interrumpe la operación informando que el galpón no cumple con el estado inicial mandatorio (`productiva`)
-   - **And** no altera los registros sanitarios ni emite eventos de outbox
-
-5. **AS-005 - Scenario**: Detección de colisión por cambio de estado concurrente en Módulo 1
-   - **Given** que el galpón figuraba en estado `productiva` al momento de abrir la evaluación
-   - **And** el galpón transiciona a otro estado en el Módulo 1 (ej. traslado a cosecha) antes de que el Veterinario presione confirmar
-   - **When** el Veterinario confirma el aislamiento
-   - **Then** el sistema revalida en tiempo real el estado en el Módulo 1, detecta el cambio de estado, cancela la transacción y notifica la inconsistencia al usuario
-
-6. **AS-006 - Scenario**: Denegación de acceso por rol no facultado
-   - **Given** un usuario autenticado con rol `TRABAJADOR` o `ADMINISTRADOR`
-   - **When** intenta enviar el comando HTTP de validación o rechazo de un aislamiento
-   - **Then** el sistema intercepta la petición y retorna HTTP 403 Forbidden
-   - **And** no modifica el estado de la solicitud ni del galpón
-
----
-
-### User Story 2 - Idempotencia y Blindaje de Trazabilidad Operativa (Priority: P2)
-
-Como auditor de bioseguridad y aseguramiento de calidad, quiero garantizar que cada orden de aislamiento se procese de manera estrictamente idempotente y atómica, previniendo dobles aislamientos, eventos redundantes hacia Kafka o transiciones duplicadas ante reconexiones de red.
-
-**Why this priority**: Un doble aislamiento o un evento replicado en el broker corrompería las métricas operativas del Módulo 1, alteraría los historiales de cuarentena y provocaría fallas de consistencia en el seguimiento veterinario.
-
-**Independent Test**: Se envía el mismo comando de confirmación de aislamiento dos veces consecutivas bajo la misma cabecera `X-Idempotency-Key`. Se verifica que el segundo llamado retorna la respuesta HTTP idéntica almacenada en caché sin volver a mutar el Módulo 1, sin duplicar registros en `san_auditoria` y sin registrar mensajes redundantes en `san_outbox`.
+**Independent Test**: Se puede probar utilizando una solicitud de revisión en estado `PENDIENTE_VALIDACION` enviada por un trabajador para un galpón proporcionado por el módulo 1 en estado `productivo`. El sistema debe permitir que únicamente un veterinario evalúe la solicitud: si la aprueba y el galpón continúa en estado `productivo`, cambia el estado del galpón a `aislamiento`; si la rechaza registrando observaciones, la solicitud queda rechazada y el galpón conserva su estado `productivo`.
 
 **Acceptance Scenarios**:
 
-1. **AS-007 - Scenario**: Reintento transparente bajo la misma clave de idempotencia
-   - **Given** un comando de confirmación de aislamiento procesado exitosamente bajo la cabecera `X-Idempotency-Key: IDEMP-AIS-8840`
-   - **When** el frontend o cliente HTTP retransmite la petición con idéntico payload y misma cabecera debido a un corte momentáneo de red
-   - **Then** el sistema intercepta la clave de idempotencia
-   - **And** retorna la respuesta original almacenada (código 200 OK y DTO de confirmación)
-   - **And** no ejecuta una segunda mutación en el Módulo 1 ni inserta filas duplicadas en `san_outbox`
+1. **Scenario**: Inicio de la evaluación a partir de la solicitud del trabajador
+   - **Given** que un trabajador envió al veterinario una solicitud de revisión asociada con un galpón proporcionado por el módulo 1
+   - **When** el veterinario consulta la bandeja de solicitudes pendientes y comienza la evaluación
+   - **Then** el sistema le permite evaluar el galpón y conserva su estado sin cambios hasta que el veterinario registre su decisión
 
-2. **AS-008 - Scenario**: Rechazo de aislamiento sobre un galpón que ya fue aislado
-   - **Given** un galpón cuyo aislamiento ya fue consolidado en el sistema
-   - **When** se emite una nueva solicitud o comando sobre dicho galpón
-   - **Then** el sistema responde con HTTP 409 Conflict informando que el galpón se encuentra actualmente en régimen de aislamiento
+2. **Scenario**: Validación (aprobación) correcta del aislamiento
+   - **Given** que el veterinario está evaluando una solicitud pendiente enviada por un trabajador y el módulo 1 confirma que el galpón continúa en estado `productivo`
+   - **When** el veterinario aprueba el aislamiento registrando sus observaciones clínicas
+   - **Then** el sistema registra la decisión aprobada, solicita al módulo 1 cambiar y guardar el estado del galpón como `aislamiento` y habilita el registro del diagnóstico del galpón (Spec 011)
+
+3. **Scenario**: Rechazo clínico de la solicitud de aislamiento
+   - **Given** que el veterinario evalúa una solicitud pendiente sobre un galpón en estado `productivo` y determina que no amerita aislamiento
+   - **When** el veterinario rechaza la solicitud registrando sus observaciones técnicas
+   - **Then** el sistema registra la decisión de rechazo sobre la solicitud y conserva el estado del galpón como `productivo` sin alterarlo
+
+4. **Scenario**: Intento de validación sin solicitud previa
+   - **Given** que el veterinario no cuenta con una solicitud de revisión pendiente enviada por un trabajador para el galpón
+   - **When** intenta validar el aislamiento directamente
+   - **Then** el sistema rechaza la operación, informa que se requiere una solicitud previa pendiente y conserva el estado actual del galpón
+
+5. **Scenario**: Intento de validación por el trabajador u otro usuario no autorizado
+   - **Given** que un trabajador u otro usuario sin rol de veterinario intenta evaluar o decidir sobre una solicitud de aislamiento
+   - **When** solicita ejecutar la acción
+   - **Then** el sistema rechaza la operación y no modifica la solicitud ni el estado del galpón
+
+6. **Scenario**: Galpón que ya no está en estado productivo al momento de decidir
+   - **Given** que el veterinario recibió la solicitud, pero el módulo 1 informa que el estado vigente del galpón es diferente de `productivo`
+   - **When** intenta aprobar el aislamiento
+   - **Then** el sistema rechaza la validación, informa que el galpón no se encuentra en el estado requerido (`productivo`) y conserva su estado actual
+
+7. **Scenario**: Información del galpón incompleta o módulo 1 no disponible
+   - **Given** que el módulo 1 no está disponible o no permite conocer el estado vigente del galpón asociado con la solicitud
+   - **When** el veterinario intenta completar la validación
+   - **Then** el sistema rechaza la operación, informa que no pudo verificar el galpón y revierte cualquier cambio parcial
 
 ---
 
 ### Edge Cases
 
-- **Indisponibilidad del Módulo 1**: Si al momento de consultar o actualizar el estado del galpón el servicio/adaptador del Módulo 1 no responde o arroja timeout, la transacción sanitaria se aborta completamente (`Rollback`). No se marca la solicitud como atendida, no se persiste en `san_outbox` y se notifica el fallo de integración al usuario.
-- **Solicitud en evaluación que ya fue atendida por otro veterinario**: Si dos veterinarios evalúan simultáneamente la misma solicitud, el primero que confirme eleva la versión optimista de la entidad. El segundo recibe un rechazo por colisión de concurrencia (`OptimisticLockException` / HTTP 409 Conflict), obligándolo a refrescar su pantalla.
-- **Caída del broker Kafka**: El guardado de la entidad, la actualización de la solicitud, la traza de auditoría y el registro del evento en `san_outbox` se realizan en la base de datos local bajo una misma transacción SQL. La caída de Kafka no frena la operación médica; el scheduler publicará el evento pendiente en cuanto el broker esté disponible.
+- **Edge case #1 - Cambio del estado del galpón después de recibir la solicitud**
+  - ¿Cómo maneja el sistema un galpón cuyo estado cambia en el módulo 1 después de que el veterinario recibe la solicitud y antes de confirmar la validación?  
+    El sistema debe consultar nuevamente en el módulo 1 el estado vigente del galpón justo antes de confirmar. Solo debe permitir la transición a `aislamiento` si el estado continúa siendo `productivo`; en caso contrario, debe rechazar la operación con código de conflicto e informar la inconsistencia.
 
----
+- **Edge case #2 - Repetición de una decisión sobre una solicitud ya resuelta o galpón ya aislado**
+  - ¿Cómo maneja el sistema un nuevo intento de validación sobre una solicitud que ya fue decidida o sobre un galpón que ya se encuentra en estado `aislamiento`?  
+    El sistema debe rechazar el nuevo intento de forma idempotente, indicar que la solicitud ya fue procesada o que el galpón ya se encuentra en `aislamiento`, y conservar su estado sin cambios adicionales.
 
-## Requirements *(mandatory)*
+- **Edge case #3 - Información incompleta o fallo de comunicación con el módulo 1**
+  - ¿Cómo maneja el sistema la evaluación cuando el módulo 1 no está disponible o devuelve información incompleta del galpón?  
+    El sistema debe impedir que el veterinario complete la validación, conservar la solicitud en estado pendiente y no cambiar el estado del galpón utilizando datos desactualizados.
+
+## Requirements
 
 ### Functional Requirements
 
-- **FR-001**: La evaluación, validación y desestimación del aislamiento clínico DEBE estar reservada exclusivamente a usuarios autenticados con rol `VETERINARIO`.
-- **FR-002**: Toda validación de aislamiento DEBE tener como antecedente obligatorio una `SolicitudRevision` en estado `PENDIENTE`, emitida previamente por un usuario con rol `TRABAJADOR`.
-- **FR-003**: La creación o consulta de una solicitud de revisión NO DEBE modificar el estado del galpón; el galpón mantiene su estado original hasta que exista una resolución veterinaria explícita.
-- **FR-004**: La solicitud de revisión DEBE estar asociada a un identificador único de galpón (`galponId`) administrado y provisto por el Módulo 1.
-- **FR-005**: El sistema DEBE validar de forma síncrona contra el Módulo 1 que el estado vigente del galpón sea estrictamente `productiva` tanto al consultar la solicitud como inmediatamente antes de confirmar el aislamiento.
-- **FR-006**: Si el galpón reporta un estado distinto de `productiva`, el sistema DEBE rechazar la validación, abortar la transacción y notificar la inconsistencia sin alterar datos.
-- **FR-007**: Si el Veterinario dictamina que los signos no corresponden a una alerta epidemiológica, el sistema DEBE permitir rechazar la solicitud, transicionando su estado a `RECHAZADA`, exigiendo una justificación textual de mínimo 10 caracteres y conservando el galpón en `productiva`.
-- **FR-008**: Al confirmarse la validación del aislamiento, el sistema DEBE:
-  - Cambiar el estado del galpón a `aislamiento` en el Módulo 1.
-  - Actualizar el estado de la solicitud de revisión a `ATENDIDA`.
-  - Crear el registro del agregado de aislamiento con fecha, observaciones clínicas y profesional a cargo.
-  - Habilitar de inmediato la ejecución del caso de uso incluido `Diagnosticar galpón` (`Spec 011`).
-- **FR-009**: La operación de aislamiento NO DEBE alterar atributos estructurales del galpón (capacidad, dimensiones) ni descontar inventarios de bodega.
-- **FR-010**: Al confirmarse el aislamiento, el sistema DEBE persistir de forma atómica en la tabla `san_outbox` el evento `AislamientoValidadoIntegrationEvent` bajo el tópico `sanitary.isolation.validated.v1`.
-- **FR-011**: Cada resolución veterinaria (validación confirmada o rechazada) DEBE registrar un asiento inmutable en la tabla `san_auditoria` con usuario, matrícula, fecha, hora, identificador de solicitud y dictamen.
-- **FR-012**: El sistema DEBE aplicar control de concurrencia optimista (`@Version`) sobre la solicitud y soportar la cabecera `X-Idempotency-Key` almacenada en caché durante 24 horas.
-- **FR-013**: Queda ESTRICTAMENTE PROHIBIDO el borrado físico (`DELETE` en SQL) sobre cualquier solicitud, registro de aislamiento o traza de auditoría.
-
----
+- **FR-001**: El sistema DEBE permitir que únicamente los usuarios autenticados con rol de veterinario evalúen solicitudes y aprueben o rechacen el aislamiento de un galpón.
+- **FR-002**: El sistema DEBE exponer un mecanismo de consulta (endpoint `GET`) para que el veterinario pueda listar y filtrar las solicitudes de aislamiento en estado `PENDIENTE_VALIDACION`.
+- **FR-003**: El veterinario DEBE disponer de una solicitud de revisión en estado pendiente enviada previamente por un trabajador (Spec 020) para poder ejecutar la validación del aislamiento.
+- **FR-004**: El envío o la consulta de la solicitud únicamente DEBE iniciar el flujo de revisión y NO DEBE permitir que el trabajador evalúe, valide ni cambie el estado del galpón.
+- **FR-005**: La solicitud de revisión DEBE estar asociada con la entidad Galpón y su lote activo proporcionados por el módulo 1.
+- **FR-006**: Antes de confirmar la decisión, el sistema DEBE consultar nuevamente en el módulo 1 la entidad Galpón asociada con la solicitud y verificar su estado vigente en tiempo real.
+- **FR-007**: El sistema DEBE permitir aprobar el aislamiento únicamente cuando la entidad Galpón proporcionada por el módulo 1 se encuentre en estado `productivo`.
+- **FR-008**: Cuando el veterinario apruebe la validación, el sistema DEBE registrar la decisión con sus observaciones, actualizar el estado de la solicitud y solicitar al módulo 1 cambiar el estado de la entidad Galpón de `productivo` a `aislamiento`.
+- **FR-009**: Cuando el veterinario rechace la solicitud, el sistema DEBE registrar la decisión de rechazo junto con las observaciones del veterinario y conservar el estado del galpón en `productivo`.
+- **FR-010**: Cuando el galpón no se encuentre en estado `productivo` o el módulo 1 no esté disponible, el sistema DEBE rechazar la validación, informar la razón y no guardar cambios parciales.
+- **FR-011**: La validación NO DEBE modificar ningún dato de la entidad Galpón distinto de su estado operativo ni alterar la población del lote.
+- **FR-012**: Al confirmar una decisión (aprobación o rechazo), el sistema DEBE publicar un evento de integración (`AislamientoValidadoEvent` o `AislamientoRechazadoEvent`) para garantizar la consistencia con otros módulos.
+- **FR-013**: El sistema DEBE soportar cabeceras de idempotencia técnica (`X-Idempotency-Key`) y control de concurrencia optimista para evitar el procesamiento duplicado de decisiones ante reintentos de red.
 
 ### Non-Functional Requirements
 
-| ID | Categoría | Requerimiento | Métrica |
-| :--- | :--- | :--- | :--- |
-| **NFR-001** | Rendimiento | Latencia de validación, rechazo y persistencia | < 250 ms (p95) bajo carga normal |
-| **NFR-002** | Seguridad | Acceso restringido exclusivamente al rol VETERINARIO | HTTP 403 Forbidden a otros roles |
-| **NFR-003** | Integridad | Escritura atómica (aislamiento + outbox + auditoría) bajo `@Transactional` | 100% de consistencia local |
-| **NFR-004** | Persistencia | Prohibición estricta de sentencias `DELETE` SQL en base de datos | 0% borrados físicos |
-| **NFR-005** | Disponibilidad | Si el Módulo 1 no responde, la transacción se aborta completamente (Rollback) | 0% de inconsistencias por fallo cross-context |
-
----
+| ID          | Categoría      | Requerimiento                                                                                     | Métrica                                 |
+| :---------- | :------------- | :------------------------------------------------------------------------------------------------ | :-------------------------------------- |
+| **NFR-001** | Rendimiento    | Latencia de validación, rechazo y persistencia                                                    | < 1 segundo (p95) bajo carga normal     |
+| **NFR-002** | Seguridad      | Acceso restringido exclusivamente al rol VETERINARIO                                              | HTTP 403 Forbidden a otros roles        |
+| **NFR-003** | Integridad     | Escritura atómica de la decisión y actualización de estado del galpón                             | 100% de consistencia local              |
+| **NFR-004** | Disponibilidad | Si el Módulo 1 no responde al verificar o mutar el estado, la transacción se aborta completamente | 0% de inconsistencias por fallo cruzado |
 
 ### Key Entities
 
-- **SolicitudRevision**: Antecedente administrativo de campo emitido por el trabajador. Atributos: `id` (UUID), `galponId` (UUID), `trabajadorId` (UUID), `estado` (Enum: `PENDIENTE`, `ATENDIDA`, `RECHAZADA`), `observacionesTrabajador` (Texto), `justificacionRechazo` (Texto nullable), `fechaSolicitud` (Timestamp), `version` (Integer).
-- **AislamientoSanitario**: Aggregate Root del subsistema de sanidad. Atributos: `id` (UUID), `solicitudId` (UUID), `galponId` (UUID), `veterinarioId` (UUID), `observacionesClinicas` (Texto), `fechaInicio` (Timestamp), `activo` (Boolean).
-- **Galpón**: Entidad externa perteneciente al Módulo 1. El Módulo 2 únicamente lee y solicita la mutación de su atributo de estado (`productiva` $\to$ `aislamiento`).
-- **AislamientoValidadoIntegrationEvent**: Contrato de mensajería publicado hacia Kafka (`eventId`, `aggregateId`, `galponId`, `veterinarioId`, `estadoAnterior`, `estadoNuevo`, `occurredOn`).
-- **Auditoría Sanitaria (`san_auditoria`)**: Bitácora inmutable append-only de responsabilidad veterinaria.
-- **Outbox (`san_outbox`)**: Tabla transaccional para garantizar entrega de eventos atómicos bajo el patrón Transactional Outbox.
+- **Solicitud de aislamiento**: Representa la petición inmutable enviada por el trabajador (Spec 020) que actúa como antecedente obligatorio para la evaluación veterinaria.
+  - **Relaciones**: corresponde a un único galpón y a su lote activo proporcionados por el módulo 1.
+  - **Origen y efecto**: es enviada por un trabajador en estado `PENDIENTE_VALIDACION` y evaluada por el veterinario; su creación o consulta no cambia el estado del galpón.
+- **Decisión de aislamiento**: Representa el dictamen inmutable emitido por el veterinario sobre una solicitud pendiente.
+  - **Atributos**: identificador UUID, referencia a la solicitud (`solicitudId`), veterinario responsable (`veterinarioId`), fecha y hora de decisión, resultado (`APROBADA` o `RECHAZADA`) y observaciones.
+- **Galpón**: Representa la unidad física cuya necesidad de aislamiento evalúa el veterinario y es propiedad del módulo 1.
+  - **Atributos utilizados**: estado (`productivo`, `aislamiento`).
+  - **Transición de estado**: pasa de `productivo` a `aislamiento` únicamente cuando el veterinario aprueba la solicitud de aislamiento.
 
----
-
-## Success Criteria *(mandatory)*
+## Success Criteria
 
 ### Measurable Outcomes
 
-- **SC-001**: El 100% de las evaluaciones de aislamiento se ejecutan sobre solicitudes formales de revisión registradas previamente por trabajadores de campo.
-- **SC-002**: El 100% de los intentos de confirmación o desestimación ejecutados por roles distintos a `VETERINARIO` son bloqueados con código HTTP 403 Forbidden.
-- **SC-003**: El tiempo de respuesta del sistema para evaluar y persistir atómicamente la validación del aislamiento es inferior a 250 milisegundos bajo condiciones normales de red.
-- **SC-004**: Cero por ciento (0%) de modificaciones sobre el estado del galpón provocadas por la simple emisión, consulta o navegación de una solicitud de revisión sin confirmación veterinaria.
-- **SC-005**: El 100% de los aislamientos confirmados habilitan la disponibilidad inmediata del expediente de diagnóstico (`Spec 011`) en menos de 1 segundo tras el guardado.
-- **SC-006**: Cero incidentes (0%) de borrado físico (`DELETE`) en bases de datos sobre solicitudes o registros de aislamiento sanitario.
-- **SC-007**: El 100% de los eventos de integración asociados se resguardan de forma atómica en `san_outbox` dentro de la misma transacción local de base de datos.
-- **SC-008**: Cero duplicados (0%) en publicaciones de eventos o cambios de estado gracias a la validación de concurrencia optimista y la cabecera `X-Idempotency-Key`.
+- **SC-001**: El 100 % de las decisiones de aislamiento se ejecuta sobre una solicitud previa enviada por un trabajador.
+- **SC-002**: El 100 % de los intentos de validación o rechazo realizados por roles distintos al veterinario es rechazado sin modificar la solicitud ni el estado del galpón.
+- **SC-003**: Al menos el 90 % de los veterinarios puede completar la decisión sobre una solicitud en menos de 15 segundos después de revisarla.
+- **SC-004**: El 95 % de las validaciones aprobadas establece el estado `aislamiento` en un máximo de 1 segundo después de su confirmación.
+- **SC-005**: El 100 % de las solicitudes enviadas, consultadas o rechazadas conserva el estado del galpón sin cambios no autorizados.
+- **SC-006**: Cero duplicados (0%) en publicaciones de eventos o cambios de estado gracias al uso de la cabecera `X-Idempotency-Key`.

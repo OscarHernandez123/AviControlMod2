@@ -1,257 +1,141 @@
-# Feature Specification: Ordenar sacrificio sanitario
+# Feature Specification: 012 - Ordenar sacrificio sanitario
 
-**Created**: 2026-09-05  
-**Last Updated**: 2026-09-22  
-## User Scenarios & Testing *(mandatory)*
+**Created**: 2026-09-05
 
-### User Story 1 - Emisión de la Orden de Sacrificio Sanitario Total (Priority: P1)
+**Updated**: 2026-10-26
 
-**Como** Médico Veterinario de la granja,  
-**Quiero** emitir una orden formal de sacrificio sanitario total sobre un lote cuyo diagnóstico clínico haya confirmado una patología letal,  
-**Para** oficializar la directriz de erradicación biológica de toda la parvada afectada y dejar la orden en estado pendiente hasta su ejecución material en campo.
+## User Scenarios & Testing
 
-**Why this priority**: Es la única vía autorizada para formalizar la erradicación sanitaria. Sin esta orden previa, el personal de campo no puede proceder al sacrificio y disposición final de las aves, arriesgando la diseminación masiva del patógeno a galpones vecinos.
+### User Story 1 - Emitir una orden de sacrificio sanitario total (Priority: P1)
 
-**Independent Test**:
-* **Caso A (Emisión exitosa)**: Envío de `POST /api/v1/sanitary/sacrificios` asociando un diagnóstico mortal vigente sobre galpón en `aislamiento` con población > 0. El sistema crea la orden en estado `PENDIENTE`, persiste el evento en outbox y registra la firma en auditoría, manteniendo intacta la población del lote y el estado del galpón en el Módulo 1.
-* **Caso B (Rechazo por patología no letal)**: Envío de `POST` sobre un diagnóstico cuya enfermedad tiene `requiereSacrificioSanitario == false`. El sistema rechaza la solicitud retornando HTTP `409 Conflict` (`EnfermedadNoRequiereSacrificioException`).
+Como veterinario, quiero emitir una orden de sacrificio sanitario total indicando el motivo clínico cuando el diagnóstico del galpón corresponda a una enfermedad mortal que requiere esta medida, para ordenar la erradicación sanitaria de toda la población del lote alojado dejándola pendiente de ejecución.
 
-#### Acceptance Scenarios
+**Why this priority**: La orden formaliza la medida de contención biológica ante una enfermedad mortal sobre toda la población afectada y garantiza que esta decisión sea tomada exclusivamente por el veterinario sin alterar anticipadamente la población ni el estado del galpón.
 
-1. **AS-001 - Scenario**: Emisión exitosa de la orden de sacrificio total
-   * **Given** que existe un diagnóstico clínico activo (`Spec 011`) vinculado a una enfermedad con `requiereSacrificioSanitario == true` (`Spec 009`)
-   * **And** el galpón referenciado se encuentra en estado `aislamiento` verificado en el Módulo 1
-   * **And** el lote alojado posee una población actual mayor a cero (`poblacionActual > 0`)
-   * **When** el Veterinario confirma la emisión de la orden ingresando las observaciones de bioseguridad
-   * **Then** el sistema crea la orden con `alcance = TOTAL`, `estado = PENDIENTE` y marca temporal UTC de emisión
-   * **And** asocia formalmente la orden al `diagnosticoId`, `galponId` y `loteId` correspondientes
-   * **And** persiste atómicamente el evento `OrdenSacrificioEmitidaIntegrationEvent` en `san_outbox` bajo el tópico `sanitary.sacrifice.issued.v1`
-   * **And** asienta la firma inmutable del Veterinario en `san_auditoria` con matrícula y timestamp
-   * **And** conserva la población del lote y el estado `aislamiento` del galpón sin modificaciones operativas
+**Independent Test**: Se puede probar utilizando el diagnóstico confirmado de un galpón en estado `aislamiento`, con un lote cuya población actual sea mayor que cero y una enfermedad cuyo indicador `requiere sacrificio sanitario` sea verdadero. El veterinario debe poder emitir una orden con su motivo clínico que abarque toda la población viva sin ingresar una cantidad parcial. La orden debe quedar en estado `PENDIENTE_EJECUCION` y no debe modificar el lote ni el galpón hasta que se confirme su ejecución.
 
-2. **AS-002 - Scenario**: Rechazo por enfermedad que no requiere sacrificio sanitario
-   * **Given** un diagnóstico vigente cuya patología asociada tiene `requiereSacrificioSanitario == false` (enfermedad tratable clínicamente)
-   * **When** el Veterinario intenta forzar la emisión de una orden de sacrificio para dicho diagnóstico
-   * **Then** el sistema bloquea la operación, responde con HTTP `409 Conflict` (`EnfermedadNoRequiereSacrificioException`)
-   * **And** no crea la orden ni altera el expediente clínico
+**Acceptance Scenarios**:
 
-3. **AS-003 - Scenario**: Rechazo por galpón que no está en aislamiento
-   * **Given** un diagnóstico mortal pero el galpón reporta en el Módulo 1 un estado operativo distinto a `aislamiento` (ej. `productiva`, `en_cosecha`, `vaciado_sanitario`)
-   * **When** el Veterinario intenta emitir la orden
-   * **Then** el sistema responde con HTTP `409 Conflict` (`EstadoGalponIncompatibleException`)
-   * **And** aborta la transacción
+1. **Scenario**: Emisión correcta de una orden de sacrificio sanitario total
+   - **Given** que el diagnóstico del galpón corresponde a una enfermedad cuyo indicador `requiere sacrificio sanitario` es verdadero, el galpón está en estado `aislamiento`, el lote tiene población actual mayor que cero y no existe otra orden pendiente para el galpón
+   - **When** el veterinario emite la orden de sacrificio sanitario ingresando el motivo clínico
+   - **Then** el sistema crea una orden asociada con el diagnóstico, el galpón y el lote, captura la población afectada del momento, establece que comprende toda la población en estado `PENDIENTE_EJECUCION` y conserva sin cambios el lote y el galpón
 
-4. **AS-004 - Scenario**: Rechazo por lote sin población activa
-   * **Given** un diagnóstico mortal vigente sobre un galpón en `aislamiento`
-   * **And** el Módulo 1 reporta que el lote asociado tiene una población igual a cero (`poblacionActual == 0`)
-   * **When** el Veterinario intenta emitir la orden
-   * **Then** el sistema responde con HTTP `409 Conflict` (`LoteSinPoblacionException`)
-   * **And** no crea la orden de sacrificio
+2. **Scenario**: Enfermedad que no requiere sacrificio sanitario
+   - **Given** que el diagnóstico corresponde a una enfermedad tratable cuyo indicador `requiere sacrificio sanitario` es falso
+   - **When** el veterinario intenta emitir una orden de sacrificio sanitario
+   - **Then** el sistema rechaza la operación, informa que la enfermedad diagnosticada no requiere esta medida y no crea la orden
 
-5. **AS-005 - Scenario**: Denegación de acceso a usuarios sin rol veterinario
-   * **Given** un usuario autenticado con rol `TRABAJADOR` o `ADMINISTRADOR`
-   * **When** intenta emitir una orden de sacrificio
-   * **Then** el sistema intercepta la petición con HTTP `403 Forbidden` y no altera la base de datos
+3. **Scenario**: Galpón que no está en aislamiento o lote sin aves vivas
+   - **Given** que el diagnóstico corresponde a una enfermedad que requiere sacrificio sanitario, pero el galpón tiene un estado diferente de `aislamiento` o la población actual del lote es igual a cero
+   - **When** el veterinario intenta emitir la orden
+   - **Then** el sistema rechaza la operación, informa el incumplimiento de la condición operativa y no crea la orden
+
+4. **Scenario**: Intento de emitir una orden duplicada para el mismo galpón
+   - **Given** que el galpón ya cuenta con una orden de sacrificio sanitario en estado `PENDIENTE_EJECUCION`
+   - **When** el veterinario intenta emitir una segunda orden para el mismo galpón y lote
+   - **Then** el sistema rechaza la solicitud informando que ya existe una orden pendiente de ejecución
+
+5. **Scenario**: Emisión por un usuario no autorizado
+   - **Given** que un usuario sin rol de veterinario intenta emitir una orden de sacrificio sanitario
+   - **When** solicita confirmar la orden
+   - **Then** el sistema rechaza la operación, no crea la orden y no modifica el lote ni el galpón
 
 ---
 
-### User Story 2 - Confirmación de la Ejecución del Sacrificio Sanitario (Priority: P2)
+### User Story 2 - Confirmar la ejecución del sacrificio sanitario total (Priority: P2)
 
-**Como** Médico Veterinario de la granja,  
-**Quiero** confirmar que la orden de sacrificio sanitario fue materializada físicamente en campo,  
-**Para** actualizar la población del lote a cero, transicionar el galpón a estado `vaciado_sanitario` en el Módulo 1 y cerrar de forma concluyente la orden sanitaria.
+Como veterinario, quiero confirmar que el sacrificio sanitario total fue ejecutado en campo, para establecer atómicamente en cero la población actual del lote, cambiar el estado del galpón de `aislamiento` a `vaciado sanitario` y marcar la orden como ejecutada.
 
-**Why this priority**: Es el acto concluyente de la erradicación zoosanitaria. Sin esta confirmación técnica, el lote figuraría incorrectamente con aves vivas en el inventario biológico y el galpón no podría iniciar los periodos reglamentarios de desinfección y descanso sanitario.
+**Why this priority**: La confirmación garantiza que el inventario vivo del lote y el estado operativo del galpón solo cambien después de haberse ejecutado realmente el sacrificio en campo, evitando alteraciones anticipadas o ejecuciones parciales.
 
-**Independent Test**:
-* **Caso A (Confirmación exitosa)**: Envío de `PATCH /api/v1/sanitary/sacrificios/{id}/confirmar` sobre una orden en estado `PENDIENTE`. El sistema solicita al Módulo 1 fijar la población en 0 y cambiar el galpón a `vaciado_sanitario`, transiciona la orden a `EJECUTADA`, guarda la traza en auditoría y despacha el evento en outbox.
-* **Caso B (Rechazo por orden ya ejecutada)**: Envío de `PATCH` sobre una orden que ya tiene estado `EJECUTADA`. El sistema responde con HTTP `409 Conflict` (`OrdenYaEjecutadaException`) sin duplicar mutaciones.
+**Independent Test**: Se puede probar confirmando una orden en estado `PENDIENTE_EJECUCION` asociada con un lote que tenga población actual mayor que cero y un galpón en estado `aislamiento`. El sistema debe establecer directamente la población actual del lote en cero, cambiar el galpón a `vaciado sanitario` y marcar la orden como `EJECUTADA` dentro de una única operación atómica.
 
-#### Acceptance Scenarios
+**Acceptance Scenarios**:
 
-1. **AS-006 - Scenario**: Confirmación exitosa de la ejecución del sacrificio
-   * **Given** una orden de sacrificio en estado `PENDIENTE` asociada a un galpón en `aislamiento` con población > 0
-   * **When** el Veterinario confirma la ejecución física del sacrificio sanitario ingresando el método y observaciones de bioseguridad
-   * **Then** el sistema ordena al Módulo 1 establecer la población actual del lote exactamente en cero (`poblacionActual = 0`)
-   * **And** ordena al Módulo 1 transicionar el estado del galpón de `aislamiento` a `vaciado_sanitario`
-   * **And** actualiza la orden marcándola como `EJECUTADA` y registrando `fechaEjecucion` con la marca temporal UTC
-   * **And** persiste atómicamente el evento `SacrificioEjecutadoIntegrationEvent` en `san_outbox` bajo el tópico `sanitary.sacrifice.executed.v1`
-   * **And** registra el asiento inmutable en `san_auditoria` con firma profesional del Veterinario
+1. **Scenario**: Confirmación correcta de la ejecución del sacrificio sanitario total
+   - **Given** que existe una orden en estado `PENDIENTE_EJECUCION`, el lote tiene población actual mayor que cero y el galpón continúa en estado `aislamiento`
+   - **When** el veterinario confirma que el sacrificio sanitario total fue ejecutado (ingresando observaciones de ejecución opcionales)
+   - **Then** el sistema establece la población actual del lote en cero en el módulo 1, cambia el estado del galpón a `vaciado sanitario`, marca la orden como `EJECUTADA` y publica el evento de sacrificio sanitario ejecutado para el módulo 3
 
-2. **AS-007 - Scenario**: Rechazo de confirmación sobre orden ya ejecutada
-   * **Given** una orden de sacrificio que ya fue confirmada previamente (`estado == EJECUTADA`), con el lote en cero y el galpón en `vaciado_sanitario`
-   * **When** el usuario intenta enviar nuevamente la confirmación
-   * **Then** el sistema rechaza la operación con HTTP `409 Conflict` (`OrdenYaEjecutadaException`)
-   * **And** no aplica modificaciones adicionales ni genera nuevos eventos
+2. **Scenario**: Orden pendiente sin ejecución confirmada
+   - **Given** que existe una orden de sacrificio sanitario en estado `PENDIENTE_EJECUCION`
+   - **When** su ejecución todavía no ha sido confirmada por el veterinario
+   - **Then** el sistema conserva la población actual del lote y el estado `aislamiento` del galpón sin cambios
 
-3. **AS-008 - Scenario**: Rechazo por galpón que dejó de estar en aislamiento antes de confirmar
-   * **Given** una orden en estado `PENDIENTE`
-   * **And** el galpón cambió concurrentemente a un estado distinto de `aislamiento` en el Módulo 1
-   * **When** el Veterinario intenta confirmar la ejecución
-   * **Then** el sistema aborta la operación, responde con HTTP `409 Conflict` (`EstadoGalponIncompatibleException`)
-   * **And** no modifica la población del lote ni la orden
+3. **Scenario**: Nueva confirmación sobre una orden ya ejecutada
+   - **Given** que una orden ya fue confirmada previamente como `EJECUTADA`, el lote tiene población cero y el galpón está en `vaciado sanitario`
+   - **When** el veterinario intenta confirmar nuevamente la misma orden
+   - **Then** el sistema rechaza la nueva confirmación con error de conflicto (HTTP 409) y no aplica cambios ni eventos adicionales
 
-4. **AS-009 - Scenario**: Preservación de estado mientras la orden esté pendiente
-   * **Given** una orden de sacrificio en estado `PENDIENTE` cuya ejecución aún no se ha confirmado
-   * **When** se consulta el galpón o el lote
-   * **Then** el sistema verifica que la población del lote se mantiene intacta y el galpón permanece en `aislamiento`
-
-5. **AS-010 - Scenario**: Denegación de acceso en confirmación por rol no autorizado
-   * **Given** un usuario sin rol `VETERINARIO`
-   * **When** intenta confirmar la ejecución de una orden
-   * **Then** el sistema responde con HTTP `403 Forbidden` y mantiene la orden en `PENDIENTE`
-
----
-
-### User Story 3 - Idempotencia y Blindaje Transaccional (Priority: P3)
-
-**Como** Médico Veterinario de la granja,
-**Quiero** que los reintentos de red y las fallas de servicios externos sean gestionados de forma idempotente y atómica,
-**Para** garantizar que ni emisiones ni confirmaciones puedan duplicarse, quedar a medias o producir inconsistencias entre el Módulo 2 y el Módulo 1.
-
-**Why this priority**: Es la garantía de integridad zoosanitaria bajo condiciones de red inestable en campo. Sin blindaje idempotente y rollback cross-context, un timeout podría generar órdenes duplicadas, poblaciones extinguidas sin orden cerrada o galpones transicionados sin auditoría.
-
-**Independent Test**:
-* **Caso A (Idempotencia)**: Envío duplicado del mismo `POST` con la misma `X-Idempotency-Key`. El sistema devuelve la respuesta original cacheada sin crear una segunda orden.
-* **Caso B (Rollback)**: Simulación de caída del Módulo 1 durante el `PATCH /confirmar`. La transacción completa hace Rollback: la orden permanece `PENDIENTE`, el lote no cambia y no se encola outbox.
-
-#### Acceptance Scenarios
-
-1. **AS-011 - Scenario**: Reintento transparente en emisión bajo clave de idempotencia
-   * **Given** que el Veterinario ya envió un `POST /api/v1/sanitary/sacrificios` exitoso con `X-Idempotency-Key = K1`
-   * **And** la orden fue creada en estado `PENDIENTE` con `ordenId = O1`
-   * **When** el cliente reintenta el mismo `POST` con la misma cabecera `X-Idempotency-Key = K1`
-   * **Then** el sistema devuelve la respuesta original almacenada (HTTP `200`/`201` con `ordenId = O1`)
-   * **And** no crea una segunda orden ni duplica asientos en `san_auditoria`
-   * **And** no publica un nuevo `OrdenSacrificioEmitidaIntegrationEvent`
-
-2. **AS-012 - Scenario**: Reintento transparente en confirmación bajo clave de idempotencia
-   * **Given** que el Veterinario ya confirmó exitosamente la ejecución de la orden `O1` con `X-Idempotency-Key = K2`
-   * **And** la orden quedó en estado `EJECUTADA`, el lote en cero y el galpón en `vaciado_sanitario`
-   * **When** el cliente reintenta el `PATCH /confirmar` con la misma cabecera `X-Idempotency-Key = K2`
-   * **Then** el sistema devuelve la respuesta original almacenada
-   * **And** no vuelve a solicitar mutaciones al Módulo 1
-   * **And** no duplica eventos en `san_outbox`
-
-3. **AS-013 - Scenario**: Rollback total por indisponibilidad del Módulo 1 durante la confirmación
-   * **Given** una orden en estado `PENDIENTE` con galpón en `aislamiento` y población > 0
-   * **And** el Módulo 1 no responde o retorna timeout al intentar mutar población o estado del galpón
-   * **When** el Veterinario confirma la ejecución del sacrificio
-   * **Then** el sistema aborta la transacción completa (`Rollback`)
-   * **And** la orden permanece en estado `PENDIENTE`
-   * **And** la población del lote y el estado del galpón no se alteran
-   * **And** no se persiste ningún evento en `san_outbox` ni asiento en `san_auditoria`
-
-4. **AS-014 - Scenario**: Extinción del remanente por mortalidad natural previa a la confirmación
-   * **Given** una orden en estado `PENDIENTE` emitida sobre un lote con población `N > 0`
-   * **And** entre la emisión y la confirmación la población descendió a `M` (con `M > 0` pero `M < N`) por bajas biológicas naturales
-   * **When** el Veterinario confirma la ejecución en campo
-   * **Then** el sistema toma la población remanente `M` y ordena al Módulo 1 fijarla en cero
-   * **And** registra la orden como `EJECUTADA` con `fechaEjecucion` UTC
-   * **And** el evento `SacrificioEjecutadoIntegrationEvent` expone `poblacionExtinguida = M`
-
-5. **AS-015 - Scenario**: Inhibición del reintegro automático por el `DiagnosticoReintegroScheduler`
-   * **Given** un lote con orden de sacrificio en estado `PENDIENTE`
-   * **And** existe un registro residual de reintegro vencido asociado al diagnóstico origen (Spec 011)
-   * **When** el `DiagnosticoReintegroScheduler` evalúa el lote
-   * **Then** el scheduler detecta la orden `PENDIENTE` y omite el reintegro automático
-   * **And** el galpón permanece en estado `aislamiento`
-   * **And** no se transiciona el lote ni se publica evento de reintegro
+4. **Scenario**: Confirmación por un usuario no autorizado
+   - **Given** que un usuario sin rol de veterinario intenta confirmar la ejecución de una orden
+   - **When** solicita completar la confirmación
+   - **Then** el sistema rechaza la operación, conserva la orden en estado `PENDIENTE_EJECUCION` y no modifica el lote ni el galpón
 
 ---
 
 ### Edge Cases
 
-* **Mortalidad natural entre la emisión y la confirmación**: Si la población del lote desciende por bajas biológicas entre la emisión y la confirmación en campo, el sistema toma la población remanente al momento de confirmar y la extingue directamente a cero. La orden cubre la totalidad de aves presentes.
-* **Indisponibilidad del Módulo 1 durante la confirmación**: Si el Módulo 1 no responde o retorna timeout al intentar mutar la población o el estado del galpón, toda la transacción se aborta (`Rollback`): la orden permanece `PENDIENTE`, la población no se altera y no se encola ningún evento en el outbox.
-* **Intervención del Scheduler de Reintegro (`Spec 011`)**: Si un lote con orden de sacrificio en estado `PENDIENTE` tuviese por anomalía una fecha de reintegro previa, el `DiagnosticoReintegroScheduler` comprueba la existencia de la orden de sacrificio y omite el reintegro automático, manteniendo el galpón en `aislamiento`.
-* **Indisponibilidad del broker Kafka**: El patrón Transactional Outbox garantiza la persistencia local de la orden y del evento en `san_outbox` bajo la misma transacción SQL; el worker `OutboxRelayScheduler` reintentará el despacho tan pronto se restablezca la conectividad.
-* **Reintentos por timeout de red**: El uso de la cabecera `X-Idempotency-Key` intercepta llamadas duplicadas tanto en la emisión como en la confirmación, devolviendo la respuesta original almacenada sin replicar transiciones.
+- **Edge case #1 - Cambio de la población entre la emisión y la ejecución**
+  - ¿Cómo maneja el sistema una población viva que disminuye por mortalidad entre la emisión de la orden y la confirmación de su ejecución?  
+    Como la orden comprende el sacrificio sanitario total (100 % de las aves alojadas), el sistema debe verificar que aún existan aves vivas al confirmar y establecer la población actual del lote directamente en cero.
 
----
+- **Edge case #2 - Diagnóstico o indicador de sacrificio no disponible**
+  - ¿Cómo maneja el sistema una solicitud de emisión cuando no puede verificar el diagnóstico o el indicador `requiere sacrificio sanitario`?  
+    El sistema debe rechazar la emisión, informar que no pudo comprobar la condición diagnóstica requerida y conservar el lote y el galpón sin cambios.
 
-## Requirements *(mandatory)*
+- **Edge case #3 - Fallo de disponibilidad al actualizar el lote o el galpón en el módulo 1**
+  - ¿Cómo maneja el sistema una interrupción o indisponibilidad del módulo 1 durante la confirmación de la ejecución?  
+    La confirmación es una transacción atómica indivisible: si no se puede fijar la población en cero o cambiar el estado del galpón a `vaciado sanitario`, toda la operación se revierte (rollback) y la orden permanece en `PENDIENTE_EJECUCION`.
+
+## Requirements
 
 ### Functional Requirements
 
-| ID | Requerimiento Funcional | Justificación Técnica / Trazabilidad |
-| :--- | :--- | :--- |
-| **FR-001** | La emisión y confirmación de órdenes de sacrificio DEBE estar restringida exclusivamente a usuarios autenticados con rol `VETERINARIO`. | Restricción clínica y regulatoria de inocuidad. |
-| **FR-002** | El sistema DEBE permitir la emisión de la orden únicamente sobre diagnósticos vigentes cuya enfermedad tenga `requiereSacrificioSanitario == true`. | Coherencia con el catálogo nosológico (`Spec 009`) y diagnóstico (`Spec 011`). |
-| **FR-003** | El galpón referenciado DEBE encontrarse en estado operativo `aislamiento` en el Módulo 1 al momento de emitir la orden. | Precondición sanitaria obligatoria (`Spec 010`). |
-| **FR-004** | El lote alojado en el galpón DEBE tener población actual mayor a cero (`poblacionActual > 0`) al momento de emitir la orden. | Validación de existencia biológica sujeta a erradicación. |
-| **FR-005** | Cada orden DEBE quedar asociada de forma unívoca a un `diagnosticoId`, `galponId` y `loteId`. | Trazabilidad epidemiológica del lote. |
-| **FR-006** | La emisión de la orden NO DEBE alterar la población del lote ni el estado del galpón; la orden se crea en estado `PENDIENTE`. | Separación formal entre instrucción clínica y ejecución material. |
-| **FR-007** | Antes de confirmar la ejecución, el sistema DEBE verificar síncronamente que la orden esté en `PENDIENTE`, el galpón continúe en `aislamiento` y la población sea mayor a cero. | Consistencia de estados pre-ejecución. |
-| **FR-008** | Al confirmar la ejecución, el sistema DEBE ordenar al Módulo 1 fijar la población actual del lote en cero (`0`). | Erradicación biológica efectiva del inventario. |
-| **FR-009** | Al confirmar la ejecución, el sistema DEBE ordenar al Módulo 1 transicionar el galpón de `aislamiento` a `vaciado_sanitario`. | Habilitación de la etapa de desinfección y bioseguridad. |
-| **FR-010** | Al confirmar la ejecución, el sistema DEBE marcar la orden como `EJECUTADA` y registrar la marca temporal UTC del momento exacto (`fechaEjecucion`). | Inmutabilidad de auditoría temporal. |
-| **FR-011** | La confirmación DEBE ejecutarse como una operación atómica: mutación de población + transición de galpón + cierre de orden + outbox + auditoría bajo un mismo `@Transactional`. | Integridad transaccional ACID. |
-| **FR-012** | Al confirmar la ejecución, el sistema DEBE persistir atómicamente el evento `SacrificioEjecutadoIntegrationEvent` en `san_outbox` bajo el tópico `sanitary.sacrifice.executed.v1`. | Entrega asíncrona garantizada vía Transactional Outbox. |
-| **FR-013** | Cada emisión y cada confirmación DEBE registrar un asiento inmutable en `san_auditoria` con usuario, matrícula profesional, `ordenId`, `galponId`, `loteId` y justificación técnica. | Trazabilidad legal zoosanitaria. |
-| **FR-014** | Queda ESTRICTAMENTE PROHIBIDO el borrado físico (`DELETE` en SQL) sobre las tablas `san_ordenes_sacrificio` y `san_auditoria`. | Mandato de conservación de registros sanitarios. |
-| **FR-015** | El sistema DEBE implementar control de concurrencia optimista (`@Version`) sobre la orden y admitir cabeceras `X-Idempotency-Key` retenidas durante 24 horas. | Prevención de colisiones concurrentes y reintentos. |
-| **FR-016** | Toda orden comprende el 100% de la población del lote (`alcance = TOTAL`); el sistema NO DEBE solicitar ni permitir el ingreso de cantidades parciales. | Alcance total mandatorio de erradicación. |
+- **FR-001**: El sistema DEBE permitir la emisión y la confirmación de órdenes de sacrificio sanitario exclusivamente a usuarios autenticados con rol de veterinario (permitiendo la consulta de estado y detalle a veterinarios y administradores).
+- **FR-002**: El sistema DEBE exponer un mecanismo de consulta (endpoint GET) que permita obtener el detalle y estado de una orden de sacrificio sanitario específica.
+- **FR-003**: El sistema DEBE permitir emitir la orden únicamente cuando exista un diagnóstico confirmado en el galpón cuyo indicador `requiere sacrificio sanitario` sea estrictamente verdadero.
+- **FR-004**: El galpón relacionado con el diagnóstico DEBE encontrarse en estado `aislamiento` y el lote activo DEBE tener una población actual mayor que cero tanto al emitir la orden como al confirmar su ejecución.
+- **FR-005**: Cada orden DEBE quedar asociada con un único diagnóstico (`diagnosticoId`), el galpón diagnosticado (`galponId`), el lote alojado (`loteId`) y el motivo clínico obligatorio, impidiendo emitir una segunda orden pendiente para el mismo galpón.
+- **FR-006**: La orden DEBE comprender invariablemente el 100 % de la población del lote alojado (alcance total), sin solicitar ni permitir ingresar cantidades parciales ni pesajes comerciales.
+- **FR-007**: Mientras la orden se encuentre en estado `PENDIENTE_EJECUCION`, el sistema NO DEBE modificar la población del lote ni cambiar el estado `aislamiento` del galpón.
+- **FR-008**: Al confirmar la ejecución, el sistema DEBE establecer la población actual del lote en exactamente cero, cambiar el estado del galpón de `aislamiento` a `vaciado sanitario` y marcar la orden como `EJECUTADA` dentro de una sola operación atómica local.
+- **FR-009**: Una orden en estado `EJECUTADA` DEBE ser inmutable y rechazar cualquier intento posterior de re-confirmación o edición.
+- **FR-010**: Tras confirmar la ejecución, el sistema DEBE publicar el evento de integración (`SacrificioEjecutadoEvent`) para que el módulo 3 registre la baja contable del lote como merma sanitaria sin liquidación de venta comercial.
+- **FR-011**: El sistema DEBE soportar cabeceras de idempotencia técnica (`X-Idempotency-Key`) y control de concurrencia optimista (`@Version`) para evitar la emisión duplicada de órdenes o la doble ejecución de una misma orden ante reintentos de red.
 
 ### Non-Functional Requirements
 
-| ID | Categoría | Requerimiento | Métrica |
-| :--- | :--- | :--- | :--- |
-| **NFR-001** | Rendimiento | Latencia de emisión, confirmación, persistencia atómica y respuesta idempotente cacheada | < 1 s (p95) en confirmación; < 100 ms (p95) en respuestas idempotentes servidas desde caché |
-| **NFR-002** | Seguridad | Acceso restringido exclusivamente al rol VETERINARIO | HTTP 403 Forbidden a otros roles |
-| **NFR-003** | Integridad | Escritura atómica (orden + outbox + auditoría) bajo `@Transactional` | 100% de consistencia local |
-| **NFR-004** | Persistencia | Prohibición estricta de sentencias `DELETE` SQL en base de datos | 0% borrados físicos |
-| **NFR-005** | Disponibilidad | Si el Módulo 1 no responde durante la confirmación, la transacción se aborta completamente (Rollback) | 0% de inconsistencias por fallo cross-context |
-| **NFR-006** | Consistencia | El `DiagnosticoReintegroScheduler` (Spec 011) debe omitir reintegros cuando exista orden de sacrificio `PENDIENTE` | 100% de inhibiciones correctas |
-
----
+| ID          | Categoría      | Requerimiento                                                                              | Métrica                                 |
+| :---------- | :------------- | :----------------------------------------------------------------------------------------- | :-------------------------------------- |
+| **NFR-001** | Rendimiento    | Latencia de emisión, confirmación y persistencia                                           | < 1 segundo (p95) bajo carga normal     |
+| **NFR-002** | Seguridad      | Acceso restringido exclusivamente al rol VETERINARIO (emisión/confirmación)                | HTTP 403 Forbidden a otros roles        |
+| **NFR-003** | Integridad     | Escritura atómica (orden + actualización Módulo 1) bajo `@Transactional`                   | 100% de consistencia local              |
+| **NFR-004** | Disponibilidad | Si el Módulo 1 no responde durante la confirmación, la transacción se aborta completamente | 0% de inconsistencias por fallo cruzado |
 
 ### Key Entities
 
-```text
-+---------------------------------------------------------------------------------+
-|                                 <<Aggregate Root>>                              |
-|                              OrdenSacrificioSanitario                           |
-+---------------------------------------------------------------------------------+
-| - id: UUID                                                                      |
-| - diagnosticoId: UUID                                (Ref. Spec 011)            |
-| - galponId: UUID                                     (Ref. Externa Módulo 1)    |
-| - loteId: UUID                                       (Ref. Externa Módulo 1)    |
-| - veterinarioId: UUID                                                           |
-| - alcance: AlcanceOrden                              (TOTAL)                    |
-| - estado: EstadoOrden                                (PENDIENTE, EJECUTADA)     |
-| - fechaEmision: Instant                                                         |
-| - fechaEjecucion: Instant [0..1]                     (Nullable, asignado al fin)|
-| - observacionesEmision: String                       (Mínimo 10 caracteres)     |
-| - observacionesEjecucion: String [0..1]              (Nullable)                 |
-| - version: Integer                                   (@Version Optimistic Lock) |
-+---------------------------------------------------------------------------------+
-```
+- **Orden de sacrificio sanitario**: Representa la instrucción veterinaria de sacrificar toda la población de un lote por causa de una enfermedad mortal.
+  - **Atributos**: identificador UUID, `diagnosticoId`, `galponId`, `loteId`, `poblacionAfectadaMomento`, `motivoClinico`, `emitidaPor`, `emitidaEn`, `ejecutadaPor` (opcional), `ejecutadaEn` (opcional), `observacionesEjecucion` (opcional) y `estado` (`PENDIENTE_EJECUCION`, `EJECUTADA`).
+  - **Relaciones**: corresponde de forma unívoca a un diagnóstico elegible (Spec 011), al galpón en `aislamiento` y al lote activo cuya población se extinguirá a cero.
+- **Diagnóstico del galpón**: Representa el diagnóstico clínico que habilita la orden de sacrificio sanitario.
+  - **Relaciones**: corresponde al galpón y al lote evaluados, referencia directamente a la Enfermedad diagnosticada sin medicación asociada y conserva el indicador `requiere sacrificio sanitario` en verdadero.
+- **Enfermedad**: Representa la patología mortal diagnosticada (Spec 009).
+  - **Atributos utilizados**: indicador booleano `requiere sacrificio sanitario` en verdadero.
+- **Lote**: Representa la totalidad de aves afectadas por la orden, propiedad del módulo 1.
+  - **Atributos utilizados**: población actual (`> 0` antes de ejecutar; pasa a `0` al confirmar la ejecución).
+- **Galpón**: Representa la instalación física afectada, propiedad del módulo 1.
+  - **Atributos utilizados**: estado (pasa de `aislamiento` a `vaciado sanitario` al confirmar la ejecución).
 
-* **OrdenSacrificioSanitario** *(Aggregate Root)*: Entidad médica central que orquesta la directriz de sacrificio total y su ciclo de vida (`PENDIENTE` $\to$ `EJECUTADA`).
-* **Diagnóstico**: Expediente clínico del `Spec 011` que sustenta la orden. Precondición estricta de existencia con patología letal.
-* **Enfermedad**: Entidad del catálogo nosológico (`Spec 009`) cuyo indicador `requiereSacrificioSanitario == true` autoriza la emisión.
-* **Galpón y Lote**: Entidades externas bajo propiedad del Módulo 1. El Módulo 2 verifica su viabilidad y comanda las transiciones (`aislamiento` $\to$ `vaciado_sanitario` y `poblacion > 0` $\to$ `poblacion = 0`).
-* **OrdenSacrificioEmitidaIntegrationEvent**: Evento publicado tras la emisión (`eventId`, `aggregateId`, `diagnosticoId`, `galponId`, `loteId`, `veterinarioId`, `occurredOn`).
-* **SacrificioEjecutadoIntegrationEvent**: Evento publicado tras la ejecución material (`eventId`, `aggregateId`, `galponId`, `loteId`, `poblacionExtinguida`, `occurredOn`).
-* **Auditoría Sanitaria (`san_auditoria`)**: Bitácora append-only inmutable de control legal.
-* **Transactional Outbox (`san_outbox`)**: Tabla relacional local para garantizar publicación confiable hacia Kafka.
-
----
-
-## Success Criteria *(mandatory)*
+## Success Criteria
 
 ### Measurable Outcomes
 
-| ID | Criterio de Éxito | Métrica Objetivo | Validación Técnica |
-| :--- | :--- | :--- | :--- |
-| **SC-001** | El 100% de las órdenes emitidas corresponde a diagnósticos activos con `requiereSacrificioSanitario == true`. | 100% de cumplimiento | Validación en caso de uso contra `DiagnosticoQueryPort` y `EnfermedadQueryPort`. |
-| **SC-002** | El 100% de las órdenes emitidas comprende la totalidad del lote sin admitir ingresos numéricos parciales. | Cero órdenes parciales | Invariante en Aggregate Root (`alcance = TOTAL`). |
-| **SC-003** | El 100% de las órdenes en estado `PENDIENTE` conserva la población del lote y el estado `aislamiento` sin modificaciones. | Cero mutaciones anticipadas | Verificación de persistencia en Módulo 1 y tabla local. |
-| **SC-004** | El 100% de las órdenes confirmadas fija la población en cero y transiciona el galpón a `vaciado_sanitario`. | 100% de efectividad | Test de integración con Testcontainers en `ConfirmarSacrificioUseCase`. |
-| **SC-005** | El 100% de los intentos de emisión o confirmación ejecutados por roles distintos a `VETERINARIO` son bloqueados. | Cero accesos no autorizados | Prueba de seguridad HTTP 403 Forbidden. |
-| **SC-006** | El 95% de las confirmaciones válidas procesa la transacción de población, galpón y orden en menos de 1 segundo. | Latencia < 1 s | Pruebas de carga bajo concurrencia con Gatling. |
-| **SC-007** | Cero duplicidad (0%) en órdenes o eventos outbox ante reintentos de red. | Cero duplicados | Validación con `X-Idempotency-Key` y `@Version`. |
-| **SC-008** | Cero incidentes (0%) de borrado físico (`DELETE` SQL) sobre órdenes o asientos de auditoría. | 100% de persistencia | Revocación de permisos `DELETE` a nivel de base de datos. |
-| **SC-009** | El 100% de los eventos de integración se resguarda en `san_outbox` dentro de la misma transacción local de base de datos. | Atomicidad total | Verificación transaccional rollback ante fallos simulados. |
-
+- **SC-001**: El 100 % de las órdenes creadas corresponde a diagnósticos confirmados cuyo indicador `requiere sacrificio sanitario` es verdadero.
+- **SC-002**: El 100 % de las órdenes emitidas comprende toda la población del lote sin solicitar una cantidad parcial al veterinario.
+- **SC-003**: El 100 % de las órdenes en estado `PENDIENTE_EJECUCION` conserva la población del lote y el estado `aislamiento` del galpón sin cambios.
+- **SC-004**: El 100 % de las órdenes confirmadas como `EJECUTADA` establece la población actual del lote en cero y cambia el galpón a `vaciado sanitario` de forma atómica.
+- **SC-005**: El 100 % de los intentos de emisión o confirmación realizados por roles distintos al veterinario es rechazado sin crear órdenes ni modificar el lote o el galpón.
+- **SC-006**: El 95 % de las emisiones y confirmaciones válidas se procesa y actualiza en un máximo de 1 segundo.
+- **SC-007**: Cero duplicados (0%) en la creación de órdenes o ejecuciones gracias al uso de la cabecera `X-Idempotency-Key`.

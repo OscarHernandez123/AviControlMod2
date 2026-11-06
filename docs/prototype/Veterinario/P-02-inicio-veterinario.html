@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AviControl - Inicio de Veterinario (Dashboard)</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: #1e1e1e;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      margin: 0;
+      padding: 12px;
+    }
+    /* Lienzo estricto de Figma: 1416px x 945px sin desbordes */
+    .figma-frame {
+      width: 1416px;
+      height: 945px;
+      background-color: #FAF8F2;
+      overflow: hidden;
+      display: flex;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+      border-radius: 12px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- CONTENEDOR PRINCIPAL: 1416px x 945px -->
+  <div class="figma-frame">
+
+    <!-- 1. SIDEBAR IZQUIERDA (#185C2B) -->
+    <aside class="w-[235px] h-full bg-[#185C2B] text-white flex flex-col justify-between py-5 px-4 shrink-0 select-none">
+      <div>
+        <!-- Logo Granja Avícola con la Gallina original -->
+        <div class="flex flex-col items-center text-center mb-7 px-2">
+          <div class="w-14 h-14 flex items-center justify-center mb-1.5">
+            <!-- SVG exacto del logo de la gallina con cresta amarilla y hoja verde claro -->
+            <svg class="w-13 h-13" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <!-- Cresta amarilla -->
+              <path d="M27 14C27 11.5 29.5 10 31.5 11.5C33 9.5 36 10.5 36 13C38 12.5 39.5 14.5 38 16.5" stroke="#F59E0B" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+              <!-- Cuerpo de la gallina blanco -->
+              <path d="M22 25C22 19.5 26.5 15 32 15C36.5 15 40 18 40 22.5C40 25 39 27.5 39 30C39 33 42 35 46 35C49 35 51.5 33.5 53 32C52.5 38.5 47 45 38.5 45C29.5 45 23 39 23 30.5C23 29 22.5 27.5 20 26.5L18 25.5L22 25Z" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+              <!-- Ojo amarillo -->
+              <circle cx="30" cy="21" r="1.8" fill="#F59E0B"/>
+              <!-- Ala interna -->
+              <path d="M29 33C32 35.5 36.5 35.5 39.5 33" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round"/>
+              <!-- Hoja verde claro (brote inferior derecho) -->
+              <path d="M41 49C41 42 46 36 53 36C53 43 48 48 41 49Z" stroke="#86EFAC" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M40 53L47 42" stroke="#86EFAC" stroke-width="3" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <h1 class="text-lg font-extrabold tracking-tight leading-tight text-white">Granja Avícola</h1>
+          <p class="text-[11px] text-emerald-100/80 font-medium mt-0.5">Producción que alimenta</p>
+        </div>
+
+        <!-- Menú de Navegación -->
+        <nav class="space-y-1.5 text-sm font-medium">
+          <!-- Ítem Activo: Inicio (#F59E0B) -->
+          <a href="#" class="flex items-center gap-3 px-4 py-2.5 rounded-xl bg-[#F59E0B] text-slate-950 font-bold shadow-sm transition">
+            <svg class="w-5 h-5 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+              <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z"/>
+            </svg>
+            <span>Inicio</span>
+          </a>
+
+          <!-- Gestión Sanitaria (Planes 005 y 006) -->
+          <a href="#" class="flex items-center justify-between px-4 py-2.5 rounded-xl text-emerald-50 hover:bg-white/10 transition">
+            <div class="flex items-center gap-3">
+              <svg class="w-5 h-5 shrink-0 text-emerald-300" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"/>
+              </svg>
+              <span>Gestión Sanitaria</span>
+            </div>
+          </a>
+
+          <!-- Alertas Sanitarias (Plan 013) -->
+          <a href="#" class="flex items-center justify-between px-4 py-2.5 rounded-xl text-emerald-50 hover:bg-white/10 transition">
+            <div class="flex items-center gap-3">
+              <svg class="w-5 h-5 shrink-0 text-red-300" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+              </svg>
+              <span>Alertas Sanitarias</span>
+            </div>
+            <span class="bg-red-600 text-white text-[11px] font-bold px-2 py-0.5 rounded-full">2</span>
+          </a>
+
+          <!-- Órdenes de Sacrificio (Plan 008) -->
+          <a href="#" class="flex items-center justify-between px-4 py-2.5 rounded-xl text-emerald-50 hover:bg-white/10 transition">
+            <div class="flex items-center gap-3">
+              <svg class="w-5 h-5 shrink-0 text-emerald-300" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+              </svg>
+              <span>Órdenes de Sacrificio</span>
+            </div>
+          </a>
+
+          <!-- Configuración -->
+          <a href="#" class="flex items-center gap-3 px-4 py-2.5 rounded-xl text-emerald-50 hover:bg-white/10 transition">
+            <svg class="w-5 h-5 shrink-0 text-emerald-300" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+              <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+            </svg>
+            <span>Configuración</span>
+          </a>
+        </nav>
+      </div>
+
+      <!-- Pie de Sidebar -->
+      <div class="border-t border-white/15 pt-3.5 px-2 flex items-center gap-2.5 text-xs text-emerald-100/80">
+        <svg class="w-5 h-5 text-emerald-300 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 21v-8.25M15.75 21v-8.25M8.25 21v-8.25M3 9l9-6 9 6m-1.5 12V10.332A48.36 48.36 0 0012 9.75c-2.551 0-5.056.2-7.5.582V21M3 21h18M12 6.75h.008v.008H12V6.75z"/>
+        </svg>
+        <div class="leading-tight">
+          <p class="font-semibold text-white">Aves sanas</p>
+          <p class="text-[11px]">un mejor mañana</p>
+        </div>
+      </div>
+    </aside>
+
+    <!-- ÁREA PRINCIPAL DERECHA (1181px) -->
+    <div class="flex-1 flex flex-col h-full overflow-hidden">
+
+      <!-- 2. HEADER SUPERIOR LIMPIO + TÍTULO DE SECCIÓN -->
+      <header class="h-[54px] bg-white border-b border-stone-200/80 px-6 flex items-center justify-end shrink-0">
+        <!-- Derecha: únicamente texto "Veterinario" + círculo dorado (#B49B3E) -->
+        <div class="flex items-center gap-2.5">
+          <span class="text-xs font-bold text-slate-700">Veterinario</span>
+          <div class="w-8 h-8 rounded-full bg-[#B49B3E] text-white flex items-center justify-center shadow-sm">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+            </svg>
+          </div>
+        </div>
+      </header>
+
+      <!-- CONTENIDO DEL DASHBOARD (H-FULL SIN DESBORDES) -->
+      <main class="flex-1 px-6 py-4 flex flex-col gap-3.5 overflow-hidden">
+
+        <!-- TÍTULO PRINCIPAL -->
+        <div class="shrink-0">
+          <h2 class="text-2xl font-extrabold text-slate-900 tracking-tight leading-tight">Inicio de veterinario</h2>
+          <p class="text-xs text-slate-500 font-medium">Resumen general de la operación — Viernes, 30 de octubre de 2026</p>
+        </div>
+
+        <!-- 3. FILA DE 4 TARJETAS KPI COMPACTAS -->
+        <section class="grid grid-cols-4 gap-3.5 shrink-0">
+          
+          <!-- KPI 1: Alerta Sanitaria (Plan 013) -->
+          <div class="bg-white rounded-xl p-3.5 shadow-sm border border-red-100 flex items-center gap-3.5">
+            <div class="w-11 h-11 rounded-xl bg-red-50 border border-red-100 flex items-center justify-center text-[#DC2626] shrink-0">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+              </svg>
+            </div>
+            <div class="min-w-0">
+              <p class="text-[11px] font-bold text-slate-600 truncate">Alerta Sanitaria (Plan 013)</p>
+              <p class="text-2xl font-extrabold text-[#DC2626] leading-tight">2</p>
+              <p class="text-[10px] font-semibold text-red-600/90 truncate">Alertas de Mortalidad Pendientes</p>
+            </div>
+          </div>
+
+          <!-- KPI 2: Solicitudes de Aislamiento (Plan 014) -->
+          <div class="bg-white rounded-xl p-3.5 shadow-sm border border-stone-200/70 flex items-center gap-3.5">
+            <div class="w-11 h-11 rounded-xl bg-amber-50 border border-amber-100 flex items-center justify-center text-[#F59E0B] shrink-0">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+              </svg>
+            </div>
+            <div class="min-w-0">
+              <p class="text-[11px] font-bold text-slate-600 truncate">Solicitudes por Validar</p>
+              <div class="flex items-baseline gap-1.5">
+                <p class="text-2xl font-extrabold text-[#F59E0B] leading-tight">5</p>
+                <span class="text-[10px] font-bold text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded">2 pendientes</span>
+              </div>
+              <p class="text-[10px] font-medium text-slate-500 truncate">Enviadas por trabajadores (Plan 014)</p>
+            </div>
+          </div>
+
+          <!-- KPI 3: Galpones Aislados -->
+          <div class="bg-white rounded-xl p-3.5 shadow-sm border border-stone-200/70 flex items-center gap-3.5">
+            <div class="w-11 h-11 rounded-xl bg-sky-50 border border-sky-100 flex items-center justify-center text-[#0EA5E9] shrink-0">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"/>
+              </svg>
+            </div>
+            <div class="min-w-0">
+              <p class="text-[11px] font-bold text-slate-600 truncate">Galpones Aislados</p>
+              <p class="text-2xl font-extrabold text-[#0EA5E9] leading-tight">2</p>
+              <p class="text-[10px] font-semibold text-sky-700 truncate">En estado "Aislamiento"</p>
+            </div>
+          </div>
+
+          <!-- KPI 4: Diagnósticos Activos -->
+          <div class="bg-white rounded-xl p-3.5 shadow-sm border border-stone-200/70 flex items-center gap-3.5">
+            <div class="w-11 h-11 rounded-xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-[#10B981] shrink-0">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/>
+              </svg>
+            </div>
+            <div class="min-w-0">
+              <p class="text-[11px] font-bold text-slate-600 truncate">Diagnósticos Activos</p>
+              <p class="text-2xl font-extrabold text-[#10B981] leading-tight">3</p>
+              <p class="text-[10px] font-semibold text-emerald-700 truncate">2 en tratamiento, 1 sacrificio</p>
+            </div>
+          </div>
+
+        </section>
+
+        <!-- 4. DISTRIBUCIÓN CENTRAL (DOS COLUMNAS: 70% IZQUIERDA / 30% DERECHA) -->
+        <div class="flex-1 grid grid-cols-12 gap-3.5 min-h-0">
+
+          <!-- COLUMNA IZQUIERDA (8 de 12 columnas) -->
+          <div class="col-span-8 flex flex-col gap-3.5 min-h-0">
+
+            <!-- TABLA: Bandeja de Solicitudes de Aislamiento (Plan 014) -->
+            <div class="bg-white rounded-xl p-4 shadow-sm border border-stone-200/70 flex flex-col shrink-0">
+              <div class="flex items-center justify-between mb-2.5">
+                <div class="flex items-center gap-2">
+                  <div class="w-7 h-7 rounded-lg bg-emerald-50 text-[#185C2B] flex items-center justify-center shrink-0">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                    </svg>
+                  </div>
+                  <div>
+                    <h3 class="text-xs font-bold text-slate-900">Bandeja de Solicitudes de Aislamiento (Plan 014)</h3>
+                    <p class="text-[10px] text-slate-500">Solicitudes en <span class="font-semibold text-amber-700">PENDIENTE_VALIDACION</span> sobre galpones en estado Productivo (Specs 020 / 010)</p>
+                  </div>
+                </div>
+                <span class="bg-amber-50 text-amber-800 border border-amber-200 text-[10px] font-bold px-2.5 py-0.5 rounded-full">
+                  2 Pendientes de Validar
+                </span>
+              </div>
+
+              <div class="overflow-hidden rounded-lg border border-stone-200/80">
+                <table class="w-full text-left border-collapse table-fixed">
+                  <thead>
+                    <tr class="bg-stone-100/90 text-[10px] font-bold text-slate-600 uppercase tracking-wider border-b border-stone-200">
+                      <th class="py-2 px-3 w-[22%]">Galpón / Lote</th>
+                      <th class="py-2 px-2.5 w-[15%]">Fecha / Hora</th>
+                      <th class="py-2 px-3 w-[35%]">Motivo / Signos Observados</th>
+                      <th class="py-2 px-2 text-center w-[15%]">Estado Galpón</th>
+                      <th class="py-2 px-3 text-right w-[13%]">Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody class="divide-y divide-stone-200/70 text-[11px]">
+                    <!-- Fila 1 -->
+                    <tr class="hover:bg-stone-50/80 transition">
+                      <td class="py-2 px-3">
+                        <p class="font-bold text-slate-900 leading-tight">Galpón 5</p>
+                        <span class="inline-block mt-0.5 text-[10px] font-semibold bg-emerald-50 text-emerald-800 px-1.5 py-0.5 rounded">Lote #LDP-005 · 7.920 aves</span>
+                      </td>
+                      <td class="py-2 px-2.5 text-slate-600 font-medium whitespace-nowrap">
+                        25 Oct, 13:10
+                        <span class="block text-[10px] text-slate-400">Edad: 21 días</span>
+                      </td>
+                      <td class="py-2 px-3">
+                        <p class="font-semibold text-slate-800 truncate">Sospecha de cuadro respiratorio agudo en sector norte</p>
+                        <p class="text-[10px] text-slate-500 truncate">Signos: Estertores traqueales, plumas erizadas y bajo consumo de agua.</p>
+                      </td>
+                      <td class="py-2 px-2 text-center">
+                        <span class="inline-flex items-center gap-1 bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                          <span class="w-1.5 h-1.5 rounded-full bg-emerald-600"></span>
+                          PRODUCTIVO
+                        </span>
+                      </td>
+                      <td class="py-2 px-3 text-right">
+                        <button class="bg-[#185C2B] hover:bg-[#134821] text-white text-[11px] font-semibold px-3 py-1 rounded-lg shadow-sm transition inline-flex items-center gap-1">
+                          <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2.3" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                          </svg>
+                          Evaluar
+                        </button>
+                      </td>
+                    </tr>
+
+                    <!-- Fila 2 -->
+                    <tr class="hover:bg-stone-50/80 transition">
+                      <td class="py-2 px-3">
+                        <p class="font-bold text-slate-900 leading-tight">Galpón 1</p>
+                        <span class="inline-block mt-0.5 text-[10px] font-semibold bg-emerald-50 text-emerald-800 px-1.5 py-0.5 rounded">Lote #LDP-001 · 5.000 aves</span>
+                      </td>
+                      <td class="py-2 px-2.5 text-slate-600 font-medium whitespace-nowrap">
+                        25 Oct, 09:45
+                        <span class="block text-[10px] text-slate-400">Edad: 38 días</span>
+                      </td>
+                      <td class="py-2 px-3">
+                        <p class="font-semibold text-slate-800 truncate">Incremento repentino de aves decaídas y diarrea</p>
+                        <p class="text-[10px] text-slate-500 truncate">Signos: Aves postradas cerca de bebederos y heces sanguinolentas.</p>
+                      </td>
+                      <td class="py-2 px-2 text-center">
+                        <span class="inline-flex items-center gap-1 bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                          <span class="w-1.5 h-1.5 rounded-full bg-emerald-600"></span>
+                          PRODUCTIVO
+                        </span>
+                      </td>
+                      <td class="py-2 px-3 text-right">
+                        <button class="bg-[#185C2B] hover:bg-[#134821] text-white text-[11px] font-semibold px-3 py-1 rounded-lg shadow-sm transition inline-flex items-center gap-1">
+                          <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2.3" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                          </svg>
+                          Evaluar
+                        </button>
+                      </td>
+                    </tr>
+
+                    <!-- Fila 3 -->
+                    <tr class="hover:bg-stone-50/80 transition">
+                      <td class="py-2 px-3">
+                        <p class="font-bold text-slate-900 leading-tight">Galpón 4</p>
+                        <span class="inline-block mt-0.5 text-[10px] font-semibold bg-emerald-50 text-emerald-800 px-1.5 py-0.5 rounded">Lote #LDP-004 · 3.950 aves</span>
+                      </td>
+                      <td class="py-2 px-2.5 text-slate-600 font-medium whitespace-nowrap">
+                        24 Oct, 16:20
+                        <span class="block text-[10px] text-slate-400">Edad: 29 días</span>
+                      </td>
+                      <td class="py-2 px-3">
+                        <p class="font-semibold text-slate-800 truncate">Decaimiento súbito y jadeo constante en zona central</p>
+                        <p class="text-[10px] text-slate-500 truncate">Signos: Crestas pálidas, letargo generalizado y caída de ingesta.</p>
+                      </td>
+                      <td class="py-2 px-2 text-center">
+                        <span class="inline-flex items-center gap-1 bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                          <span class="w-1.5 h-1.5 rounded-full bg-emerald-600"></span>
+                          PRODUCTIVO
+                        </span>
+                      </td>
+                      <td class="py-2 px-3 text-right">
+                        <button class="bg-[#185C2B] hover:bg-[#134821] text-white text-[11px] font-semibold px-3 py-1 rounded-lg shadow-sm transition inline-flex items-center gap-1">
+                          <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2.3" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                          </svg>
+                          Evaluar
+                        </button>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- PANEL DE ALERTAS SANITARIAS (Plan 013 / Spec 018) -->
+            <div class="bg-white rounded-xl p-4 shadow-sm border border-red-200/80 flex-1 flex flex-col justify-between min-h-0">
+              <div class="flex items-center justify-between mb-2">
+                <div class="flex items-center gap-2">
+                  <div class="w-7 h-7 rounded-lg bg-red-50 text-[#DC2626] flex items-center justify-center shrink-0">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                  </div>
+                  <div>
+                    <h3 class="text-xs font-bold text-slate-900">Alertas Recientes de Mortalidad Anormal (Plan 013)</h3>
+                    <p class="text-[10px] text-slate-500">Generadas automáticamente al superar el umbral diario de bajas (Spec 017 / Spec 018)</p>
+                  </div>
+                </div>
+                <span class="bg-red-50 text-red-700 border border-red-200 text-[10px] font-bold px-2.5 py-0.5 rounded-full">
+                  Prioridad Alta / Crítica
+                </span>
+              </div>
+
+              <div class="space-y-2 my-auto">
+                <!-- Alerta 1 -->
+                <div class="flex items-center justify-between bg-red-50/60 border border-red-200/80 rounded-xl px-3.5 py-2">
+                  <div class="flex items-center gap-3 min-w-0">
+                    <span class="bg-[#DC2626] text-white text-[10px] font-extrabold px-2.5 py-1 rounded-lg whitespace-nowrap shrink-0">
+                      0.36% Mortalidad
+                    </span>
+                    <div class="min-w-0">
+                      <p class="text-[11px] font-bold text-slate-900 truncate">
+                        Galpón 1 (Lote #LDP-001) — <span class="text-red-700">18 muertes anormales registradas</span>
+                      </p>
+                      <p class="text-[10px] text-slate-600 truncate">
+                        <span class="font-semibold">Causa probable:</span> Problemas digestivos / entéricos · <span class="text-slate-500">Reportado hoy, 07:15 AM</span>
+                      </p>
+                    </div>
+                  </div>
+                  <button class="bg-[#DC2626] hover:bg-red-700 text-white text-[11px] font-semibold px-3 py-1 rounded-lg shadow-sm transition shrink-0 ml-3">
+                    Ver Alerta
+                  </button>
+                </div>
+
+                <!-- Alerta 2 -->
+                <div class="flex items-center justify-between bg-red-50/40 border border-red-200/60 rounded-xl px-3.5 py-2">
+                  <div class="flex items-center gap-3 min-w-0">
+                    <span class="bg-red-800 text-white text-[10px] font-extrabold px-2.5 py-1 rounded-lg whitespace-nowrap shrink-0">
+                      1.15% Mortalidad
+                    </span>
+                    <div class="min-w-0">
+                      <p class="text-[11px] font-bold text-slate-900 truncate">
+                        Galpón 4 (Lote #LDP-004) — <span class="text-red-700">46 muertes súbitas registradas</span>
+                      </p>
+                      <p class="text-[10px] text-slate-600 truncate">
+                        <span class="font-semibold">Causa probable:</span> Cuadro respiratorio agudo / cianosis · <span class="text-slate-500">Ayer, 17:40 PM</span>
+                      </p>
+                    </div>
+                  </div>
+                  <button class="bg-[#DC2626] hover:bg-red-700 text-white text-[11px] font-semibold px-3 py-1 rounded-lg shadow-sm transition shrink-0 ml-3">
+                    Ver Alerta
+                  </button>
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- COLUMNA DERECHA (4 de 12 columnas) -->
+          <div class="col-span-4 flex flex-col gap-3.5 min-h-0">
+
+            <!-- TARJETA: Galpones Diagnosticados (Plan 015 + Acciones Plan 012 y Plan 008) -->
+            <div class="bg-white rounded-xl p-4 shadow-sm border border-stone-200/70 flex flex-col shrink-0">
+              <div class="flex items-center justify-between mb-1">
+                <div class="flex items-center gap-2">
+                  <svg class="w-4 h-4 text-[#185C2B]" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"/>
+                  </svg>
+                  <h3 class="text-xs font-bold text-slate-900">Galpones Diagnosticados (Plan 015)</h3>
+                </div>
+              </div>
+              <p class="text-[10px] text-slate-500 mb-2.5">Seguimiento terapéutico activo y órdenes sanitarias</p>
+
+              <div class="space-y-2">
+                <!-- Galpón 7: Tratable -->
+                <div class="p-2.5 rounded-xl bg-stone-50 border border-stone-200/80 flex flex-col gap-1.5">
+                  <div class="flex items-center justify-between">
+                    <div>
+                      <p class="text-[11px] font-bold text-slate-900">Galpón 7 <span class="text-slate-400 font-medium">(#LDP-007)</span></p>
+                      <p class="text-[10px] text-slate-600">Coccidiosis Aviar · <span class="font-semibold text-emerald-800">Reintegro: 04 Nov</span></p>
+                    </div>
+                    <span class="inline-flex items-center gap-1 bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                      <span class="w-1.5 h-1.5 rounded-full bg-emerald-600"></span>
+                      Reintegro
+                    </span>
+                  </div>
+                  <div class="flex items-center justify-between pt-1 border-t border-stone-200/60">
+                    <span class="text-[10px] text-slate-500 font-medium">Amprolio 20% (Día 2 de 5)</span>
+                    <button class="bg-[#185C2B] hover:bg-[#134821] text-white text-[10px] font-semibold px-2.5 py-1 rounded-md transition">
+                      + Consumo
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Galpón 6: Tratable -->
+                <div class="p-2.5 rounded-xl bg-stone-50 border border-stone-200/80 flex flex-col gap-1.5">
+                  <div class="flex items-center justify-between">
+                    <div>
+                      <p class="text-[11px] font-bold text-slate-900">Galpón 6 <span class="text-slate-400 font-medium">(#LDP-006)</span></p>
+                      <p class="text-[10px] text-slate-600">Bronquitis Infecciosa · <span class="font-semibold text-emerald-800">Reintegro: 06 Nov</span></p>
+                    </div>
+                    <span class="inline-flex items-center gap-1 bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                      <span class="w-1.5 h-1.5 rounded-full bg-emerald-600"></span>
+                      Reintegro
+                    </span>
+                  </div>
+                  <div class="flex items-center justify-between pt-1 border-t border-stone-200/60">
+                    <span class="text-[10px] text-slate-500 font-medium">Tilosina Tartrato (Día 1 de 7)</span>
+                    <button class="bg-[#185C2B] hover:bg-[#134821] text-white text-[10px] font-semibold px-2.5 py-1 rounded-md transition">
+                      + Consumo
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Galpón 9: Mortal -->
+                <div class="p-2.5 rounded-xl bg-red-50/50 border border-red-200 flex flex-col gap-1.5">
+                  <div class="flex items-center justify-between">
+                    <div>
+                      <p class="text-[11px] font-bold text-slate-900">Galpón 9 <span class="text-slate-400 font-medium">(#LDP-009)</span></p>
+                      <p class="text-[10px] text-red-700 font-semibold">Influenza Aviar (Mortal · Sin reintegro)</p>
+                    </div>
+                    <span class="inline-flex items-center gap-1 bg-red-100 text-red-800 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                      <span class="w-1.5 h-1.5 rounded-full bg-red-600"></span>
+                      Sacrificio
+                    </span>
+                  </div>
+                  <div class="flex items-center justify-between pt-1 border-t border-red-200/60">
+                    <span class="text-[10px] text-red-700 font-medium">3.500 aves en aislamiento</span>
+                    <button class="bg-[#DC2626] hover:bg-red-700 text-white text-[10px] font-semibold px-2.5 py-1 rounded-md shadow-sm transition">
+                      Emitir Orden
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- TARJETA: Estado General de Galpones (Barras Delgadas Compactas) -->
+            <div class="bg-white rounded-xl p-4 shadow-sm border border-stone-200/70 flex-1 flex flex-col justify-between min-h-0">
+              <div class="flex items-center justify-between mb-1">
+                <div class="flex items-center gap-2">
+                  <svg class="w-4 h-4 text-slate-700" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                  </svg>
+                  <h3 class="text-xs font-bold text-slate-900">Estado de Galpones</h3>
+                </div>
+                <span class="text-[10px] text-slate-400 font-semibold">Total: 14</span>
+              </div>
+
+              <div class="space-y-2.5 my-auto text-[11px]">
+                <!-- Productivo -->
+                <div>
+                  <div class="flex justify-between mb-1">
+                    <span class="font-medium text-slate-600">Productivo</span>
+                    <span class="font-bold text-slate-900">10</span>
+                  </div>
+                  <div class="w-full h-2 bg-stone-100 rounded-full overflow-hidden">
+                    <div class="bg-[#10B981] h-full rounded-full" style="width: 71%"></div>
+                  </div>
+                </div>
+
+                <!-- En cosecha -->
+                <div>
+                  <div class="flex justify-between mb-1">
+                    <span class="font-medium text-slate-600">En cosecha</span>
+                    <span class="font-bold text-slate-900">2</span>
+                  </div>
+                  <div class="w-full h-2 bg-stone-100 rounded-full overflow-hidden">
+                    <div class="bg-[#F59E0B] h-full rounded-full" style="width: 14.5%"></div>
+                  </div>
+                </div>
+
+                <!-- Aislamiento -->
+                <div>
+                  <div class="flex justify-between mb-1">
+                    <span class="font-medium text-slate-600">Aislamiento</span>
+                    <span class="font-bold text-slate-900">2</span>
+                  </div>
+                  <div class="w-full h-2 bg-stone-100 rounded-full overflow-hidden">
+                    <div class="bg-[#DC2626] h-full rounded-full" style="width: 14.5%"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+        </div>
+
+      </main>
+    </div>
+
+  </div>
+
+</body>
+</html>

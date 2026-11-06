@@ -33,3 +33,7 @@ build/
 .vscode/
 
 target_test-classes/
+
+
+### agent ###
+.github/copilot-instructions.md
