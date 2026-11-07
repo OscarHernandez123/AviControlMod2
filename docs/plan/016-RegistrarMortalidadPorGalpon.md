@@ -29,42 +29,21 @@ docs/
 ### Source Code (repository root)
 
 ```text
-src/main/java/com/avicontrol/
-├── domain/
-│   ├── model/mortalidad/
-│   │   ├── CausaMortalidad.java
-│   │   ├── ClasificacionMortalidad.java
-│   │   └── RegistroMortalidad.java
-│   ├── exception/mortalidad/
-│   │   ├── CantidadMortalidadInvalidaException.java
-│   │   ├── FechaMortalidadInvalidaException.java
-│   │   └── LoteActivoNoEncontradoException.java
-│   └── port/out/mortalidad/
-│       ├── ActualizarInventarioVivoPort.java
-│       ├── RegistroMortalidadRepositoryPort.java
-│       └── UmbralMortalidadQueryPort.java
-├── application/
-│   └── mortalidad/
-│       ├── RegistrarMortalidadCommand.java
-│       ├── RegistrarMortalidadUseCase.java
-│       └── result/RegistroMortalidadResult.java
-└── infrastructure/
-    ├── adapter/in/rest/mortalidad/
-    │   ├── MortalidadController.java
-    │   ├── dto/
-    │   │   ├── RegistrarMortalidadRequest.java
-    │   │   └── RegistroMortalidadResponse.java
-    │   └── mapper/MortalidadRestMapper.java
-    ├── adapter/out/persistence/mortalidad/RegistroMortalidadPersistenceAdapter.java
-    └── config/MortalidadBeanConfiguration.java
-
-src/main/resources/db/migration/
-└── V__crear_registros_mortalidad.sql
-
-src/test/java/com/avicontrol/
-├── domain/model/mortalidad/RegistroMortalidadTest.java
-├── application/mortalidad/RegistrarMortalidadUseCaseTest.java
-└── infrastructure/adapter/in/rest/mortalidad/MortalidadControllerTest.java
+src/main/java/com/avicontrol/application/mortalidad/RegistrarMortalidadCommand.java
+src/main/java/com/avicontrol/application/mortalidad/RegistrarMortalidadUseCase.java
+src/main/java/com/avicontrol/application/mortalidad/result/RegistroMortalidadResult.java
+src/main/java/com/avicontrol/domain/model/mortalidad/CausaMortalidad.java
+src/main/java/com/avicontrol/domain/model/mortalidad/ClasificacionMortalidad.java
+src/main/java/com/avicontrol/domain/model/mortalidad/RegistroMortalidad.java
+src/main/java/com/avicontrol/domain/port/out/mortalidad/RegistroMortalidadRepositoryPort.java
+src/main/java/com/avicontrol/infrastructure/adapter/in/rest/mortalidad/dto/RegistrarMortalidadRequest.java
+src/main/java/com/avicontrol/infrastructure/adapter/in/rest/mortalidad/dto/RegistroMortalidadResponse.java
+src/main/java/com/avicontrol/infrastructure/adapter/in/rest/mortalidad/mapper/MortalidadRestMapper.java
+src/main/java/com/avicontrol/infrastructure/adapter/in/rest/mortalidad/MortalidadController.java
+src/main/java/com/avicontrol/infrastructure/adapter/out/persistence/mortalidad/RegistroMortalidadPersistenceAdapter.java
+src/main/java/com/avicontrol/infrastructure/config/MortalidadBeanConfiguration.java
+src/main/resources/db/migration/V20__crear_inventario_vivo_y_mortalidad.sql
+src/test/java/com/avicontrol/infrastructure/adapter/in/rest/mortalidad/MortalidadAlertaIntegrationTest.java
 ```
 
 **Structure Decision**: el evento de mortalidad es evidencia local inmutable. El lote y su población son propiedad del Módulo 1 y se actualizan a través de un puerto; la clasificación anormal sólo genera un evento o puerto de extensión, no implementa la alerta aquí.

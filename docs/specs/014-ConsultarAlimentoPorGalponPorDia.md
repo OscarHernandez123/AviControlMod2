@@ -238,7 +238,7 @@ Como trabajador u operario de granja, quiero registrar cada cantidad de alimento
 - **Saldo pendiente del día**: Diferencia calculada en kilogramos y bultos entre el consumo requerido y el alimento suministrado en la fecha.
 - **Bodega central**: Inventario principal del cual se consulta la disponibilidad de existencias netas en kilogramos y bultos compatibles con la etapa del galpón.
 - **Alerta de alimentación**: Indicador visual emitido ante déficit de existencias en bodega central, saldo pendiente de entrega o inconsistencias en la asignación nutricional.
-- **Suministro diario de alimento**: Registro persistente de una cantidad realmente suministrada a un lote en una fecha de negocio. Se asocia con galpón, lote, alimento comercial, usuario responsable, clave de idempotencia y la operación con movimientos de salida de inventario que respaldan la cantidad confirmada.
+- **Suministro diario de alimento**: Registro persistente de una cantidad realmente suministrada a un lote en una fecha de negocio. Se asocia con galpón, lote, alimento comercial, usuario responsable, clave de idempotencia y detalles de salida por recepción que respaldan la cantidad confirmada.
 - **Resumen consolidado de alimento diario del trabajador**: Agrupación y sumatoria de requerimientos nutricionales del día correspondientes a todos los galpones seleccionados por el trabajador para esa consulta.
   - *Atributos calculados*: Total de kilogramos diarios requeridos, Total de bultos equivalentes, Estado consolidado de bodega central (`Bodega Central OK` / `Bodega Central Disponible`), y Lista de filas de galpones seleccionados (`Galpón`, `Tipo Alimento`, `Cuota Kg`, `Bultos`, `Estado Bodega`).
 
@@ -258,7 +258,7 @@ Como trabajador u operario de granja, quiero registrar cada cantidad de alimento
 - **SC-008**: El 100 % de las operaciones de consulta se ejecuta sin modificar ningún dato en la base de datos (garantía de solo lectura).
 - **SC-009**: El 100 % de las pantallas de inicio de trabajadores calcula la sumatoria de alimento diario requerido (kg y bultos) con exactitud matemática coincidente con la suma de las cuotas de los galpones seleccionados para esa consulta.
 - **SC-010**: El 100 % de las consultas al panel de alimento diario muestra únicamente los galpones seleccionados para esa consulta por el trabajador autenticado, discriminando con precisión el tipo de alimento, cuota en kg, cuota en bultos y el estado de stock en bodega central.
-- **SC-011**: El 100 % de los suministros confirmados queda asociado al galpón, lote, alimento, fecha y usuario responsable, y cuenta con movimientos de salida de inventario que suman exactamente la cantidad suministrada.
+- **SC-011**: El 100 % de los suministros confirmados queda asociado al galpón, lote, alimento, fecha y usuario responsable, y cuenta con detalles de salida FEFO por recepción que suman exactamente la cantidad suministrada y se descuentan de las existencias.
 - **SC-012**: El 100 % de los intentos con existencias insuficientes o fallo del inventario evita tanto el registro del suministro confirmado como cualquier descuento parcial.
 - **SC-013**: El 100 % de las consultas diarias calcula el acumulado y saldo pendiente usando únicamente los suministros confirmados del lote y alimento para la fecha consultada.
 - **SC-014**: El 100 % de los reintentos de una solicitud confirmada con la misma clave de idempotencia evita crear suministros o salidas de inventario duplicados.

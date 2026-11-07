@@ -29,41 +29,19 @@ docs/
 ### Source Code (repository root)
 
 ```text
-src/main/java/com/avicontrol/
-├── domain/
-│   ├── model/alerta/
-│   │   ├── AlertaSanitaria.java
-│   │   ├── EstadoAlertaSanitaria.java
-│   │   └── PrioridadAlerta.java
-│   ├── exception/alerta/RegistroMortalidadAnormalInvalidoException.java
-│   └── port/out/alerta/
-│       ├── AlertaSanitariaRepositoryPort.java
-│       ├── ContextoAlertaSanitariaQueryPort.java
-│       └── MortalidadAnormalQueryPort.java
-├── application/alerta/
-│   ├── ConsultarAlertasSanitariasUseCase.java
-│   ├── ConsultarDetalleAlertaSanitariaUseCase.java
-│   ├── GenerarAlertaSanitariaUseCase.java
-│   └── result/
-│       ├── AlertaSanitariaDetalleResult.java
-│       └── AlertaSanitariaResult.java
-└── infrastructure/
-    ├── adapter/in/rest/alerta/
-    │   ├── AlertaSanitariaController.java
-    │   ├── dto/
-    │   │   ├── AlertaSanitariaDetalleResponse.java
-    │   │   └── AlertaSanitariaPageResponse.java
-    │   └── mapper/AlertaSanitariaRestMapper.java
-    ├── adapter/out/persistence/alerta/AlertaSanitariaPersistenceAdapter.java
-    └── config/AlertaSanitariaBeanConfiguration.java
-
-src/main/resources/db/migration/
-└── V__crear_alertas_sanitarias.sql
-
-src/test/java/com/avicontrol/
-├── domain/model/alerta/AlertaSanitariaTest.java
-├── application/alerta/GenerarAlertaSanitariaUseCaseTest.java
-└── infrastructure/adapter/in/rest/alerta/AlertaSanitariaControllerTest.java
+src/main/java/com/avicontrol/application/alerta/ConsultarAlertasSanitariasUseCase.java
+src/main/java/com/avicontrol/application/alerta/GenerarAlertaSanitariaUseCase.java
+src/main/java/com/avicontrol/application/alerta/result/AlertaSanitariaResult.java
+src/main/java/com/avicontrol/domain/model/alerta/AlertaSanitaria.java
+src/main/java/com/avicontrol/domain/port/out/alerta/AlertaSanitariaQueryPort.java
+src/main/java/com/avicontrol/domain/port/out/alerta/AlertaSanitariaRepositoryPort.java
+src/main/java/com/avicontrol/infrastructure/adapter/in/rest/alerta/AlertaSanitariaController.java
+src/main/java/com/avicontrol/infrastructure/adapter/in/rest/alerta/dto/AlertaSanitariaResponse.java
+src/main/java/com/avicontrol/infrastructure/adapter/out/persistence/alerta/AlertaSanitariaPersistenceAdapter.java
+src/main/java/com/avicontrol/infrastructure/adapter/out/persistence/alerta/AlertaSanitariaQueryAdapter.java
+src/main/java/com/avicontrol/infrastructure/config/MortalidadBeanConfiguration.java
+src/main/resources/db/migration/V21__crear_mortalidad_anormal_y_alertas.sql
+src/test/java/com/avicontrol/infrastructure/adapter/in/rest/mortalidad/MortalidadAlertaIntegrationTest.java
 ```
 
 **Structure Decision**: alerta es un agregado local inmutable. El reporte anormal es la fuente obligatoria y sus datos se conservan como contexto; galpón/lote se consultan sólo para complementar la vista veterinaria.

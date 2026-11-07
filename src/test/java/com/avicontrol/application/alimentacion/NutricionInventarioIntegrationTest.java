@@ -30,6 +30,8 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -38,6 +40,14 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional
 @AutoConfigureMockMvc
 class NutricionInventarioIntegrationTest {
+  @DynamicPropertySource
+  static void baseAislada(DynamicPropertyRegistry registry) {
+    registry.add(
+        "spring.datasource.url",
+        () ->
+            "jdbc:h2:mem:nutricion_inventario_integration;MODE=PostgreSQL;DB_CLOSE_DELAY=-1;DATABASE_TO_LOWER=TRUE");
+  }
+
   private static final UUID ALIMENTO = UUID.fromString("550e8400-e29b-41d4-a716-446655440000");
 
   @Autowired JdbcTemplate jdbc;

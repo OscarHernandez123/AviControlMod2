@@ -29,39 +29,21 @@ docs/
 ### Source Code (repository root)
 
 ```text
-src/main/java/com/avicontrol/
-├── domain/
-│   ├── model/mortalidad/
-│   │   ├── NivelSeveridadMortalidad.java
-│   │   └── RegistroMortalidadAnormal.java
-│   ├── exception/mortalidad/
-│   │   ├── GalponNoProductivoException.java
-│   │   └── MortalidadAnormalInvalidaException.java
-│   └── port/out/mortalidad/
-│       ├── GenerarAlertaSanitariaPort.java
-│       ├── RegistroMortalidadAnormalRepositoryPort.java
-│       └── UmbralMortalidadQueryPort.java
-├── application/mortalidad/
-│   ├── RegistrarMortalidadAnormalCommand.java
-│   ├── RegistrarMortalidadAnormalUseCase.java
-│   └── result/RegistroMortalidadAnormalResult.java
-└── infrastructure/
-    ├── adapter/in/rest/mortalidad/
-    │   ├── MortalidadAnormalController.java
-    │   ├── dto/
-    │   │   ├── RegistrarMortalidadAnormalRequest.java
-    │   │   └── RegistroMortalidadAnormalResponse.java
-    │   └── mapper/MortalidadAnormalRestMapper.java
-    ├── adapter/out/persistence/mortalidad/RegistroMortalidadAnormalPersistenceAdapter.java
-    └── config/MortalidadAnormalBeanConfiguration.java
-
-src/main/resources/db/migration/
-└── V__crear_registros_mortalidad_anormal.sql
-
-src/test/java/com/avicontrol/
-├── domain/model/mortalidad/RegistroMortalidadAnormalTest.java
-├── application/mortalidad/RegistrarMortalidadAnormalUseCaseTest.java
-└── infrastructure/adapter/in/rest/mortalidad/MortalidadAnormalControllerTest.java
+src/main/java/com/avicontrol/application/mortalidad/RegistrarMortalidadAnormalCommand.java
+src/main/java/com/avicontrol/application/mortalidad/RegistrarMortalidadAnormalUseCase.java
+src/main/java/com/avicontrol/application/mortalidad/result/RegistroMortalidadAnormalResult.java
+src/main/java/com/avicontrol/domain/model/mortalidad/NivelSeveridadMortalidad.java
+src/main/java/com/avicontrol/domain/model/mortalidad/RegistroMortalidadAnormal.java
+src/main/java/com/avicontrol/domain/port/out/mortalidad/GenerarAlertaSanitariaPort.java
+src/main/java/com/avicontrol/domain/port/out/mortalidad/RegistroMortalidadAnormalRepositoryPort.java
+src/main/java/com/avicontrol/infrastructure/adapter/in/rest/mortalidad/dto/RegistrarMortalidadAnormalRequest.java
+src/main/java/com/avicontrol/infrastructure/adapter/in/rest/mortalidad/dto/RegistroMortalidadAnormalResponse.java
+src/main/java/com/avicontrol/infrastructure/adapter/in/rest/mortalidad/mapper/MortalidadAnormalRestMapper.java
+src/main/java/com/avicontrol/infrastructure/adapter/in/rest/mortalidad/MortalidadAnormalController.java
+src/main/java/com/avicontrol/infrastructure/adapter/out/persistence/mortalidad/RegistroMortalidadAnormalPersistenceAdapter.java
+src/main/java/com/avicontrol/infrastructure/config/MortalidadBeanConfiguration.java
+src/main/resources/db/migration/V21__crear_mortalidad_anormal_y_alertas.sql
+src/test/java/com/avicontrol/infrastructure/adapter/in/rest/mortalidad/MortalidadAlertaIntegrationTest.java
 ```
 
 **Structure Decision**: el reporte anormal es un agregado local e inmutable. El puerto de alerta desacopla el Plan 018; la población, lote y estado se verifican en la fuente vigente antes de guardar.
@@ -126,6 +108,8 @@ src/test/java/com/avicontrol/
 ```
 
 **Errores**: `400` datos inválidos; `401` no autenticado; `403` sin rol; `404` galpón o lote ausente; `409` estado no productivo; `503` Módulo 1 o alertas no disponible.
+
+La ruta explícita permite reportar una causa sospechosa observada por el trabajador aun si la cantidad no supera el umbral diario de 0.10 %. En ese caso se conserva el porcentaje calculado y se asigna severidad `ALTA`. Este reporte no descuenta población: el descuento corresponde al registro de bajas del Plan 016.
 
 ## Polish & Cross-Cutting Concerns
 

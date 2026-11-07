@@ -7,6 +7,10 @@ import java.util.UUID;
 public interface GalponLoteQueryPort {
   Optional<GalponLote> consultar(UUID galponId);
 
+  default Optional<GalponLote> bloquear(UUID galponId) {
+    return consultar(galponId);
+  }
+
   record GalponLote(
       UUID galponId,
       String nombre,

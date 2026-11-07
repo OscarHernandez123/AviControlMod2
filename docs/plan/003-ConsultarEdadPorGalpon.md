@@ -11,7 +11,7 @@ Implementar la consulta de la edad del lote alojado actualmente en un galpón. L
 ## Technical Context
 
 **Language/Version**: Java 21
-**Framework**: Spring Boot 3
+**Framework**: Spring Boot 4.1.1
 **Persistence**: No aplica; la información de galpón y lote pertenece al Módulo 1
 **Testing**: JUnit 5, Mockito y MockMvc
 **Authorization**: `ROLE_ADMINISTRADOR`
@@ -57,33 +57,37 @@ src/main/java/com/avicontrol/
     │   └── mapper/GalponRestMapper.java
     ├── adapter/out/integration/modulo1/
     │   ├── GalponQueryAdapter.java
-    │   └── LoteQueryAdapter.java
+    │   ├── GalponQueryNoDisponibleAdapter.java
+    │   ├── LoteQueryAdapter.java
+    │   └── LoteQueryNoDisponibleAdapter.java
     └── config/GalponConsultaBeanConfiguration.java
 
 src/test/java/com/avicontrol/
 ├── domain/model/lote/LoteTest.java
 ├── application/galpon/ConsultarEdadPorGalponUseCaseTest.java
-└── infrastructure/adapter/in/rest/galpon/GalponEdadControllerTest.java
+└── infrastructure/adapter/in/rest/galpon/
+    ├── GalponEdadControllerTest.java
+    └── GalponNoDisponibleControllerTest.java
 ```
 
 **Structure Decision**: el dominio conserva la regla de cálculo de edad. Los puertos de salida sólo representan las consultas públicas del Módulo 1; este módulo no replica tablas, entidades JPA ni repositorios de galpones o lotes.
 
 ## Phase 1: Setup
 
-- [ ] T001 Verificar los contratos públicos disponibles en el Módulo 1 para consultar un galpón y su lote actual.
-- [ ] T002 Confirmar que el rol `ROLE_ADMINISTRADOR` esté definido en la configuración de seguridad.
-- [ ] T003 Definir datos de prueba: galpón con lote activo, galpón sin lote, galpón inexistente y lote con fecha futura.
+- [x] T001 Verificar la disponibilidad del contrato público del Módulo 1 y la fuente provisional para consultar un galpón y su lote actual.
+- [x] T002 Confirmar que el rol `ROLE_ADMINISTRADOR` esté definido en la configuración de seguridad.
+- [x] T003 Definir datos de prueba: galpón con lote activo, galpón sin lote, galpón inexistente y lote con fecha futura.
 
 **Checkpoint**: contratos externos, autorización y escenarios de prueba definidos antes de escribir la lógica.
 
 ## Phase 2: Foundational
 
-- [ ] T004 Crear `Edad` como objeto de valor con días totales, semanas completas, días restantes y texto legible.
-- [ ] T005 Implementar en `Lote` el cálculo inclusivo `calcularEdad(fechaConsulta)`; el día de ingreso equivale a un día de edad.
-- [ ] T006 Rechazar una fecha de ingreso posterior a la fecha de consulta con `FechaIngresoInconsistenteException`.
-- [ ] T007 Definir `GalponQueryPort` y `LoteQueryPort` sin tipos propios de infraestructura.
-- [ ] T008 Implementar los adaptadores de integración del Módulo 1 y traducir indisponibilidad, ausencia e inconsistencia a las excepciones del dominio.
-- [ ] T009 Registrar los adaptadores, el caso de uso y el `Clock` configurado para `America/Bogota` en `GalponConsultaBeanConfiguration`.
+- [x] T004 Crear `Edad` como objeto de valor con días totales, semanas completas, días restantes y texto legible.
+- [x] T005 Implementar en `Lote` el cálculo inclusivo `calcularEdad(fechaConsulta)`; el día de ingreso equivale a un día de edad.
+- [x] T006 Rechazar una fecha de ingreso posterior a la fecha de consulta con `FechaIngresoInconsistenteException`.
+- [x] T007 Definir `GalponQueryPort` y `LoteQueryPort` sin tipos propios de infraestructura.
+- [x] T008 Implementar los adaptadores de integración del Módulo 1 y traducir indisponibilidad, ausencia e inconsistencia a las excepciones del dominio.
+- [x] T009 Registrar los adaptadores y el caso de uso en `GalponConsultaBeanConfiguration`, reutilizando el `Clock` de negocio configurado para `America/Bogota`.
 
 **Checkpoint**: el caso de uso puede consultar las dependencias mediante puertos y calcula la edad sin HTTP ni base de datos local.
 
@@ -93,13 +97,13 @@ src/test/java/com/avicontrol/
 
 **Independent Test**: con un lote ingresado hace 16 días, la consulta devuelve 17 días totales, 2 semanas completas y 3 días restantes.
 
-- [ ] T010 Implementar `ConsultarEdadPorGalponUseCase` para validar la existencia del galpón, obtener su lote actual y delegar el cálculo al dominio.
-- [ ] T011 Retornar un resultado vacío, sin error, cuando el galpón exista pero no tenga lote alojado actualmente.
-- [ ] T012 Crear `EdadLoteResult` como respuesta interna del caso de uso.
-- [ ] T013 Exponer `GET /api/galpones/{galponId}/edad-lote` en `GalponEdadController`.
-- [ ] T014 Crear `EdadLoteResponse` y `GalponRestMapper` para no exponer objetos de dominio.
-- [ ] T015 Proteger el endpoint con `ROLE_ADMINISTRADOR`.
-- [ ] T016 Implementar las pruebas de dominio, aplicación y controlador del escenario exitoso y del galpón sin lote.
+- [x] T010 Implementar `ConsultarEdadPorGalponUseCase` para validar la existencia del galpón, obtener su lote actual y delegar el cálculo al dominio.
+- [x] T011 Retornar un resultado vacío, sin error, cuando el galpón exista pero no tenga lote alojado actualmente.
+- [x] T012 Crear `EdadLoteResult` como respuesta interna del caso de uso.
+- [x] T013 Exponer `GET /api/galpones/{galponId}/edad-lote` en `GalponEdadController`.
+- [x] T014 Crear `EdadLoteResponse` y `GalponRestMapper` para no exponer objetos de dominio.
+- [x] T015 Proteger el endpoint con `ROLE_ADMINISTRADOR`.
+- [x] T016 Implementar las pruebas de dominio, aplicación y controlador del escenario exitoso y del galpón sin lote.
 
 ## Endpoints
 
@@ -145,21 +149,21 @@ Authorization: Bearer <token>
 
 ## Phase 4: Error handling and contract tests
 
-- [ ] T017 Responder `400 Bad Request` si `galponId` no es un UUID válido.
-- [ ] T018 Responder `401 Unauthorized` sin autenticación y `403 Forbidden` si el usuario no es administrador.
-- [ ] T019 Responder `404 Not Found` si el galpón no existe.
-- [ ] T020 Responder `409 Conflict` si el lote actual es inconsistente o su fecha de ingreso es futura.
-- [ ] T021 Responder `503 Service Unavailable` si el Módulo 1 no puede proporcionar la información requerida.
-- [ ] T022 Añadir pruebas MockMvc para cada código de respuesta y el formato JSON del contrato.
+- [x] T017 Responder `400 Bad Request` si `galponId` no es un UUID válido.
+- [x] T018 Responder `401 Unauthorized` sin autenticación y `403 Forbidden` si el usuario no es administrador.
+- [x] T019 Responder `404 Not Found` si el galpón no existe.
+- [x] T020 Responder `409 Conflict` si el lote actual es inconsistente o su fecha de ingreso es futura.
+- [x] T021 Responder `503 Service Unavailable` si el Módulo 1 no puede proporcionar la información requerida.
+- [x] T022 Añadir pruebas MockMvc para cada código de respuesta y el formato JSON del contrato.
 
 **Checkpoint**: el contrato HTTP devuelve respuestas estables y ningún detalle del Módulo 1 llega al cliente.
 
 ## Polish & Cross-Cutting Concerns
 
-- [ ] T023 Aplicar nombres de paquetes y clases coherentes con los demás planes.
-- [ ] T024 Documentar la semántica inclusiva y la zona horaria en Javadoc del cálculo.
-- [ ] T025 Ejecutar pruebas unitarias y de controlador.
-- [ ] T026 Ejecutar `git diff --check` antes de cerrar la implementación.
+- [x] T023 Aplicar nombres de paquetes y clases coherentes con los demás planes.
+- [x] T024 Documentar la semántica inclusiva y la zona horaria en Javadoc del cálculo.
+- [x] T025 Ejecutar pruebas unitarias y de controlador.
+- [x] T026 Ejecutar `git diff --check` antes de cerrar la implementación.
 
 ## Dependencies & Execution Order
 
@@ -174,3 +178,4 @@ Authorization: Bearer <token>
 - No se crea migración ni modelo de persistencia local para este caso de uso.
 - La fecha de consulta procede del `Clock`; no se debe invocar `LocalDate.now()` directamente en el dominio o caso de uso.
 - Si el contrato público del Módulo 1 difiere de estos puertos, se ajustan los adaptadores, no la regla de cálculo ni el endpoint público de este módulo.
+- Mientras no esté disponible el Módulo 1 real, los perfiles `local` y `test` leen su fuente provisional `modulo1_galpon_local`; otros perfiles responden `503` mediante adaptadores explícitos. No se añade migración propia en este plan.

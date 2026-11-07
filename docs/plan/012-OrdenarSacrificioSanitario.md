@@ -56,11 +56,18 @@ src/main/java/com/avicontrol/
     │   ├── OrdenSacrificioSanitarioController.java
     │   ├── dto/OrdenSacrificioSanitarioResponse.java
     │   └── mapper/OrdenSacrificioSanitarioRestMapper.java
-    ├── adapter/out/persistence/sacrificio/sanitario/OrdenSacrificioSanitarioPersistenceAdapter.java
+    ├── adapter/out/persistence/sacrificio/sanitario/
+    │   ├── DiagnosticoSanitarioQueryAdapter.java
+    │   └── OrdenSacrificioSanitarioPersistenceAdapter.java
+    ├── adapter/out/integration/modulo1/
+    │   ├── GalponUpdateAdapter.java
+    │   ├── GalponUpdateNoDisponibleAdapter.java
+    │   ├── LoteUpdateAdapter.java
+    │   └── LoteUpdateNoDisponibleAdapter.java
     └── config/SacrificioSanitarioBeanConfiguration.java
 
 src/main/resources/db/migration/
-└── V__crear_ordenes_sacrificio_sanitario.sql
+└── V19__crear_ordenes_sacrificio_sanitario.sql
 
 src/test/java/com/avicontrol/
 ├── domain/model/sacrificio/sanitario/OrdenSacrificioSanitarioTest.java
@@ -76,9 +83,9 @@ src/test/java/com/avicontrol/
 
 **Purpose**: definir contratos y persistencia de la orden sanitaria.
 
-- [ ] T001 Confirmar el puerto de diagnóstico elegible del Plan 011 y contratos de consulta/actualización de lote y galpón.
-- [ ] T002 Crear la migración con referencias a diagnóstico, lote y galpón, estado y control de versión.
-- [ ] T003 Preparar fixtures para diagnóstico mortal, tratable, galpón fuera de aislamiento, población cero y orden ejecutada.
+- [x] T001 Confirmar el puerto de diagnóstico elegible del Plan 011 y contratos de consulta/actualización de lote y galpón.
+- [x] T002 Crear la migración con referencias a diagnóstico, lote y galpón, estado y control de versión.
+- [x] T003 Preparar fixtures para diagnóstico mortal, tratable, galpón fuera de aislamiento, población cero y orden ejecutada.
 
 ---
 
@@ -86,9 +93,9 @@ src/test/java/com/avicontrol/
 
 **Purpose**: proteger el ciclo de vida y la ejecución única.
 
-- [ ] T004 Crear `OrdenSacrificioSanitario` con alcance total implícito y transición única pendiente a ejecutada.
-- [ ] T005 Definir repositorio con restricción de orden por diagnóstico y bloqueo para confirmaciones simultáneas.
-- [ ] T006 Implementar excepciones y puertos de diagnóstico, galpón y lote.
+- [x] T004 Crear `OrdenSacrificioSanitario` con alcance total implícito y transición única pendiente a ejecutada.
+- [x] T005 Definir repositorio con restricción de orden por diagnóstico y bloqueo para confirmaciones simultáneas.
+- [x] T006 Implementar excepciones y puertos de diagnóstico, galpón y lote.
 
 **Checkpoint**: ninguna orden puede ejecutar dos veces ni abarcar una cantidad parcial.
 
@@ -102,13 +109,13 @@ src/test/java/com/avicontrol/
 
 ### Tests for User Story 1
 
-- [ ] T007 [P] [US1] Probar elegibilidad, población, orden duplicada y autorización.
-- [ ] T008 [P] [US1] Probar el endpoint de emisión con MockMvc.
+- [x] T007 [P] [US1] Probar elegibilidad, población, orden duplicada y autorización.
+- [x] T008 [P] [US1] Probar el endpoint de emisión con MockMvc.
 
 ### Implementation for User Story 1
 
-- [ ] T009 [US1] Implementar `EmitirOrdenSacrificioSanitarioUseCase` y verificar diagnóstico, estado y población vigentes.
-- [ ] T010 [US1] Exponer `POST /api/galpones/{galponId}/ordenes-sacrificio-sanitario` para veterinario.
+- [x] T009 [US1] Implementar `EmitirOrdenSacrificioSanitarioUseCase` y verificar diagnóstico, estado y población vigentes.
+- [x] T010 [US1] Exponer `POST /api/galpones/{galponId}/ordenes-sacrificio-sanitario` para veterinario.
 
 **Checkpoint**: la orden pendiente no modifica lote ni galpón.
 
@@ -122,14 +129,14 @@ src/test/java/com/avicontrol/
 
 ### Tests for User Story 2
 
-- [ ] T011 [P] [US2] Probar ejecución única, población que cambió tras emisión y fallo parcial de integración.
-- [ ] T012 [P] [US2] Probar HTTP, autorización y orden ya ejecutada.
+- [x] T011 [P] [US2] Probar ejecución única, población que cambió tras emisión y fallo parcial de integración.
+- [x] T012 [P] [US2] Probar HTTP, autorización y orden ya ejecutada.
 
 ### Implementation for User Story 2
 
-- [ ] T013 [US2] Implementar `ConfirmarEjecucionSacrificioSanitarioUseCase` consultando estado y población vigentes.
-- [ ] T014 [US2] Coordinar actualización del lote a cero, del galpón a `vaciado sanitario` y de la orden con compensación o reintento seguro.
-- [ ] T015 [US2] Exponer `POST /api/ordenes-sacrificio-sanitario/{ordenId}/ejecucion`.
+- [x] T013 [US2] Implementar `ConfirmarEjecucionSacrificioSanitarioUseCase` consultando estado y población vigentes.
+- [x] T014 [US2] Coordinar actualización del lote a cero, del galpón a `vaciado sanitario` y de la orden con compensación o reintento seguro.
+- [x] T015 [US2] Exponer `POST /api/ordenes-sacrificio-sanitario/{ordenId}/ejecucion`.
 
 ```json
 {
@@ -164,9 +171,9 @@ src/test/java/com/avicontrol/
 
 ## Polish & Cross-Cutting Concerns
 
-- [ ] T016 Mapear `400` dato inválido, `401` no autenticado, `403` sin rol, `404` orden/diagnóstico ausente, `409` precondición, población o ejecución repetida y `503` dependencia no disponible.
-- [ ] T017 Documentar consistencia, idempotencia y los dos endpoints en OpenAPI.
-- [ ] T018 Ejecutar pruebas y `git diff --check`.
+- [x] T016 Mapear `400` dato inválido, `401` no autenticado, `403` sin rol, `404` orden/diagnóstico ausente, `409` precondición, población o ejecución repetida y `503` dependencia no disponible.
+- [x] T017 Documentar consistencia, idempotencia y los dos endpoints en OpenAPI.
+- [x] T018 Ejecutar pruebas y `git diff --check`.
 
 ---
 
@@ -181,3 +188,5 @@ src/test/java/com/avicontrol/
 
 - La población sacrificial corresponde a la población vigente al confirmar, no a una cantidad indicada por el veterinario ni a un valor congelado al emitir.
 - La orden pendiente nunca cambia por sí sola el galpón o el lote.
+- En los perfiles `local` y `test`, la confirmación bloquea la orden y actualiza población, galpón y orden en una sola transacción. Si una actualización condicional falla, se revierte toda la operación. En otros perfiles los adaptadores del Módulo 1 responden `503` hasta integrar su contrato real.
+- La emisión verifica el indicador vigente de la enfermedad y crea como máximo una orden por diagnóstico; la confirmación vuelve a leer la población y no admite una segunda ejecución.

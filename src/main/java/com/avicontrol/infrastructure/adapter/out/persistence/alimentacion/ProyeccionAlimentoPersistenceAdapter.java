@@ -178,7 +178,7 @@ public class ProyeccionAlimentoPersistenceAdapter implements ProyeccionAlimentoR
   @Override
   public List<CostoSaldo> saldosElegibles(UUID alimentoId, LocalDate fecha) {
     return jdbc.query(
-        "SELECT r.precio_neto_kg, COALESCE((SELECT SUM(CASE WHEN m.tipo_movimiento IN ('ENTRADA','AJUSTE_POSITIVO','AJUSTE') THEN m.cantidad ELSE -m.cantidad END) FROM movimientos_inventario m WHERE m.recepcion_id=r.id AND m.estado='CONFIRMADO'),0) AS saldo FROM recepciones_alimento r WHERE r.alimento_id=? AND r.estado='CONFIRMADA' AND r.fecha_vencimiento>?",
+        "SELECT r.precio_neto_kg, COALESCE((SELECT SUM(CASE WHEN m.tipo_movimiento IN ('ENTRADA','AJUSTE_POSITIVO','AJUSTE') THEN m.cantidad ELSE -m.cantidad END) FROM movimientos_inventario m WHERE m.recepcion_id=r.id AND m.estado='CONFIRMADO'),0) - COALESCE((SELECT SUM(d.cantidad_kg) FROM detalles_suministro_alimento d WHERE d.recepcion_id=r.id),0) AS saldo FROM recepciones_alimento r WHERE r.alimento_id=? AND r.estado='CONFIRMADA' AND r.fecha_vencimiento>?",
         (rs, row) -> new CostoSaldo(rs.getBigDecimal(1), rs.getBigDecimal(2)),
         alimentoId,
         fecha);
@@ -199,7 +199,7 @@ public class ProyeccionAlimentoPersistenceAdapter implements ProyeccionAlimentoR
   public BigDecimal stock(UUID alimentoId, BigDecimal peso, LocalDate fecha) {
     BigDecimal stock =
         jdbc.queryForObject(
-            "SELECT COALESCE(SUM(GREATEST(0,COALESCE((SELECT SUM(CASE WHEN m.tipo_movimiento IN ('ENTRADA','AJUSTE_POSITIVO','AJUSTE') THEN m.cantidad ELSE -m.cantidad END) FROM movimientos_inventario m WHERE m.recepcion_id=r.id AND m.estado='CONFIRMADO'),0))),0) FROM recepciones_alimento r WHERE r.alimento_id=? AND r.peso_por_bulto_kg=? AND r.estado='CONFIRMADA' AND r.fecha_vencimiento>?",
+            "SELECT COALESCE(SUM(GREATEST(0,COALESCE((SELECT SUM(CASE WHEN m.tipo_movimiento IN ('ENTRADA','AJUSTE_POSITIVO','AJUSTE') THEN m.cantidad ELSE -m.cantidad END) FROM movimientos_inventario m WHERE m.recepcion_id=r.id AND m.estado='CONFIRMADO'),0) - COALESCE((SELECT SUM(d.cantidad_kg) FROM detalles_suministro_alimento d WHERE d.recepcion_id=r.id),0))),0) FROM recepciones_alimento r WHERE r.alimento_id=? AND r.peso_por_bulto_kg=? AND r.estado='CONFIRMADA' AND r.fecha_vencimiento>?",
             BigDecimal.class,
             alimentoId,
             peso,

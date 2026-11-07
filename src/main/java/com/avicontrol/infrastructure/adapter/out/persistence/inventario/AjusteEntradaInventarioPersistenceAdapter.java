@@ -25,7 +25,14 @@ public class AjusteEntradaInventarioPersistenceAdapter implements AjustarEntrada
             "SELECT COUNT(*) FROM detalles_consumo_medicamento WHERE recepcion_id = ?",
             Integer.class,
             recepcionId);
-    return repository.contarPosteriores(recepcionId) > 0 || (consumos != null && consumos > 0);
+    Integer suministros =
+        jdbc.queryForObject(
+            "SELECT COUNT(*) FROM detalles_suministro_alimento WHERE recepcion_id = ?",
+            Integer.class,
+            recepcionId);
+    return repository.contarPosteriores(recepcionId) > 0
+        || (consumos != null && consumos > 0)
+        || (suministros != null && suministros > 0);
   }
 
   @Override

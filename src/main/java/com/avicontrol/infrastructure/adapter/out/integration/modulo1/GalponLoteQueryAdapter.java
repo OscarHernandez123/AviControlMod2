@@ -18,9 +18,18 @@ public class GalponLoteQueryAdapter implements GalponLoteQueryPort {
 
   @Override
   public Optional<GalponLote> consultar(UUID galponId) {
+    return consultar(galponId, false);
+  }
+
+  @Override
+  public Optional<GalponLote> bloquear(UUID galponId) {
+    return consultar(galponId, true);
+  }
+
+  private Optional<GalponLote> consultar(UUID galponId, boolean bloqueo) {
     return jdbc
         .query(
-            "SELECT * FROM modulo1_galpon_local WHERE id = ?",
+            "SELECT * FROM modulo1_galpon_local WHERE id = ?" + (bloqueo ? " FOR UPDATE" : ""),
             (rs, row) ->
                 new GalponLote(
                     rs.getObject("id", UUID.class),

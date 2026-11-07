@@ -29,26 +29,20 @@ docs/
 ### Source Code (repository root)
 
 ```text
-src/main/java/com/avicontrol/
-├── domain/
-│   ├── exception/modulo1/
-│   │   ├── PoblacionVivaInsuficienteException.java
-│   │   └── ReferenciaLoteInconsistenteException.java
-│   └── port/out/modulo1/ActualizarInventarioVivoPort.java
-├── application/modulo1/
-│   ├── ActualizarInventarioVivoCommand.java
-│   ├── ActualizarInventarioVivoUseCase.java
-│   └── result/InventarioVivoActualizadoResult.java
-└── infrastructure/
-    ├── adapter/out/integration/modulo1/InventarioVivoModulo1Adapter.java
-    └── config/InventarioVivoBeanConfiguration.java
-
-src/test/java/com/avicontrol/
-├── application/modulo1/ActualizarInventarioVivoUseCaseTest.java
-└── infrastructure/adapter/out/integration/modulo1/InventarioVivoModulo1AdapterTest.java
+src/main/java/com/avicontrol/application/modulo1/ActualizarInventarioVivoCommand.java
+src/main/java/com/avicontrol/application/modulo1/ActualizarInventarioVivoUseCase.java
+src/main/java/com/avicontrol/application/modulo1/result/InventarioVivoActualizadoResult.java
+src/main/java/com/avicontrol/domain/exception/modulo1/PoblacionVivaInsuficienteException.java
+src/main/java/com/avicontrol/domain/exception/modulo1/ReferenciaLoteInconsistenteException.java
+src/main/java/com/avicontrol/domain/port/out/modulo1/ActualizarInventarioVivoPort.java
+src/main/java/com/avicontrol/infrastructure/adapter/out/integration/modulo1/InventarioVivoModulo1Adapter.java
+src/main/java/com/avicontrol/infrastructure/adapter/out/integration/modulo1/InventarioVivoNoDisponibleAdapter.java
+src/main/java/com/avicontrol/infrastructure/config/InventarioVivoBeanConfiguration.java
+src/main/resources/db/migration/V20__crear_inventario_vivo_y_mortalidad.sql
+src/test/java/com/avicontrol/infrastructure/adapter/in/rest/mortalidad/MortalidadAlertaIntegrationTest.java
 ```
 
-**Structure Decision**: se usa un puerto de actualización del Módulo 1 y no hay entidad, repositorio ni migración local para `Lote`. El adaptador transmite versión e idempotency key para que el propietario proteja la concurrencia.
+**Structure Decision**: se usa un puerto de actualización del Módulo 1 y no hay entidad ni repositorio local para `Lote`. Mientras no esté disponible la integración real, el perfil local/test usa una migración de soporte y un adaptador transaccional con bloqueo del registro, versión y clave de idempotencia. Fuera de ese perfil, el adaptador responde que el Módulo 1 no está disponible.
 
 ## Phase 1: Setup (Shared Infrastructure)
 
@@ -86,6 +80,8 @@ No expone endpoints HTTP públicos: es un contrato interno de aplicación invoca
   "galponId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
   "cantidadBajas": 4,
   "causa": "MORTALIDAD",
+  "actor": "operario",
+  "versionEsperada": 0,
   "idempotencyKey": "b07f5fd4-3b77-4e9a-a4eb-5d54f907c8a4"
 }
 ```

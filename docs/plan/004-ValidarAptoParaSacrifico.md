@@ -31,9 +31,8 @@ docs/
 ```text
 src/main/java/com/avicontrol/
 ├── domain/
-│   ├── model/sacrificio/productivo/
-│   │   ├── EstadoGalpon.java
-│   │   └── ValidacionAptitudSacrificio.java
+│   ├── model/galpon/EstadoGalpon.java
+│   ├── model/sacrificio/productivo/ValidacionAptitudSacrificio.java
 │   ├── exception/sacrificio/productivo/
 │   │   ├── GalponNoAptoParaSacrificioException.java
 │   │   ├── InformacionAptitudNoDisponibleException.java
@@ -54,8 +53,11 @@ src/main/java/com/avicontrol/
     │   └── mapper/AptitudSacrificioRestMapper.java
     ├── adapter/out/integration/modulo1/
     │   ├── GalponQueryAdapter.java
+    │   ├── GalponQueryNoDisponibleAdapter.java
     │   ├── GalponUpdateAdapter.java
-    │   └── LoteQueryAdapter.java
+    │   ├── GalponUpdateNoDisponibleAdapter.java
+    │   ├── LoteQueryAdapter.java
+    │   └── LoteQueryNoDisponibleAdapter.java
     └── config/SacrificioProductivoBeanConfiguration.java
 
 src/test/java/com/avicontrol/
@@ -70,9 +72,9 @@ src/test/java/com/avicontrol/
 
 **Purpose**: confirmar contratos, autorización y datos de prueba antes de implementar la validación.
 
-- [ ] T001 Verificar en el Módulo 1 los contratos para obtener el galpón, el lote actual y actualizar el estado del galpón.
-- [ ] T002 Confirmar la representación de los estados `productiva` y `en cosecha` en el contrato externo.
-- [ ] T003 Preparar fixtures para lote de 45 días, lote de 44 días, galpón no productivo, galpón sin lote e indisponibilidad del Módulo 1.
+- [x] T001 Verificar la fuente provisional de galpón y lote y definir puertos para el contrato futuro del Módulo 1.
+- [x] T002 Confirmar la representación de los estados `productiva` y `en cosecha` en la fuente provisional.
+- [x] T003 Preparar fixtures para lote de 45 días, lote de 44 días, galpón no productivo, galpón sin lote e indisponibilidad del Módulo 1.
 
 ---
 
@@ -82,11 +84,11 @@ src/test/java/com/avicontrol/
 
 **⚠️ CRITICAL**: no se inicia el endpoint hasta completar esta fase.
 
-- [ ] T004 Crear `ValidacionAptitudSacrificio` con las reglas de edad mínima de 45 días y estado `productiva`.
-- [ ] T005 Hacer que la validación acumule todas las razones de no aptitud en lugar de detenerse en la primera.
-- [ ] T006 Definir `GalponQueryPort`, `LoteQueryPort` y `GalponUpdatePort` con modelos de aplicación o dominio, nunca DTO HTTP.
-- [ ] T007 Implementar excepciones para lote ausente e información incompleta o no disponible.
-- [ ] T008 Implementar los adaptadores del Módulo 1 y la configuración de beans.
+- [x] T004 Crear `ValidacionAptitudSacrificio` con las reglas de edad mínima de 45 días y estado `productiva`.
+- [x] T005 Hacer que la validación acumule todas las razones de no aptitud en lugar de detenerse en la primera.
+- [x] T006 Definir `GalponQueryPort`, `LoteQueryPort` y `GalponUpdatePort` con modelos de aplicación o dominio, nunca DTO HTTP.
+- [x] T007 Implementar excepciones para lote ausente e información incompleta o no disponible.
+- [x] T008 Implementar los adaptadores del Módulo 1 y la configuración de beans.
 
 **Checkpoint**: la validación recibe información vigente mediante puertos y sólo puede actualizar un galpón apto.
 
@@ -96,21 +98,21 @@ src/test/java/com/avicontrol/
 
 **Goal**: mostrar `Apto` o `No apto` con todas las razones y cambiar el estado a `en cosecha` únicamente al cumplirse ambas condiciones.
 
-**Independent Test**: con un galpón `productiva` y un lote ingresado hace 44 días, la respuesta debe ser apta y el adaptador de actualización debe recibir `en cosecha`. Con 43 días o con un estado distinto, no debe invocarse la actualización.
+**Independent Test**: con un galpón `productiva` y un lote de 45 días, la respuesta debe ser apta y el adaptador de actualización debe recibir `en cosecha`. Con 44 días o con un estado distinto, no debe invocarse la actualización.
 
 ### Tests for User Story 1
 
-- [ ] T009 [P] [US1] Probar la regla de dominio para los cuatro escenarios: apto, edad insuficiente, estado inválido e incumplimiento simultáneo.
-- [ ] T010 [P] [US1] Probar el caso de uso con mocks de los tres puertos del Módulo 1.
-- [ ] T011 [P] [US1] Crear pruebas MockMvc del endpoint, autorización y contrato JSON.
+- [x] T009 [P] [US1] Probar la regla de dominio para los cuatro escenarios: apto, edad insuficiente, estado inválido e incumplimiento simultáneo.
+- [x] T010 [P] [US1] Probar el caso de uso con mocks de los tres puertos del Módulo 1.
+- [x] T011 [P] [US1] Crear pruebas MockMvc del endpoint, autorización y contrato JSON.
 
 ### Implementation for User Story 1
 
-- [ ] T012 [US1] Implementar `ValidarAptitudSacrificioUseCase` para volver a consultar galpón y lote en cada solicitud.
-- [ ] T013 [US1] Calcular la edad con la fecha de ingreso vigente y evaluar las dos condiciones sin reutilizar una consulta anterior del cliente.
-- [ ] T014 [US1] Actualizar el estado del galpón a `en cosecha` sólo cuando el resultado sea apto.
-- [ ] T015 [US1] Crear `ValidacionAptitudSacrificioResponse` y `AptitudSacrificioRestMapper`.
-- [ ] T016 [US1] Exponer el endpoint y restringirlo a `ROLE_ADMINISTRADOR`.
+- [x] T012 [US1] Implementar `ValidarAptitudSacrificioUseCase` para volver a consultar galpón y lote en cada solicitud.
+- [x] T013 [US1] Calcular la edad con la fecha de ingreso vigente y evaluar las dos condiciones sin reutilizar una consulta anterior del cliente.
+- [x] T014 [US1] Actualizar el estado del galpón a `en cosecha` sólo cuando el resultado sea apto.
+- [x] T015 [US1] Crear `ValidacionAptitudSacrificioResponse` y `AptitudSacrificioRestMapper`.
+- [x] T016 [US1] Exponer el endpoint y restringirlo a `ROLE_ADMINISTRADOR`.
 
 ## Endpoints
 
@@ -135,7 +137,7 @@ Authorization: Bearer <token>
   "loteId": "d290f1ee-6c54-4b01-90e6-d701748f0851",
   "apto": true,
   "motivosNoAptitud": [],
-  "estadoGalponResultante": "en cosecha"
+  "estadoGalponResultante": "EN_COSECHA"
 }
 ```
 
@@ -150,7 +152,7 @@ Authorization: Bearer <token>
     "El lote no cumple la edad mínima de 45 días",
     "El galpón no se encuentra en estado productiva"
   ],
-  "estadoGalponResultante": "mantenimiento"
+  "estadoGalponResultante": "MANTENIMIENTO"
 }
 ```
 
@@ -162,10 +164,10 @@ Authorization: Bearer <token>
 
 **Purpose**: reforzar el contrato, seguridad y mantenibilidad.
 
-- [ ] T017 Añadir manejo HTTP para `400` UUID inválido, `401` sin autenticación, `403` sin rol, `404` galpón inexistente, `409` información inconsistente y `503` Módulo 1 no disponible.
-- [ ] T018 Verificar que una falla durante la consulta no ejecute actualización alguna en el Módulo 1.
-- [ ] T019 Documentar en OpenAPI el endpoint, sus respuestas y el rol requerido.
-- [ ] T020 Ejecutar pruebas unitarias, pruebas HTTP y `git diff --check`.
+- [x] T017 Añadir manejo HTTP para `400` UUID inválido, `401` sin autenticación, `403` sin rol, `404` galpón inexistente, `409` información inconsistente y `503` Módulo 1 no disponible.
+- [x] T018 Verificar que una falla durante la consulta no ejecute actualización alguna en el Módulo 1.
+- [x] T019 Documentar en OpenAPI el endpoint, sus respuestas y el rol requerido.
+- [x] T020 Ejecutar pruebas unitarias, pruebas HTTP y `git diff --check`.
 
 ---
 
@@ -191,3 +193,5 @@ Authorization: Bearer <token>
 - No se persiste una validación local ni se crea una migración: la especificación sólo exige cambiar el estado del galpón apto en el Módulo 1.
 - La edad debe calcularse con el mismo criterio inclusivo definido en el Plan 003.
 - La ausencia de lote, un dato incompleto o una dependencia no disponible impiden la validación y no modifican galpón ni lote.
+- En `local` y `test`, el cambio condicional se realiza sobre `modulo1_galpon_local`. En otros perfiles los puertos responden `503` hasta que exista el adaptador real del Módulo 1.
+- La integración real con el Módulo 1 permanece pendiente: debe acordarse su contrato de estados y sustituirse el adaptador `NoDisponible` antes de usar esta operación fuera de `local` y `test`.

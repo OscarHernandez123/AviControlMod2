@@ -49,6 +49,7 @@ src/main/java/com/avicontrol/
 │   └── sacrificio/productivo/
 │       ├── CancelarOrdenSacrificioUseCase.java
 │       ├── ConsultarResumenOrdenesSacrificioUseCase.java
+│       ├── EjecutarOrdenSacrificioUseCase.java
 │       ├── EjecutarOrdenesSacrificioVencidasUseCase.java
 │       ├── ProgramarOrdenSacrificioUseCase.java
 │       ├── ReprogramarOrdenSacrificioUseCase.java
@@ -64,18 +65,24 @@ src/main/java/com/avicontrol/
     │   │   ├── ReprogramarOrdenSacrificioRequest.java
     │   │   └── ResumenOrdenesSacrificioResponse.java
     │   └── mapper/SacrificioProductivoRestMapper.java
+    ├── adapter/out/integration/modulo1/
+    │   ├── GalponUpdateAdapter.java
+    │   ├── GalponUpdateNoDisponibleAdapter.java
+    │   ├── LoteUpdateAdapter.java
+    │   └── LoteUpdateNoDisponibleAdapter.java
     ├── adapter/out/persistence/sacrificio/productivo/OrdenSacrificioProductivoPersistenceAdapter.java
     ├── scheduler/sacrificio/productivo/EjecutorOrdenesSacrificioScheduler.java
     └── config/SacrificioProductivoBeanConfiguration.java
 
 src/main/resources/db/migration/
-└── V__crear_ordenes_sacrificio_productivo.sql
+└── V17__crear_ordenes_sacrificio_productivo.sql
 
 src/test/java/com/avicontrol/
 ├── domain/model/sacrificio/productivo/OrdenSacrificioProductivoTest.java
 ├── application/sacrificio/productivo/
 │   ├── GestionarOrdenSacrificioUseCaseTest.java
 │   ├── EjecutarOrdenesSacrificioVencidasUseCaseTest.java
+│   ├── EjecucionSacrificioRollbackTest.java
 │   └── ConsultarResumenOrdenesSacrificioUseCaseTest.java
 └── infrastructure/adapter/in/rest/sacrificio/productivo/SacrificioProductivoControllerTest.java
 ```
@@ -86,9 +93,9 @@ src/test/java/com/avicontrol/
 
 **Purpose**: definir los contratos externos, el esquema y el mecanismo de ejecución diferida.
 
-- [ ] T001 Verificar los contratos del Módulo 1 para consultar galpón/lote, cambiar el estado del galpón y finalizar el alojamiento.
-- [ ] T002 Crear la migración de órdenes con identificadores de galpón y lote, fecha programada, estado y marcas de creación, reprogramación, cancelación y ejecución.
-- [ ] T003 Configurar un `Clock` y el scheduler para procesar órdenes vencidas después de una caída.
+- [x] T001 Definir puertos de consulta y actualización sobre la fuente provisional mientras se conecta el Módulo 1 real.
+- [x] T002 Crear la migración de órdenes con identificadores de galpón y lote, fecha programada, estado y marcas de creación, reprogramación, cancelación y ejecución.
+- [x] T003 Configurar un `Clock` y el scheduler para procesar órdenes vencidas después de una caída.
 
 ---
 
@@ -98,11 +105,11 @@ src/test/java/com/avicontrol/
 
 **⚠️ CRITICAL**: ninguna operación HTTP ni tarea programada debe iniciar sin estas reglas.
 
-- [ ] T004 Crear `OrdenSacrificioProductivo` y `EstadoOrdenSacrificio` con transiciones programada, reprogramada, cancelada y ejecutada.
-- [ ] T005 Validar que programar y reprogramar siempre reciban una fecha futura, y que cancelar o reprogramar sólo sea posible antes de ejecutar.
-- [ ] T006 Definir el repositorio con bloqueo o actualización condicional para que sólo una operación gane al mismo tiempo.
-- [ ] T007 Implementar puertos y adaptadores del Módulo 1; rechazar datos ausentes, lote distinto o galpón fuera de `en cosecha`.
-- [ ] T008 Implementar una consulta de resumen que calcule total y pendientes desde la misma vista consistente.
+- [x] T004 Crear `OrdenSacrificioProductivo` y `EstadoOrdenSacrificio` con transiciones programada, reprogramada, cancelada y ejecutada.
+- [x] T005 Validar que programar y reprogramar siempre reciban una fecha futura, y que cancelar o reprogramar sólo sea posible antes de la fecha programada.
+- [x] T006 Definir el repositorio con bloqueo o actualización condicional para que sólo una operación gane al mismo tiempo.
+- [x] T007 Implementar puertos y adaptadores del Módulo 1; rechazar datos ausentes, lote distinto o galpón fuera de `en cosecha`.
+- [x] T008 Implementar una consulta de resumen que calcule total y pendientes desde la misma vista consistente.
 
 **Checkpoint**: el ciclo de vida no permite doble ejecución ni modificaciones de órdenes ya ejecutadas.
 
@@ -116,18 +123,18 @@ src/test/java/com/avicontrol/
 
 ### Tests for User Story 1
 
-- [ ] T009 [P] [US1] Probar transiciones válidas e inválidas de `OrdenSacrificioProductivo`.
-- [ ] T010 [P] [US1] Probar programación, reprogramación, cancelación y ejecución con repositorio y puertos simulados.
-- [ ] T011 [P] [US1] Probar idempotencia de la ejecución y la carrera entre ejecución, cancelación y reprogramación.
-- [ ] T012 [P] [US1] Crear pruebas MockMvc de los tres endpoints y la autorización.
+- [x] T009 [P] [US1] Probar transiciones válidas e inválidas de `OrdenSacrificioProductivo`.
+- [x] T010 [P] [US1] Probar programación, reprogramación, cancelación y ejecución con repositorio y puertos simulados.
+- [x] T011 [P] [US1] Probar idempotencia de la ejecución y la carrera entre ejecución, cancelación y reprogramación.
+- [x] T012 [P] [US1] Crear pruebas MockMvc de los tres endpoints y la autorización.
 
 ### Implementation for User Story 1
 
-- [ ] T013 [US1] Implementar `ProgramarOrdenSacrificioUseCase` y verificar nuevamente galpón, lote y estado `en cosecha`.
-- [ ] T014 [US1] Implementar `ReprogramarOrdenSacrificioUseCase` y `CancelarOrdenSacrificioUseCase`.
-- [ ] T015 [US1] Implementar `EjecutarOrdenesSacrificioVencidasUseCase` y el scheduler; procesar cada orden de manera idempotente.
-- [ ] T016 [US1] En ejecución, marcar la orden, actualizar el galpón y finalizar el alojamiento en una operación consistente con compensación o reintento documentado.
-- [ ] T017 [US1] Exponer los endpoints y mapear solicitudes y respuestas REST.
+- [x] T013 [US1] Implementar `ProgramarOrdenSacrificioUseCase` y verificar nuevamente galpón, lote y estado `en cosecha`.
+- [x] T014 [US1] Implementar `ReprogramarOrdenSacrificioUseCase` y `CancelarOrdenSacrificioUseCase`.
+- [x] T015 [US1] Implementar `EjecutarOrdenesSacrificioVencidasUseCase` y el scheduler; procesar cada orden de manera idempotente.
+- [x] T016 [US1] En ejecución, marcar la orden, actualizar el galpón y finalizar el alojamiento en una operación consistente con compensación o reintento documentado.
+- [x] T017 [US1] Exponer los endpoints y mapear solicitudes y respuestas REST.
 
 ## Endpoints
 
@@ -188,14 +195,14 @@ Authorization: Bearer <token>
 
 ### Tests for User Story 2
 
-- [ ] T018 [P] [US2] Probar la consulta del resumen con órdenes programadas, reprogramadas, canceladas y ejecutadas.
-- [ ] T019 [P] [US2] Probar con MockMvc el contrato y que la consulta no invoque operaciones de escritura.
+- [x] T018 [P] [US2] Probar la consulta del resumen con órdenes programadas, reprogramadas, canceladas y ejecutadas.
+- [x] T019 [P] [US2] Probar con MockMvc el contrato y que la consulta no invoque operaciones de escritura.
 
 ### Implementation for User Story 2
 
-- [ ] T020 [US2] Implementar `ConsultarResumenOrdenesSacrificioUseCase` con una consulta consistente del repositorio.
-- [ ] T021 [US2] Exponer `GET /api/ordenes-sacrificio/resumen` para `ROLE_ADMINISTRADOR`.
-- [ ] T022 [US2] Crear el DTO, mapper y respuesta del resumen.
+- [x] T020 [US2] Implementar `ConsultarResumenOrdenesSacrificioUseCase` con una consulta consistente del repositorio.
+- [x] T021 [US2] Exponer `GET /api/ordenes-sacrificio/resumen` para `ROLE_ADMINISTRADOR`.
+- [x] T022 [US2] Crear el DTO, mapper y respuesta del resumen.
 
 ### Ejemplo de consulta
 
@@ -219,10 +226,10 @@ Authorization: Bearer <token>
 
 **Purpose**: completar seguridad, observabilidad y contrato.
 
-- [ ] T023 Traducir UUID o fecha inválidos a `400`, ausencia a `404`, transición o precondición inválida a `409` e indisponibilidad del Módulo 1 a `503`.
-- [ ] T024 Proteger todos los endpoints con `ROLE_ADMINISTRADOR` y probar `401` y `403`.
-- [ ] T025 Registrar eventos de ejecución, reintentos y fallos de integración sin exponer datos técnicos al cliente.
-- [ ] T026 Documentar endpoints y estados en OpenAPI; ejecutar pruebas y `git diff --check`.
+- [x] T023 Traducir UUID o fecha inválidos a `400`, ausencia a `404`, transición o precondición inválida a `409` e indisponibilidad del Módulo 1 a `503`.
+- [x] T024 Proteger todos los endpoints con `ROLE_ADMINISTRADOR` y probar `401` y `403`.
+- [x] T025 Registrar eventos de ejecución, reintentos y fallos de integración sin exponer datos técnicos al cliente.
+- [x] T026 Documentar endpoints y respuestas en OpenAPI, estados en este plan; ejecutar pruebas y `git diff --check`.
 
 ---
 
@@ -249,3 +256,6 @@ Authorization: Bearer <token>
 - Una orden pendiente es únicamente una orden programada o reprogramada, no cancelada ni ejecutada.
 - La ejecución debe ser idempotente para tolerar reintentos y recuperación posterior a una caída.
 - Cancelar no modifica el galpón ni el alojamiento; reprogramar mantiene el galpón en `en cosecha`.
+- Reprogramar o cancelar sólo se permite antes de `fechaHoraProgramada`, incluso si el scheduler todavía no ha ejecutado la orden vencida.
+- La ejecución local bloquea la orden, cambia galpón, finaliza alojamiento y marca la orden dentro de una transacción; un fallo revierte todo y el scheduler reintenta al iniciar y cada 30 segundos. El adaptador remoto del Módulo 1 requerirá coordinación idempotente antes de activarse; mientras no exista, otros perfiles responden `503`.
+- La unicidad `(galpon_id, lote_id)` permite una sola orden histórica por alojamiento, incluso si se cancela. Una nueva orden requiere un nuevo lote; la reprogramación se hace antes de cancelar.

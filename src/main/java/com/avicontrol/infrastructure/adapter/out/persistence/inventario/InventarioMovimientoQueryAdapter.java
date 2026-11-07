@@ -32,7 +32,8 @@ public class InventarioMovimientoQueryAdapter implements InventarioMovimientoQue
     jdbc.query(
         "SELECT r.id, r.alimento_id, r.nombre_alimento, r.tipo_alimento, r.fecha_vencimiento, r.estado, "
             + "COALESCE((SELECT SUM(CASE WHEN m.tipo_movimiento IN ('ENTRADA','AJUSTE_POSITIVO','AJUSTE') THEN m.cantidad ELSE -m.cantidad END) "
-            + "FROM movimientos_inventario m WHERE m.recepcion_id = r.id AND m.tipo_producto = 'ALIMENTO' AND m.estado = 'CONFIRMADO'), 0) AS saldo "
+            + "FROM movimientos_inventario m WHERE m.recepcion_id = r.id AND m.tipo_producto = 'ALIMENTO' AND m.estado = 'CONFIRMADO'), 0) "
+            + "- COALESCE((SELECT SUM(d.cantidad_kg) FROM detalles_suministro_alimento d WHERE d.recepcion_id = r.id), 0) AS saldo "
             + "FROM recepciones_alimento r ORDER BY r.fecha_ingreso, r.id",
         rs -> {
           String nombre = rs.getString("nombre_alimento");

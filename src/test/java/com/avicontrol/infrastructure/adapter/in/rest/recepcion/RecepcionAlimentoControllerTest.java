@@ -46,7 +46,7 @@ class RecepcionAlimentoControllerTest {
     assertEquals(
         1,
         jdbc.queryForObject(
-            "SELECT COUNT(*) FROM movimientos_inventario WHERE tipo_producto = 'ALIMENTO' AND cantidad = 1600",
+            "SELECT COUNT(*) FROM movimientos_inventario m JOIN recepciones_alimento r ON r.id = m.recepcion_id WHERE r.codigo_lote = 'AL-2026-001' AND m.tipo_producto = 'ALIMENTO' AND m.cantidad = 1600",
             Integer.class));
     mvc.perform(
             post("/api/recepciones/alimentos")

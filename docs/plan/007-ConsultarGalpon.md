@@ -36,7 +36,6 @@ src/main/java/com/avicontrol/
 │   │   └── ResumenGalpones.java
 │   ├── model/lote/Edad.java
 │   ├── exception/galpon/
-│   │   ├── EstadoGalponInvalidoException.java
 │   │   └── FechaIngresoInconsistenteException.java
 │   └── port/out/modulo1/
 │       ├── GalponQueryPort.java
@@ -61,7 +60,9 @@ src/main/java/com/avicontrol/
     │   └── mapper/GalponRestMapper.java
     ├── adapter/out/integration/modulo1/
     │   ├── GalponQueryAdapter.java
-    │   └── LoteQueryAdapter.java
+    │   ├── GalponQueryNoDisponibleAdapter.java
+    │   ├── LoteQueryAdapter.java
+    │   └── LoteQueryNoDisponibleAdapter.java
     └── config/GalponConsultaBeanConfiguration.java
 
 src/test/java/com/avicontrol/
@@ -69,7 +70,9 @@ src/test/java/com/avicontrol/
 ├── application/galpon/ConsultarGalponUseCaseTest.java
 ├── application/galpon/ConsultarListadoGalponesUseCaseTest.java
 ├── application/galpon/ConsultarResumenGalponesUseCaseTest.java
-└── infrastructure/adapter/in/rest/galpon/GalponControllerTest.java
+└── infrastructure/adapter/in/rest/galpon/
+    ├── GalponControllerTest.java
+    └── GalponNoDisponibleControllerTest.java
 ```
 
 **Structure Decision**: no hay persistencia ni migración local. El dominio contiene los estados permitidos, el cálculo de resumen y edad; los adaptadores consultan, sin actualizar, las interfaces públicas del Módulo 1.
@@ -78,9 +81,9 @@ src/test/java/com/avicontrol/
 
 **Purpose**: acordar contratos de lectura, roles y ordenamiento permitido.
 
-- [ ] T001 Confirmar que el Módulo 1 permite consultar galpón, lote actual y listado paginado sin efectos de escritura.
-- [ ] T002 Definir los roles autorizados para detalle y listado, y `ROLE_ADMINISTRADOR` para resumen.
-- [ ] T003 Preparar fixtures con los seis estados, estado ausente, galpón sin lote, lote con fecha futura y listado vacío.
+- [x] T001 Confirmar el contrato de consulta de galpón, lote actual y listado paginado de la fuente provisional mientras se conecta el Módulo 1 real.
+- [x] T002 Definir los roles autorizados para detalle y listado, y `ROLE_ADMINISTRADOR` para resumen.
+- [x] T003 Preparar fixtures con los seis estados, estado ausente, galpón sin lote, lote con fecha futura y listado vacío.
 
 ---
 
@@ -88,10 +91,10 @@ src/test/java/com/avicontrol/
 
 **Purpose**: centralizar reglas de estados e integración de sólo lectura.
 
-- [ ] T004 Crear `EstadoGalpon` con los seis estados permitidos y `ResumenGalpones` que cuenta válidos e inconsistentes.
-- [ ] T005 Reutilizar `Edad` del Plan 003 para el cálculo inclusivo y reportar una fecha de ingreso futura sin fabricar una edad.
-- [ ] T006 Definir los puertos de consulta y adaptadores del Módulo 1 sin métodos de actualización.
-- [ ] T007 Validar paginación y orden explícito antes de invocar al puerto.
+- [x] T004 Crear `EstadoGalpon` con los seis estados permitidos y `ResumenGalpones` que cuenta válidos e inconsistentes.
+- [x] T005 Reutilizar `Edad` del Plan 003 para el cálculo inclusivo y reportar una fecha de ingreso futura sin fabricar una edad.
+- [x] T006 Definir los puertos de consulta y adaptadores del Módulo 1 sin métodos de actualización.
+- [x] T007 Validar paginación y orden explícito antes de invocar al puerto.
 
 **Checkpoint**: la aplicación puede obtener datos vigentes sin escribir en ninguna dependencia.
 
@@ -105,13 +108,13 @@ src/test/java/com/avicontrol/
 
 ### Tests for User Story 1
 
-- [ ] T008 [P] [US1] Probar detalle con lote, sin lote y fecha de ingreso inconsistente.
-- [ ] T009 [P] [US1] Probar autorización y contrato HTTP del detalle.
+- [x] T008 [P] [US1] Probar detalle con lote, sin lote y fecha de ingreso inconsistente.
+- [x] T009 [P] [US1] Probar autorización y contrato HTTP del detalle.
 
 ### Implementation for User Story 1
 
-- [ ] T010 [US1] Implementar `ConsultarGalponUseCase` y `GalponDetalleResult`.
-- [ ] T011 [US1] Exponer `GET /api/galpones/{galponId}` mediante DTO y mapper REST.
+- [x] T010 [US1] Implementar `ConsultarGalponUseCase` y `GalponDetalleResult`.
+- [x] T011 [US1] Exponer `GET /api/galpones/{galponId}` mediante DTO y mapper REST.
 
 ```json
 {
@@ -140,13 +143,13 @@ src/test/java/com/avicontrol/
 
 ### Tests for User Story 2
 
-- [ ] T012 [P] [US2] Probar los seis estados, ceros e inconsistencias.
-- [ ] T013 [P] [US2] Probar que el resumen no llama puertos de escritura.
+- [x] T012 [P] [US2] Probar los seis estados, ceros e inconsistencias.
+- [x] T013 [P] [US2] Probar que el resumen no llama puertos de escritura.
 
 ### Implementation for User Story 2
 
-- [ ] T014 [US2] Implementar `ConsultarResumenGalponesUseCase`.
-- [ ] T015 [US2] Exponer `GET /api/galpones/resumen` sólo para administrador.
+- [x] T014 [US2] Implementar `ConsultarResumenGalponesUseCase`.
+- [x] T015 [US2] Exponer `GET /api/galpones/resumen` sólo para administrador.
 
 ```json
 {
@@ -174,12 +177,12 @@ src/test/java/com/avicontrol/
 
 ### Tests for User Story 3
 
-- [ ] T016 [P] [US3] Probar listado vacío, paginación, orden y roles autorizados.
+- [x] T016 [P] [US3] Probar listado vacío, paginación, orden y roles autorizados.
 
 ### Implementation for User Story 3
 
-- [ ] T017 [US3] Implementar `ConsultarListadoGalponesUseCase`.
-- [ ] T018 [US3] Exponer `GET /api/galpones?page=0&size=20&sort=nombre,asc`.
+- [x] T017 [US3] Implementar `ConsultarListadoGalponesUseCase`.
+- [x] T018 [US3] Exponer `GET /api/galpones?page=0&size=20&sort=nombre,asc`.
 
 **Checkpoint**: detalle, resumen y listado son independientes y estrictamente de lectura.
 
@@ -191,7 +194,7 @@ src/test/java/com/avicontrol/
 
 | Método y ruta | Roles | Respuesta |
 | --- | --- | --- |
-| `GET /api/galpones/{galponId}` | `ROLE_ADMINISTRADOR`, `ROLE_TRABAJADOR`, roles autorizados | `200 OK` con detalle y lote actual opcional |
+| `GET /api/galpones/{galponId}` | `ROLE_ADMINISTRADOR`, `ROLE_TRABAJADOR`, `ROLE_VETERINARIO`, `ROLE_NUTRICIONISTA` | `200 OK` con detalle y lote actual opcional |
 
 ### Consultar resumen
 
@@ -203,7 +206,30 @@ src/test/java/com/avicontrol/
 
 | Método y ruta | Roles | Respuesta |
 | --- | --- | --- |
-| `GET /api/galpones?page=0&size=20&sort=nombre,asc` | `ROLE_ADMINISTRADOR`, `ROLE_TRABAJADOR`, roles autorizados | `200 OK` con página ordenada |
+| `GET /api/galpones?page=0&size=20&sort=nombre,asc` | `ROLE_ADMINISTRADOR`, `ROLE_TRABAJADOR`, `ROLE_VETERINARIO`, `ROLE_NUTRICIONISTA` | `200 OK` con página ordenada |
+
+`page` empieza en 0; `size` admite 1–100; `sort` acepta `nombre`, `estado` o `id` con `asc` o `desc`. El identificador desempata el orden. Los estados válidos son `DISPONIBLE`, `VACIADO_SANITARIO`, `PRODUCTIVO`, `EN_COSECHA`, `MANTENIMIENTO` y `AISLAMIENTO`. La fuente provisional usa `PRODUCTIVA`, que se presenta como `PRODUCTIVO` en estas consultas.
+
+### Response: listado paginado
+
+```json
+{
+  "elementos": [
+    {
+      "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+      "nombre": "Galpón 1",
+      "estado": "PRODUCTIVO"
+    }
+  ],
+  "pagina": 0,
+  "tamano": 20,
+  "totalElementos": 1,
+  "totalPaginas": 1,
+  "mensaje": null
+}
+```
+
+Si no existen galpones, `elementos` es `[]`, los totales son `0` y `mensaje` es `No existen galpones disponibles`.
 
 **Errores**: `400` UUID, paginación u orden inválidos; `401` no autenticado; `403` sin rol; `404` galpón inexistente; `503` Módulo 1 no disponible.
 
@@ -211,9 +237,9 @@ src/test/java/com/avicontrol/
 
 ## Polish & Cross-Cutting Concerns
 
-- [ ] T019 Mapear `400` parámetros inválidos, `401` no autenticado, `403` sin rol, `404` galpón inexistente y `503` Módulo 1 no disponible.
-- [ ] T020 Documentar roles, paginación, orden y estados en OpenAPI.
-- [ ] T021 Ejecutar pruebas y `git diff --check`.
+- [x] T019 Mapear `400` parámetros inválidos, `401` no autenticado, `403` sin rol, `404` galpón inexistente y `503` Módulo 1 no disponible.
+- [x] T020 Documentar roles, paginación, orden y estados en OpenAPI.
+- [x] T021 Ejecutar pruebas y `git diff --check`.
 
 ---
 
@@ -228,3 +254,4 @@ src/test/java/com/avicontrol/
 
 - La relación de lote se obtiene por `galponId`; no debe agregarse ni persistirse en este módulo.
 - Los datos faltantes se comunican explícitamente; nunca se reemplazan con valores inventados o desactualizados.
+- Los perfiles `local` y `test` consultan la fuente provisional `modulo1_galpon_local`; otros perfiles responden `503` hasta conectar el contrato real del Módulo 1. Este plan no crea migración local.
