@@ -23,7 +23,7 @@ Como administrador, quiero consultar en un mismo lugar las existencias disponibl
 2. **Scenario**: Consulta de existencias de alimentos
    - **Given** que existen alimentos con saldo disponible provenientes de una o varias recepciones
    - **When** el administrador consulta la sección de alimentos
-   - **Then** el sistema muestra las tarjetas `Pre-inicio`, `Inicio`, `Broiler` y `Total alimento disponible` en kilogramos, además de una tabla consolidada con las columnas `Etapa`, `Alimento`, `Recepciones activas`, `Próximo vencimiento`, `Stock actual` y `Demanda`
+   - **Then** el sistema muestra las tarjetas `Pre-inicio`, `Inicio`, `Engorde` y `Total alimento disponible` en kilogramos, además de una tabla consolidada con las columnas `Etapa de crianza`, `Alimento`, `Recepciones activas`, `Próximo vencimiento`, `Stock actual` y `Demanda`
 
 3. **Scenario**: Consulta de existencias de medicamentos
    - **Given** que existen medicamentos con saldo disponible provenientes de una o varias recepciones
@@ -117,7 +117,7 @@ Como administrador, quiero identificar desde la tabla de stock si las existencia
 5. **Scenario**: Consulta del detalle del requerimiento
    - **Given** que el administrador visualiza uno de los botones de la columna "Demanda"
    - **When** selecciona el botón
-   - **Then** el sistema abre el modal `Detalles requerimiento de alimento` y muestra en modo de solo lectura `Alimento`, `Etapa`, `Stock actual` y `Demanda`, indicando en este último campo la cantidad exacta requerida en kilogramos y permitiendo cerrar el modal mediante el icono de cierre o el botón `Cancelar`
+   - **Then** el sistema abre el modal `Detalles requerimiento de alimento` y muestra en modo de solo lectura `Alimento`, `Etapa de crianza` (`etapaCrianza`), `Stock actual` y `Demanda`, indicando en este último campo la cantidad exacta requerida en kilogramos y permitiendo cerrar el modal mediante el icono de cierre o el botón `Cancelar`
 
 6. **Scenario**: Medicamentos sin demanda nutricional
    - **Given** que el administrador consulta el stock de medicamentos
@@ -158,16 +158,16 @@ Como administrador, quiero identificar desde la tabla de stock si las existencia
 - **FR-001**: El sistema DEBE permitir la consulta del inventario exclusivamente a usuarios autenticados con rol de administrador.
 - **FR-002**: El sistema DEBE presentar en una misma funcionalidad dos secciones diferenciadas: existencias de alimentos y existencias de medicamentos.
 - **FR-003**: La existencia disponible DEBE calcularse como la suma de entradas confirmadas menos salidas, consumos, vencimientos y anulaciones confirmadas, incorporando los ajustes con el signo que corresponda y conservando el saldo individual de cada recepción.
-- **FR-004**: La tabla `Stock de alimentos` DEBE mostrar las columnas `Etapa`, `Alimento`, `Recepciones activas`, `Próximo vencimiento`, `Stock actual` y `Demanda`; el stock actual debe expresarse en kilogramos.
+- **FR-004**: La tabla `Stock de alimentos` DEBE mostrar las columnas `Etapa de crianza` (`etapaCrianza`), `Alimento`, `Recepciones activas`, `Próximo vencimiento`, `Stock actual` y `Demanda`; el stock actual debe expresarse en kilogramos.
 - **FR-005**: El sistema DEBE consolidar en una sola existencia todas las recepciones con el mismo nombre normalizado y tipo de alimento, incluso cuando tengan diferente cantidad de bultos o peso por bulto; estos datos deben permanecer disponibles únicamente en el historial de recepciones.
-- **FR-006**: El sistema DEBE mostrar tarjetas con los kilogramos disponibles de las etapas `Pre-inicio`, `Inicio` y `Broiler`, además de la tarjeta `Total alimento disponible` con la suma de todas las etapas.
+- **FR-006**: El sistema DEBE mostrar tarjetas con los kilogramos disponibles de las etapas de crianza (enum `EtapaCrianza`): `Pre-inicio`, `Inicio` y `Engorde`, además de la tarjeta `Total alimento disponible` con la suma de todas las etapas.
 - **FR-007**: La tabla "Stock de medicamentos" DEBE mostrar exactamente las columnas `Medicamento`, `Presentación`, `Cantidad`, `Contenido por presentación` y `Stock actual`, conservando la unidad de medida correspondiente.
 - **FR-008**: El sistema DEBE agrupar los medicamentos por medicamento, presentación, contenido por presentación y unidad de medida, sin sumar cantidades expresadas en unidades o contenidos incompatibles.
 - **FR-009**: El sistema DEBE mostrar con stock igual a cero los alimentos y medicamentos previamente recibidos cuyo saldo se haya agotado.
 - **FR-010**: El sistema DEBE excluir de la existencia disponible los saldos de recepciones vencidas o anuladas e identificarlos como no disponibles.
 - **FR-011**: Las salidas y consumos de alimento DEBEN asignarse a recepciones específicas siguiendo el criterio FEFO, utilizando primero el saldo vigente con fecha de vencimiento más próxima.
 - **FR-012**: La columna `Demanda` DEBE mostrar un botón cuyo texto y color representen el estado obtenido al comparar la demanda con el stock consolidado del mismo alimento y tipo: `Cumple`, `Cobertura Parcial`, `Sin Cobertura` o `Sin Requerimiento`.
-- **FR-013**: Al seleccionar el botón de la columna `Demanda`, el sistema DEBE abrir el modal `Detalles requerimiento de alimento` con los campos de solo lectura `Alimento`, `Etapa`, `Stock actual` y `Demanda`; este último DEBE mostrar la cantidad exacta requerida en kilogramos.
+- **FR-013**: Al seleccionar el botón de la columna `Demanda`, el sistema DEBE abrir el modal `Detalles requerimiento de alimento` con los campos de solo lectura `Alimento`, `Etapa de crianza` (`etapaCrianza`), `Stock actual` y `Demanda`; este último DEBE mostrar la cantidad exacta requerida en kilogramos.
 
 ### Key Entities
 
@@ -176,7 +176,7 @@ Como administrador, quiero identificar desde la tabla de stock si las existencia
   - **Relaciones**: recibe las recepciones de alimentos y medicamentos y reúne los movimientos que determinan sus saldos disponibles y su ocupación.
 - **Existencia de alimento**: Representa el resultado de consolidar los movimientos confirmados de alimento.
   - **Clave de agrupación**: nombre normalizado del alimento y tipo de alimento.
-  - **Datos mostrados**: etapa, alimento, cantidad de recepciones activas, próximo vencimiento, stock actual en kilogramos y estado de demanda.
+  - **Datos mostrados**: etapa de crianza (`etapaCrianza`: enum `EtapaCrianza`: `PRE_INICIO`, `INICIO`, `ENGORDE`), alimento, cantidad de recepciones activas, próximo vencimiento, stock actual en kilogramos y estado de demanda.
   - **Origen**: se calcula a partir de las recepciones de alimento definidas en el SPEC-001 y sus movimientos asociados.
 - **Existencia de medicamento**: Representa el resultado de consolidar los movimientos confirmados de medicamento.
   - **Datos mostrados**: medicamento, presentación, cantidad física, contenido por presentación y stock actual en su unidad de medida.
@@ -190,7 +190,7 @@ Como administrador, quiero identificar desde la tabla de stock si las existencia
   - **Datos mostrados**: porcentaje de ocupación y las cinco recepciones de alimento confirmadas más recientes.
 - **Cobertura de demanda de alimento**: Representa la comparación de solo lectura entre el stock actual y la demanda proyectada consolidada proveniente del SPEC-022.
   - **Clave de agrupación**: nombre normalizado del alimento y tipo de alimento.
-  - **Datos mostrados**: botón de estado en la tabla y, en el modal, alimento, etapa, stock actual y cantidad exacta de la demanda.
+  - **Datos mostrados**: botón de estado en la tabla y, en el modal, alimento, etapa de crianza (`etapaCrianza`), stock actual y cantidad exacta de la demanda.
   - **Estados**: `Cumple`, `Cobertura Parcial`, `Sin Cobertura` y `Sin Requerimiento`.
 
 ## Success Criteria

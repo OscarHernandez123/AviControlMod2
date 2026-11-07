@@ -3,7 +3,7 @@
 **Date**: [DATE] 
 **Spec**: [link]
 
-**Arquitectura y tecnologías**: [000-ArquitecturaYStackTecnologico.md](../plan/000-ArquitecturaYStackTecnologico.md)
+**Arquitectura y tecnologías**: [General.md](../plan/General.md)
 
 ## Summary
 

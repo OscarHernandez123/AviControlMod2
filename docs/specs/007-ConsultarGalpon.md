@@ -70,11 +70,11 @@ Como administrador, quiero visualizar en la pantalla de inicio la cantidad total
 
 ### User Story 3 - Listar galpones disponibles para consulta (Priority: P2)
 
-Como trabajador u operario de granja, quiero visualizar el listado general de galpones registrados y seleccionar cualquiera de ellos para consultar su información actual, sin depender de una asignación entre trabajador y galpón.
+Como trabajador u operario de granja, quiero visualizar el listado general de galpones registrados y seleccionar cualquiera de ellos para consultar su información actual.
 
 **Why this priority**: El listado permite localizar y abrir un galpón sin conocer previamente su identificador. Complementa la consulta individual y ofrece a todos los trabajadores autorizados el mismo alcance de lectura.
 
-**Independent Test**: Se puede probar autenticándose como trabajador frente a doce galpones registrados. El sistema debe listar los doce con su identificador, nombre y estado; al seleccionar cualquiera debe abrir la consulta individual definida en la historia 1. No debe consultar ni aplicar asignaciones de trabajadores.
+**Independent Test**: Se puede probar autenticándose como trabajador frente a doce galpones registrados. El sistema debe listar los doce con su identificador, nombre y estado; al seleccionar cualquiera debe abrir la consulta individual definida en la historia 1.
 
 **Acceptance Scenarios**:
 
@@ -88,7 +88,6 @@ Como trabajador u operario de granja, quiero visualizar el listado general de ga
    - **Given** que el listado contiene un galpón registrado
    - **When** el trabajador lo selecciona
    - **Then** el sistema permite consultar su detalle mediante la historia 1
-   - **And** no exige que exista una asignación entre el trabajador y el galpón
 
 3. **Scenario**: Listado vacío
    - **Given** que no existen galpones registrados
@@ -142,7 +141,7 @@ Como trabajador u operario de granja, quiero visualizar el listado general de ga
 - **FR-012**: El resumen DEBE obtener la información vigente del módulo 1 y operar estrictamente en modo de solo lectura.
 - **FR-013**: Los galpones sin estado o con un estado no permitido NO DEBEN incluirse en otro estado; el sistema DEBE informar su cantidad como registros inconsistentes.
 - **FR-014**: El sistema DEBE permitir a los trabajadores u operarios autenticados consultar el listado general de galpones registrados.
-- **FR-015**: El listado del trabajador NO DEBE depender de asignaciones entre trabajadores y galpones ni filtrar galpones por el usuario autenticado.
+- **FR-015**: El listado DEBE mostrar todos los galpones registrados a los trabajadores autorizados, sin filtrar por identidad del usuario.
 - **FR-016**: El listado DEBE incluir todos los galpones registrados y mostrar para cada uno su identificador, nombre y estado vigente.
 - **FR-017**: El listado DEBE admitir paginación y un orden explícito para conservar un comportamiento estable cuando aumente la cantidad de galpones.
 - **FR-018**: Al seleccionar un galpón del listado, el sistema DEBE permitir consultar su detalle conforme a FR-001 a FR-007, sin exigir una relación de asignación.
@@ -163,7 +162,7 @@ Como trabajador u operario de granja, quiero visualizar el listado general de ga
   - **Origen**: se calcula en cada consulta a partir de los galpones proporcionados por el módulo 1 y no se utiliza para modificar sus estados.
 - **Listado general de galpones**: Representa la colección paginada de galpones disponibles para consulta.
   - **Datos mostrados**: identificador, nombre y estado vigente de cada galpón, junto con los metadatos de paginación.
-  - **Acceso**: un trabajador autorizado puede listar y seleccionar cualquier galpón; no existe una relación de asignación con el trabajador.
+  - **Acceso**: un trabajador autorizado puede listar y seleccionar cualquier galpón.
 
 ## Success Criteria
 
@@ -176,4 +175,4 @@ Como trabajador u operario de granja, quiero visualizar el listado general de ga
 - **SC-005**: El 100 % de los resúmenes contabiliza cada galpón válido exactamente una vez según su único estado vigente.
 - **SC-006**: El 95 % de los resúmenes muestra el total y los conteos por estado en un máximo de 1 segundo.
 - **SC-007**: El 100 % de las consultas del resumen se ejecuta sin modificar galpones ni lotes del módulo 1.
-- **SC-008**: El 100 % de los trabajadores autorizados puede listar todos los galpones registrados y abrir el detalle de cualquiera de ellos, sin filtros ni restricciones basados en asignaciones inexistentes.
+- **SC-008**: El 100 % de los trabajadores autorizados puede listar todos los galpones registrados y abrir el detalle de cualquiera de ellos.

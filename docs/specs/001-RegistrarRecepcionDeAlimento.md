@@ -161,7 +161,7 @@ Como administrador, quiero consultar y filtrar el historial de recepciones de al
   - **Atributos calculados**: peso total, precio neto por kilogramo, subtotal neto, valor del impuesto y total de la compra.
   - **Relaciones**: pertenece a la bodega central, origina un movimiento de entrada, puede tener movimientos posteriores y se vincula con registros de auditoría.
   - **Comportamiento histórico**: conserva directamente el alimento, tipo de alimento y valores comerciales necesarios para reconstruir la recepción.
-- **Tipo de alimento**: Representa la clasificación registrada para la recepción, por ejemplo la etapa de alimentación correspondiente.
+- **Tipo de alimento**: Representa la clasificación registrada para la recepción, vinculada a la etapa de crianza correspondiente (`etapaCrianza`: enum `EtapaCrianza`: `PRE_INICIO`, `INICIO`, `ENGORDE`).
   - **Comportamiento**: se registra con la recepción, se conserva como valor histórico, se muestra en el detalle y no se modifica desde el modal de edición.
 - **Bodega central**: Representa el inventario principal que recibe las entregas y consolida los movimientos que determinan las existencias.
 - **Movimiento de inventario de alimento**: Representa una entrada, salida, despacho, consumo, ajuste, vencimiento o anulación que afecta la existencia de una recepción.
