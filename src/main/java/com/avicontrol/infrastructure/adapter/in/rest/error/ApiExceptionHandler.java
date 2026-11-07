@@ -1,6 +1,12 @@
 package com.avicontrol.infrastructure.adapter.in.rest.error;
 
 import com.avicontrol.domain.exception.DomainException;
+import com.avicontrol.domain.exception.medicamento.ConsumoMedicamentoNoEncontradoException;
+import com.avicontrol.domain.exception.medicamento.DiagnosticoConsumoNoEncontradoException;
+import com.avicontrol.domain.exception.medicamento.ExistenciasMedicamentoInsuficientesException;
+import com.avicontrol.domain.exception.medicamento.IdempotenciaConsumoIncompatibleException;
+import com.avicontrol.domain.exception.medicamento.TratamientoNoActivoException;
+import com.avicontrol.domain.exception.medicamento.UnidadMedicamentoIncompatibleException;
 import com.avicontrol.domain.exception.recepcion.FechaVencimientoInvalidaException;
 import com.avicontrol.domain.exception.recepcion.RecepcionNoEditableException;
 import com.avicontrol.domain.exception.recepcion.RecursoNoEncontradoException;
@@ -65,7 +71,17 @@ public class ApiExceptionHandler {
           List.of(),
           request);
     }
+    if (exception instanceof ExistenciasMedicamentoInsuficientesException) {
+      return response(
+          HttpStatus.UNPROCESSABLE_ENTITY,
+          "EXISTENCIAS_INSUFICIENTES",
+          exception.getMessage(),
+          List.of(),
+          request);
+    }
     if (exception instanceof RecursoNoEncontradoException
+        || exception instanceof ConsumoMedicamentoNoEncontradoException
+        || exception instanceof DiagnosticoConsumoNoEncontradoException
         || exception instanceof GalponNoEncontradoException
         || exception instanceof LoteActivoNoEncontradoException
         || exception instanceof SolicitudAislamientoNoEncontradaException
@@ -91,6 +107,16 @@ public class ApiExceptionHandler {
         || exception instanceof MedicacionNoCompatibleException) {
       return response(
           HttpStatus.CONFLICT, "CONFLICTO_DIAGNOSTICO", exception.getMessage(), List.of(), request);
+    }
+    if (exception instanceof TratamientoNoActivoException
+        || exception instanceof UnidadMedicamentoIncompatibleException
+        || exception instanceof IdempotenciaConsumoIncompatibleException) {
+      return response(
+          HttpStatus.CONFLICT,
+          "CONFLICTO_CONSUMO_MEDICAMENTO",
+          exception.getMessage(),
+          List.of(),
+          request);
     }
     if (exception instanceof UnidadIncompatibleException
         || exception instanceof RecepcionNoEditableException

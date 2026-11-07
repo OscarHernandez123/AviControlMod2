@@ -80,7 +80,8 @@ public class InventarioMovimientoQueryAdapter implements InventarioMovimientoQue
     jdbc.query(
         "SELECT r.medicamento_id, r.nombre_medicamento, r.presentacion, r.contenido_por_presentacion, r.unidad_contenido, r.fecha_vencimiento, r.estado, "
             + "COALESCE((SELECT SUM(CASE WHEN m.tipo_movimiento IN ('ENTRADA','AJUSTE_POSITIVO','AJUSTE') THEN m.cantidad ELSE -m.cantidad END) "
-            + "FROM movimientos_inventario m WHERE m.recepcion_id = r.id AND m.tipo_producto = 'MEDICAMENTO' AND m.estado = 'CONFIRMADO'), 0) AS saldo "
+            + "FROM movimientos_inventario m WHERE m.recepcion_id = r.id AND m.tipo_producto = 'MEDICAMENTO' AND m.estado = 'CONFIRMADO'), 0) "
+            + "- COALESCE((SELECT SUM(d.cantidad_unidad_base) FROM detalles_consumo_medicamento d WHERE d.recepcion_id = r.id), 0) AS saldo "
             + "FROM recepciones_medicamento r ORDER BY r.fecha_ingreso, r.id",
         rs -> {
           UUID id = (UUID) rs.getObject("medicamento_id");
