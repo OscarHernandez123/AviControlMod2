@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import com.avicontrol.domain.exception.sanitario.medicacion.DatosMedicacionInvalidosException;
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
@@ -30,5 +31,26 @@ class MedicacionTest {
     assertEquals(5, original.duracionDias());
     assertEquals(7, edited.duracionDias());
     assertEquals(1, edited.version());
+  }
+
+  @Test
+  void validaDiasAlternosYCalculaDescanso() {
+    Instant now = Instant.now();
+    UUID id = UUID.randomUUID();
+    Medicacion m =
+        new Medicacion(
+            id, id, id, "1 ml", 5, "Agua", 0, now, now, "Fármaco", "Principio", List.of(1, 3, 5));
+    assertEquals(true, m.aplicaDia(3));
+    assertEquals(false, m.aplicaDia(2));
+    assertThrows(
+        DatosMedicacionInvalidosException.class,
+        () ->
+            new Medicacion(
+                id, id, id, "1 ml", 5, "Agua", 0, now, now, "Fármaco", "Principio", List.of(1, 6)));
+    assertThrows(
+        DatosMedicacionInvalidosException.class,
+        () ->
+            new Medicacion(
+                id, id, id, "1 ml", 5, "Agua", 0, now, now, "Fármaco", "Principio", List.of(1, 1)));
   }
 }

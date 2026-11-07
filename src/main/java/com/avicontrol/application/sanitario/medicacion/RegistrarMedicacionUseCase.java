@@ -43,7 +43,10 @@ public class RegistrarMedicacionUseCase {
             comando.descripcion(),
             0,
             ahora,
-            ahora);
+            ahora,
+            comando.nombreMedicamento(),
+            comando.principioActivo(),
+            comando.diasAplicacion());
     if (!enfermedades.disponible(medicacion.enfermedadId()))
       throw new EnfermedadNoDisponibleException();
     if (!medicamentos.disponible(medicacion.medicamentoId()))

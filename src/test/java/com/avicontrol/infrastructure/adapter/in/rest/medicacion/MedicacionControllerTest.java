@@ -96,6 +96,17 @@ class MedicacionControllerTest {
     mvc.perform(
             post("/api/medicaciones")
                 .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    "{\"enfermedadId\":\""
+                        + enfermedad
+                        + "\",\"medicamentoId\":\""
+                        + MEDICAMENTO
+                        + "\",\"dosis\":\"1 ml\",\"duracionDias\":5,\"descripcion\":\"Agua\"}")
+                .with(SecurityMockMvcRequestPostProcessors.user("vet").roles("VETERINARIO")))
+        .andExpect(status().isBadRequest());
+    mvc.perform(
+            post("/api/medicaciones")
+                .contentType(MediaType.APPLICATION_JSON)
                 .content(body(enfermedad, MEDICAMENTO, 5))
                 .with(SecurityMockMvcRequestPostProcessors.user("admin").roles("ADMINISTRADOR")))
         .andExpect(status().isForbidden());
@@ -128,7 +139,8 @@ class MedicacionControllerTest {
   private String body(UUID enfermedad, UUID medicamento, int dias) {
     return """
         {"enfermedadId":"%s","medicamentoId":"%s","dosis":"0.5 ml por ave",
-         "duracionDias":%d,"descripcion":"Administrar según indicación veterinaria"}
+         "duracionDias":%d,"descripcion":"Administrar según indicación veterinaria",
+         "nombreMedicamento":"Fármaco ejemplo","principioActivo":"Principio ejemplo"}
         """
         .formatted(enfermedad, medicamento, dias);
   }

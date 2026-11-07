@@ -1,5 +1,6 @@
 package com.avicontrol.infrastructure.adapter.in.rest.medicacion.dto;
 
+import java.util.List;
 import java.util.UUID;
 
 public record MedicacionResponse(
@@ -8,4 +9,7 @@ public record MedicacionResponse(
     UUID medicamentoId,
     String dosis,
     int duracionDias,
-    String descripcion) {}
+    String descripcion,
+    String nombreMedicamento,
+    String principioActivo,
+    List<Integer> diasAplicacion) {}

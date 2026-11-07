@@ -6,6 +6,7 @@ import com.avicontrol.domain.exception.sanitario.diagnostico.MedicacionRequerida
 import com.avicontrol.domain.model.sanitario.enfermedad.Enfermedad;
 import com.avicontrol.domain.model.sanitario.medicacion.Medicacion;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.UUID;
 
 public record DiagnosticoGalpon(
@@ -25,7 +26,51 @@ public record DiagnosticoGalpon(
     LocalDate fechaReintegro,
     EstadoDiagnostico estado,
     LocalDate fechaResolucion,
-    long version) {
+    long version,
+    String medicamentoNombre,
+    String principioActivo,
+    List<Integer> diasAplicacion) {
+
+  public DiagnosticoGalpon(
+      UUID id,
+      UUID galponId,
+      UUID loteId,
+      UUID enfermedadId,
+      String enfermedadNombre,
+      boolean requiereSacrificioSanitario,
+      UUID medicacionId,
+      UUID medicamentoId,
+      String dosis,
+      Integer duracionDias,
+      String descripcionMedicacion,
+      String observaciones,
+      LocalDate fechaDiagnostico,
+      LocalDate fechaReintegro,
+      EstadoDiagnostico estado,
+      LocalDate fechaResolucion,
+      long version) {
+    this(
+        id,
+        galponId,
+        loteId,
+        enfermedadId,
+        enfermedadNombre,
+        requiereSacrificioSanitario,
+        medicacionId,
+        medicamentoId,
+        dosis,
+        duracionDias,
+        descripcionMedicacion,
+        observaciones,
+        fechaDiagnostico,
+        fechaReintegro,
+        estado,
+        fechaResolucion,
+        version,
+        null,
+        null,
+        null);
+  }
 
   public DiagnosticoGalpon {
     if (id == null
@@ -62,6 +107,16 @@ public record DiagnosticoGalpon(
     }
     if ((estado == EstadoDiagnostico.ACTIVO) != (fechaResolucion == null))
       throw new DatosDiagnosticoInvalidosException("Resolución inconsistente");
+    if ((medicamentoNombre == null) != (principioActivo == null))
+      throw new DatosDiagnosticoInvalidosException("Identidad del medicamento incompleta");
+    if (diasAplicacion != null) {
+      if (duracionDias == null
+          || diasAplicacion.isEmpty()
+          || diasAplicacion.stream().anyMatch(dia -> dia == null || dia < 1 || dia > duracionDias)
+          || diasAplicacion.stream().distinct().count() != diasAplicacion.size())
+        throw new DatosDiagnosticoInvalidosException("Días de aplicación inválidos");
+      diasAplicacion = List.copyOf(diasAplicacion);
+    }
   }
 
   public static DiagnosticoGalpon crear(
@@ -93,7 +148,10 @@ public record DiagnosticoGalpon(
           null,
           EstadoDiagnostico.ACTIVO,
           null,
-          0);
+          0,
+          null,
+          null,
+          null);
     }
     if (medicacion == null) throw new MedicacionRequeridaException();
     if (!medicacion.enfermedadId().equals(enfermedad.id()))
@@ -115,7 +173,10 @@ public record DiagnosticoGalpon(
         fecha.plusDays(medicacion.duracionDias()),
         EstadoDiagnostico.ACTIVO,
         null,
-        0);
+        0,
+        medicacion.nombreMedicamento(),
+        medicacion.principioActivo(),
+        medicacion.diasAplicacion());
   }
 
   public DiagnosticoGalpon resolver(EstadoDiagnostico nuevoEstado, LocalDate fecha) {
@@ -140,7 +201,17 @@ public record DiagnosticoGalpon(
         fechaReintegro,
         nuevoEstado,
         fecha,
-        version + 1);
+        version + 1,
+        medicamentoNombre,
+        principioActivo,
+        diasAplicacion);
+  }
+
+  public boolean aplicaDia(int dia) {
+    return duracionDias != null
+        && dia >= 1
+        && dia <= duracionDias
+        && (diasAplicacion == null || diasAplicacion.contains(dia));
   }
 
   private static String texto(String value, String field) {

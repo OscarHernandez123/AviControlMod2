@@ -42,6 +42,13 @@ public class EditarMedicacionUseCase {
             comando.dosis(),
             comando.duracionDias(),
             comando.descripcion(),
+            comando.nombreMedicamento() == null && comando.principioActivo() == null
+                ? anterior.nombreMedicamento()
+                : comando.nombreMedicamento(),
+            comando.nombreMedicamento() == null && comando.principioActivo() == null
+                ? anterior.principioActivo()
+                : comando.principioActivo(),
+            comando.diasAplicacion() == null ? anterior.diasAplicacion() : comando.diasAplicacion(),
             Instant.now(clock));
     if (!enfermedades.disponible(actualizada.enfermedadId()))
       throw new EnfermedadNoDisponibleException();

@@ -63,6 +63,11 @@ public class ReintegrarGalponesTratadosUseCase {
         throw new IllegalStateException("El diagnóstico cambió durante el reintegro");
       return false;
     }
+    if (diagnosticos.existeOtroActivo(d.galponId(), d.id())) {
+      if (!diagnosticos.resolver(d, d.resolver(EstadoDiagnostico.REINTEGRO_OMITIDO, hoy)))
+        throw new IllegalStateException("El diagnóstico cambió durante el reintegro");
+      return false;
+    }
     if (!reintegro.reintegrarSiAislado(d.galponId(), d.loteId()))
       throw new IllegalStateException("El galpón cambió durante el reintegro");
     if (!diagnosticos.resolver(d, d.resolver(EstadoDiagnostico.REINTEGRADO, hoy)))

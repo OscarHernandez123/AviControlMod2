@@ -2,6 +2,7 @@ package com.avicontrol.infrastructure.adapter.in.rest.sanitario.diagnostico.dto;
 
 import com.avicontrol.domain.model.sanitario.diagnostico.EstadoDiagnostico;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.UUID;
 
 public record DiagnosticoGalponResponse(
@@ -19,4 +20,7 @@ public record DiagnosticoGalponResponse(
     String observaciones,
     LocalDate fechaDiagnostico,
     LocalDate fechaReintegro,
-    EstadoDiagnostico estado) {}
+    EstadoDiagnostico estado,
+    String medicamentoNombre,
+    String principioActivo,
+    List<Integer> diasAplicacion) {}

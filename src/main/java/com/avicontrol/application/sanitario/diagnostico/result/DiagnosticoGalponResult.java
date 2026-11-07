@@ -3,6 +3,7 @@ package com.avicontrol.application.sanitario.diagnostico.result;
 import com.avicontrol.domain.model.sanitario.diagnostico.DiagnosticoGalpon;
 import com.avicontrol.domain.model.sanitario.diagnostico.EstadoDiagnostico;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.UUID;
 
 public record DiagnosticoGalponResult(
@@ -20,7 +21,10 @@ public record DiagnosticoGalponResult(
     String observaciones,
     LocalDate fechaDiagnostico,
     LocalDate fechaReintegro,
-    EstadoDiagnostico estado) {
+    EstadoDiagnostico estado,
+    String medicamentoNombre,
+    String principioActivo,
+    List<Integer> diasAplicacion) {
   public static DiagnosticoGalponResult de(DiagnosticoGalpon d) {
     return new DiagnosticoGalponResult(
         d.id(),
@@ -37,6 +41,9 @@ public record DiagnosticoGalponResult(
         d.observaciones(),
         d.fechaDiagnostico(),
         d.fechaReintegro(),
-        d.estado());
+        d.estado(),
+        d.medicamentoNombre(),
+        d.principioActivo(),
+        d.diasAplicacion());
   }
 }

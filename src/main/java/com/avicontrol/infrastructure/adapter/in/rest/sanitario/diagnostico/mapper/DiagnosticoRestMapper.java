@@ -30,6 +30,9 @@ public class DiagnosticoRestMapper {
         r.observaciones(),
         r.fechaDiagnostico(),
         r.fechaReintegro(),
-        r.estado());
+        r.estado(),
+        r.medicamentoNombre(),
+        r.principioActivo(),
+        r.diasAplicacion());
   }
 }

@@ -19,6 +19,7 @@ import com.avicontrol.domain.port.out.sanitario.diagnostico.EnfermedadQueryPort;
 import com.avicontrol.domain.port.out.sanitario.diagnostico.MedicacionQueryPort;
 import java.time.Clock;
 import java.time.LocalDate;
+import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 
 public class RegistrarDiagnosticoUseCase {
@@ -41,7 +42,7 @@ public class RegistrarDiagnosticoUseCase {
     this.clock = clock;
   }
 
-  @Transactional
+  @Transactional(isolation = Isolation.SERIALIZABLE)
   public DiagnosticoGalponResult registrar(RegistrarDiagnosticoCommand command) {
     if (command == null || command.galponId() == null || command.enfermedadId() == null)
       throw new DatosDiagnosticoInvalidosException("Galpón y enfermedad obligatorios");
@@ -64,7 +65,10 @@ public class RegistrarDiagnosticoUseCase {
         galpones.consultar(command.galponId()).orElseThrow(GalponNoEncontradoException::new);
     if (!"AISLAMIENTO".equals(contexto.estado())) throw new GalponNoAisladoException();
     if (contexto.loteId() == null) throw new LoteActivoNoEncontradoException();
-    if (diagnosticos.existeActivo(command.galponId()))
+    if (enfermedad.requiereSacrificioSanitario()
+        ? diagnosticos.existeActivo(command.galponId())
+        : diagnosticos.existeSanitarioActivo(command.galponId())
+            || diagnosticos.existeActivoMismaEnfermedad(command.galponId(), command.enfermedadId()))
       throw new DiagnosticoActivoExistenteException();
     DiagnosticoGalpon diagnostico =
         DiagnosticoGalpon.crear(

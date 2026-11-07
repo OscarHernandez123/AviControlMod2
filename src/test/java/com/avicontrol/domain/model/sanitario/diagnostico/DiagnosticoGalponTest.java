@@ -12,6 +12,7 @@ import com.avicontrol.domain.model.sanitario.enfermedad.TipoEnfermedad;
 import com.avicontrol.domain.model.sanitario.medicacion.Medicacion;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
@@ -82,5 +83,43 @@ class DiagnosticoGalponTest {
                 medicacion(UUID.randomUUID(), 5),
                 "Tratamiento",
                 LocalDate.now()));
+  }
+
+  @Test
+  void congelaIdentidadYCalendarioAlDiagnosticar() {
+    Enfermedad e = enfermedad(false);
+    Instant now = Instant.now();
+    Medicacion m =
+        new Medicacion(
+            UUID.randomUUID(),
+            e.id(),
+            UUID.randomUUID(),
+            "1 ml",
+            5,
+            "Agua",
+            0,
+            now,
+            now,
+            "Amprolio 20%",
+            "Amprolio",
+            List.of(1, 3, 5));
+    DiagnosticoGalpon d =
+        DiagnosticoGalpon.crear(
+            UUID.randomUUID(), UUID.randomUUID(), e, m, "Tratamiento", LocalDate.of(2026, 11, 6));
+    m =
+        m.actualizar(
+            e.id(),
+            m.medicamentoId(),
+            "2 ml",
+            5,
+            "Otra vía",
+            "Otro nombre",
+            "Otro principio",
+            List.of(2, 4),
+            now.plusSeconds(1));
+    assertEquals("Amprolio 20%", d.medicamentoNombre());
+    assertEquals("Amprolio", d.principioActivo());
+    assertEquals(false, d.aplicaDia(2));
+    assertEquals(true, m.aplicaDia(2));
   }
 }

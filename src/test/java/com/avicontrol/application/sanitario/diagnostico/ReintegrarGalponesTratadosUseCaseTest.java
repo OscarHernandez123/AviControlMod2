@@ -68,7 +68,32 @@ class ReintegrarGalponesTratadosUseCaseTest {
     assertEquals("REINTEGRADO", estadoDiagnostico(d.id()));
   }
 
+  @Test
+  void esperaHastaQueTermineElUltimoTratamientoActivo() {
+    UUID galpon = UUID.randomUUID();
+    UUID lote = UUID.randomUUID();
+    insertarGalpon(galpon, lote, "AISLAMIENTO");
+    DiagnosticoGalpon primero = diagnostico(galpon, lote, 10);
+    DiagnosticoGalpon segundo = diagnostico(galpon, lote, 2);
+    assertEquals(0, useCase.ejecutar());
+    assertEquals("AISLAMIENTO", estadoGalpon(galpon));
+    assertEquals("REINTEGRO_OMITIDO", estadoDiagnostico(primero.id()));
+    assertEquals("ACTIVO", estadoDiagnostico(segundo.id()));
+    jdbc.update(
+        "UPDATE diagnosticos_galpon SET fecha_diagnostico = ?, fecha_reintegro = ? WHERE id = ?",
+        LocalDate.now(clock).minusDays(10),
+        LocalDate.now(clock).minusDays(5),
+        segundo.id());
+    assertEquals(1, useCase.ejecutar());
+    assertEquals("PRODUCTIVA", estadoGalpon(galpon));
+    assertEquals("REINTEGRADO", estadoDiagnostico(segundo.id()));
+  }
+
   private DiagnosticoGalpon diagnosticoVencido(UUID galpon, UUID lote) {
+    return diagnostico(galpon, lote, 10);
+  }
+
+  private DiagnosticoGalpon diagnostico(UUID galpon, UUID lote, int diasDesdeInicio) {
     Instant now = Instant.now(clock);
     Enfermedad e =
         new Enfermedad(
@@ -108,7 +133,7 @@ class ReintegrarGalponesTratadosUseCaseTest {
         now);
     DiagnosticoGalpon d =
         DiagnosticoGalpon.crear(
-            galpon, lote, e, m, "Tratamiento", LocalDate.now(clock).minusDays(10));
+            galpon, lote, e, m, "Tratamiento", LocalDate.now(clock).minusDays(diasDesdeInicio));
     diagnosticos.crear(d);
     return d;
   }

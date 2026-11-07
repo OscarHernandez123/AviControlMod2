@@ -37,12 +37,15 @@ public class SolicitudAislamientoBeanConfiguration {
               "SELECT COUNT(*) FROM modulo1_galpon_local WHERE id = ?", Integer.class, galponId);
       if (count != null && count == 0) {
         jdbc.update(
-            "INSERT INTO modulo1_galpon_local (id, lote_id, estado, poblacion_viva, fecha_ingreso) VALUES (?, ?, ?, ?, ?)",
+            "INSERT INTO modulo1_galpon_local (id, lote_id, estado, poblacion_viva, fecha_ingreso, nombre, aforo_maximo, lote_codigo) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
             galponId,
             loteId,
             "PRODUCTIVA",
             8000,
-            LocalDate.of(2026, 11, 1));
+            LocalDate.of(2026, 11, 1),
+            "Galpón local",
+            10000,
+            "LDP-LOCAL");
       }
     };
   }

@@ -70,7 +70,8 @@ src/main/java/com/avicontrol/
     └── config/DiagnosticoBeanConfiguration.java
 
 src/main/resources/db/migration/
-└── V12__crear_diagnosticos_galpon.sql
+├── V12__crear_diagnosticos_galpon.sql
+└── V15__ampliar_prescripciones_y_diagnosticos.sql
 
 src/test/java/com/avicontrol/
 ├── domain/model/sanitario/diagnostico/DiagnosticoGalponTest.java
@@ -86,9 +87,9 @@ src/test/java/com/avicontrol/
 
 **Purpose**: confirmar contratos de los Planes 008, 009 y 010, y preparar la ejecución de reintegro.
 
-- [ ] T001 Confirmar consultas de enfermedad, medicación compatible, galpón/lote actual y actualización de estado.
-- [ ] T002 Crear migración de diagnósticos con enfermedad obligatoria, medicación y fecha de reintegro opcionales.
-- [ ] T003 Configurar `Clock` y scheduler de reintegro recuperable tras indisponibilidad.
+- [x] T001 Confirmar consultas de enfermedad, medicación compatible, galpón/lote actual y actualización de estado.
+- [x] T002 Crear migración de diagnósticos con enfermedad obligatoria, medicación y fecha de reintegro opcionales.
+- [x] T003 Configurar `Clock` y scheduler de reintegro recuperable tras indisponibilidad.
 
 ---
 
@@ -96,10 +97,10 @@ src/test/java/com/avicontrol/
 
 **Purpose**: consolidar reglas clínicas, persistencia y transiciones automáticas.
 
-- [ ] T004 Crear `DiagnosticoGalpon` y calcular `fechaReintegro = fechaDiagnostico + duracionDias` para enfermedad tratable.
-- [ ] T005 Exigir medicación de la misma enfermedad si no requiere sacrificio sanitario; prohibir medicación y reintegro si lo requiere.
-- [ ] T006 Definir repositorio de diagnósticos, puertos de consulta y excepciones de galpón no aislado o datos incompatibles.
-- [ ] T007 Implementar búsqueda de diagnósticos vencidos que aún no se hayan reintegrado.
+- [x] T004 Crear `DiagnosticoGalpon` y calcular `fechaReintegro = fechaDiagnostico + duracionDias` para enfermedad tratable.
+- [x] T005 Exigir medicación de la misma enfermedad si no requiere sacrificio sanitario; prohibir medicación y reintegro si lo requiere.
+- [x] T006 Definir repositorio de diagnósticos, puertos de consulta y excepciones de galpón no aislado o datos incompatibles.
+- [x] T007 Implementar búsqueda de diagnósticos vencidos que aún no se hayan reintegrado.
 
 **Checkpoint**: el dominio distingue sin ambigüedad tratamiento de sacrificio sanitario y conserva los datos del momento de confirmar.
 
@@ -113,14 +114,14 @@ src/test/java/com/avicontrol/
 
 ### Tests for User Story 1
 
-- [ ] T008 [P] [US1] Probar enfermedad tratable, enfermedad mortal, medicación incompatible y galpón fuera de aislamiento.
-- [ ] T009 [P] [US1] Probar caso de uso con estado cambiado antes de confirmar y MockMvc de autorización.
+- [x] T008 [P] [US1] Probar enfermedad tratable, enfermedad mortal, medicación incompatible y galpón fuera de aislamiento.
+- [x] T009 [P] [US1] Probar caso de uso con estado cambiado antes de confirmar y MockMvc de autorización.
 
 ### Implementation for User Story 1
 
-- [ ] T010 [US1] Implementar `RegistrarDiagnosticoUseCase` y volver a consultar galpón y lote antes de persistir.
-- [ ] T011 [US1] Consultar enfermedad y medicación vigentes al confirmar, y persistir el diagnóstico en una transacción.
-- [ ] T012 [US1] Exponer `POST /api/galpones/{galponId}/diagnosticos` sólo para `ROLE_VETERINARIO`.
+- [x] T010 [US1] Implementar `RegistrarDiagnosticoUseCase` y volver a consultar galpón y lote antes de persistir.
+- [x] T011 [US1] Consultar enfermedad y medicación vigentes al confirmar, y persistir el diagnóstico en una transacción.
+- [x] T012 [US1] Exponer `POST /api/galpones/{galponId}/diagnosticos` sólo para `ROLE_VETERINARIO`.
 
 ```json
 {
@@ -139,8 +140,15 @@ src/test/java/com/avicontrol/
   "enfermedadNombre": "Newcastle",
   "medicacionId": "d290f1ee-6c54-4b01-90e6-d701748f0851",
   "medicamentoId": "d290f1ee-6c54-4b01-90e6-d701748f0851",
+  "medicamentoNombre": "Amprolio 20% Solución",
+  "principioActivo": "Amprolio",
   "dosis": "0.5 ml por ave",
   "duracionDias": 5,
+  "diasAplicacion": [
+    1,
+    3,
+    5
+  ],
   "descripcionMedicacion": "Administrar según indicación veterinaria",
   "observaciones": "Tratamiento prescrito",
   "fechaDiagnostico": "2026-11-07",
@@ -150,24 +158,24 @@ src/test/java/com/avicontrol/
 }
 ```
 
-Para una enfermedad que requiere sacrificio sanitario, `medicacionId` se omite de la solicitud. En la respuesta, `medicacionId`, `medicamentoId`, `dosis`, `duracionDias`, `descripcionMedicacion` y `fechaReintegro` son `null`; `requiereSacrificioSanitario` es `true`. Sólo se admite un diagnóstico `ACTIVO` por galpón, protegido por un índice único.
+Para una enfermedad que requiere sacrificio sanitario, `medicacionId` se omite de la solicitud. En la respuesta, `medicacionId`, `medicamentoId`, `medicamentoNombre`, `principioActivo`, `dosis`, `duracionDias`, `diasAplicacion`, `descripcionMedicacion` y `fechaReintegro` son `null`; `requiereSacrificioSanitario` es `true`. Se admiten diagnósticos tratables simultáneos de enfermedades distintas en un galpón. El índice único impide duplicar una misma enfermedad activa. El diagnóstico sanitario excluye cualquier otro activo y bloquea nuevos tratamientos.
 
 ---
 
 ## Phase 4: User Story 2 - Reintegrar galpón tratado (Priority: P2)
 
-**Goal**: cambiar automáticamente a `productiva` los galpones que siguen aislados al llegar la fecha de reintegro.
+**Goal**: cambiar automáticamente a `productiva` los galpones que siguen aislados cuando venza el último tratamiento activo.
 
 **Independent Test**: un diagnóstico vencido con galpón aún aislado lo actualiza una vez; si cambió a otro estado, no lo sobrescribe.
 
 ### Tests for User Story 2
 
-- [ ] T013 [P] [US2] Probar ejecución puntual, recuperación posterior a caída, idempotencia y estado modificado externamente.
+- [x] T013 [P] [US2] Probar ejecución puntual, recuperación posterior a caída, idempotencia y estado modificado externamente.
 
 ### Implementation for User Story 2
 
-- [ ] T014 [US2] Implementar `ReintegrarGalponesTratadosUseCase` y scheduler.
-- [ ] T015 [US2] Consultar el estado vigente antes de actualizar a `productiva` y marcar el reintegro sólo tras éxito.
+- [x] T014 [US2] Implementar `ReintegrarGalponesTratadosUseCase` y scheduler.
+- [x] T015 [US2] Consultar el estado vigente antes de actualizar a `productiva` y marcar el reintegro sólo tras éxito.
 
 **Checkpoint**: la automatización reintegra una sola vez y no sustituye decisiones posteriores sobre el galpón.
 
@@ -186,9 +194,9 @@ Para una enfermedad que requiere sacrificio sanitario, `medicacionId` se omite d
 
 ## Polish & Cross-Cutting Concerns
 
-- [ ] T016 Mapear `400` datos inválidos, `401` no autenticado, `403` sin rol, `404` referencias ausentes, `409` precondición o compatibilidad incumplida y `503` Módulo 1 no disponible.
-- [ ] T017 Documentar los dos caminos clínicos y el comportamiento del reintegro en OpenAPI y operación.
-- [ ] T018 Ejecutar pruebas y `git diff --check`.
+- [x] T016 Mapear `400` datos inválidos, `401` no autenticado, `403` sin rol, `404` referencias ausentes, `409` precondición o compatibilidad incumplida y `503` Módulo 1 no disponible.
+- [x] T017 Documentar los dos caminos clínicos y el comportamiento del reintegro en OpenAPI y operación.
+- [x] T018 Ejecutar pruebas y `git diff --check`.
 
 ---
 
@@ -205,4 +213,6 @@ Para una enfermedad que requiere sacrificio sanitario, `medicacionId` se omite d
 - La fecha de diagnóstico procede del `Clock`, no del cliente; la duración se consulta al momento de confirmar.
 - En `local` y `test`, el reintegro usa la tabla de revisión `modulo1_galpon_local` del Plan 020; fuera de esos perfiles el puerto del Módulo 1 responde `503` hasta conectar el contrato real.
 - El scheduler se ejecuta al iniciar y cada minuto. Reintenta diagnósticos vencidos tras indisponibilidad; si el galpón ya no está aislado o contiene otro lote, marca el reintegro `REINTEGRO_OMITIDO` sin cambiar el galpón. La actualización del galpón local y la resolución del diagnóstico comparten transacción.
+- Si queda otro diagnóstico activo, el scheduler resuelve el vencido como `REINTEGRO_OMITIDO` y conserva el aislamiento; cuando vence el último, reintegra el galpón. El registro de diagnósticos usa aislamiento transaccional serializable para proteger la decisión frente a altas concurrentes.
+- La instantánea clínica ahora incluye nombre, principio activo y calendario de aplicación de la prescripción. Los diagnósticos anteriores a V15 pueden conservar esos campos en `null`.
 - Las instantáneas de nombre de enfermedad, decisión sanitaria, medicamento, dosis y duración prueban que las ediciones posteriores de los Planes 008 y 009 no alteran el diagnóstico previo.

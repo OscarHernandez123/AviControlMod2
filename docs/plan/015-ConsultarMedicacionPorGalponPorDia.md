@@ -51,30 +51,39 @@ src/main/java/com/avicontrol/
     │   │   ├── MedicacionDiariaGalponResponse.java
     │   │   └── ResumenMedicacionDiariaResponse.java
     │   └── mapper/MedicacionDiariaRestMapper.java
-    ├── adapter/out/integration/modulo1/GalponLoteQueryAdapter.java
+    ├── adapter/out/integration/modulo1/
+    │   ├── GalponLoteQueryAdapter.java
+    │   └── GalponLoteNoDisponibleAdapter.java
+    ├── adapter/out/persistence/sanitario/medicacion/DiagnosticoTratamientoQueryAdapter.java
     └── config/MedicacionDiariaBeanConfiguration.java
+
+src/main/resources/db/migration/
+├── V14__datos_consulta_medicacion_diaria.sql
+└── V15__ampliar_prescripciones_y_diagnosticos.sql
 
 src/test/java/com/avicontrol/
 ├── domain/model/sanitario/medicacion/ProgresoTratamientoTest.java
 ├── application/sanitario/medicacion/
 │   ├── ConsultarMedicacionDiariaGalponUseCaseTest.java
 │   └── ConsultarResumenMedicacionDiariaUseCaseTest.java
-└── infrastructure/adapter/in/rest/medicacion/MedicacionDiariaControllerTest.java
+└── infrastructure/adapter/in/rest/medicacion/
+    ├── MedicacionDiariaControllerTest.java
+    └── MedicacionDiariaFlujoTest.java
 ```
 
-**Structure Decision**: no hay migración ni adaptador de escritura. El dominio calcula vigencia y avance; los puertos reúnen galpón/lote vigente y tratamientos ya registrados por el Plan 011.
+**Structure Decision**: la consulta no escribe datos de negocio. La migración V14 amplía únicamente el galpón provisional del Módulo 1 con nombre, aforo y código del lote. El dominio calcula vigencia y avance; los puertos reúnen galpón/lote vigente y tratamientos registrados por el Plan 011.
 
 ## Phase 1: Setup (Shared Infrastructure)
 
-- [ ] T001 Confirmar contratos de lote activo, diagnóstico, medicación, enfermedad y vía de administración.
-- [ ] T002 Definir `Clock` y datos de prueba con tratamiento activo, finalizado, día sin aplicación y tratamientos concurrentes.
-- [ ] T003 Confirmar roles y la semántica del conjunto de galpones seleccionado por cada consulta.
+- [x] T001 Confirmar contratos de lote activo, diagnóstico, medicación, enfermedad y vía de administración.
+- [x] T002 Definir `Clock` y datos de prueba con tratamiento activo, finalizado, día sin aplicación y tratamientos concurrentes.
+- [x] T003 Confirmar roles y la semántica del conjunto de galpones seleccionado por cada consulta.
 
 ## Phase 2: Foundational (Blocking Prerequisites)
 
-- [ ] T004 Crear `ProgresoTratamiento` para calcular día actual de N y detectar fecha fuera de vigencia.
-- [ ] T005 Crear `MedicacionDiaria` con enfermedad, medicamento, principio activo, dosis, vía y cantidad cero si corresponde día sin aplicación.
-- [ ] T006 Definir puertos exclusivamente de consulta y validar que no se invoquen salidas de inventario.
+- [x] T004 Crear `ProgresoTratamiento` para calcular día actual de N y detectar fecha fuera de vigencia.
+- [x] T005 Crear `MedicacionDiaria` con enfermedad, medicamento, principio activo, dosis, vía y cantidad cero si corresponde día sin aplicación.
+- [x] T006 Definir puertos exclusivamente de consulta y validar que no se invoquen salidas de inventario.
 
 **Checkpoint**: la aplicación sabe listar cada tratamiento activo sin producir consumo alguno.
 
@@ -84,8 +93,8 @@ src/test/java/com/avicontrol/
 
 **Independent Test**: un tratamiento de cinco días iniciado ayer muestra `Día 2 de 5`; sin tratamiento vigente devuelve `Sin medicación activa para hoy` y ninguna cantidad.
 
-- [ ] T007 [P] [US1] Probar tratamiento vigente, población cero y múltiples tratamientos.
-- [ ] T008 [US1] Implementar `ConsultarMedicacionDiariaGalponUseCase` y DTO de detalle.
+- [x] T007 [P] [US1] Probar tratamiento vigente, población cero y múltiples tratamientos.
+- [x] T008 [US1] Implementar `ConsultarMedicacionDiariaGalponUseCase` y DTO de detalle.
 
 ## Phase 4: User Story 2 - Consultar galpón sin medicación activa (Priority: P1)
 
@@ -93,8 +102,8 @@ src/test/java/com/avicontrol/
 
 **Independent Test**: un galpón con lote y sin tratamientos vigentes devuelve `200 OK`, `estado: SIN_MEDICACION_ACTIVA` y una lista vacía; un galpón inexistente conserva `404`.
 
-- [ ] T009 [P] [US2] Probar tratamiento finalizado, día sin aplicación, galpón sin lote y ausencia de tratamientos.
-- [ ] T010 [US2] Devolver el estado explícito y una colección vacía sin registrar consumos ni movimientos.
+- [x] T009 [P] [US2] Probar tratamiento finalizado, día sin aplicación, galpón sin lote y ausencia de tratamientos.
+- [x] T010 [US2] Devolver el estado explícito y una colección vacía sin registrar consumos ni movimientos.
 
 ## Phase 5: User Story 3 - Consultar resumen consolidado (Priority: P2)
 
@@ -102,8 +111,8 @@ src/test/java/com/avicontrol/
 
 **Independent Test**: si sólo un galpón seleccionado tiene tratamiento, el resumen muestra un galpón y un tratamiento; sin tratamientos muestra cero y lista vacía.
 
-- [ ] T011 [P] [US3] Probar selección de galpones, conteo de galpones distinto del conteo de tratamientos y selección vacía.
-- [ ] T012 [US3] Implementar `ConsultarResumenMedicacionDiariaUseCase`.
+- [x] T011 [P] [US3] Probar selección de galpones, conteo de galpones distinto del conteo de tratamientos y selección vacía.
+- [x] T012 [US3] Implementar `ConsultarResumenMedicacionDiariaUseCase`.
 
 ## Endpoints
 
@@ -115,15 +124,28 @@ src/test/java/com/avicontrol/
 ```json
 {
   "galponId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+  "nombreGalpon": "Galpón 5",
+  "aforoMaximo": 10000,
+  "estadoGalpon": "AISLAMIENTO",
+  "loteId": "3fa85f64-5717-4562-b3fc-2c963f66afa7",
+  "loteCodigo": "LDP-005",
+  "poblacionViva": 8000,
+  "edadDias": 12,
+  "fecha": "2026-11-05",
   "estado": "CON_MEDICACION_ACTIVA",
+  "mensaje": null,
+  "cantidadTratamientos": 1,
   "tratamientos": [
     {
+      "diagnosticoId": "3fa85f64-5717-4562-b3fc-2c963f66afa8",
       "loteCodigo": "LDP-005",
       "progreso": "Día 2 de 5",
       "enfermedad": "Coccidiosis Aviar",
       "medicamento": "Amprolio 20% Solución",
+      "principioActivo": "Amprolio",
       "dosisHoy": "200 g diluidos en 100 L de agua potable",
-      "viaAdministracion": "Agua de bebida en bebederos automáticos"
+      "viaAdministracion": "Agua de bebida en bebederos automáticos",
+      "aplicaHoy": true
     }
   ]
 }
@@ -134,7 +156,17 @@ Respuesta de US2 para un galpón existente sin tratamiento vigente:
 ```json
 {
   "galponId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+  "nombreGalpon": "Galpón 5",
+  "aforoMaximo": 10000,
+  "estadoGalpon": "PRODUCTIVA",
+  "loteId": "3fa85f64-5717-4562-b3fc-2c963f66afa7",
+  "loteCodigo": "LDP-005",
+  "poblacionViva": 8000,
+  "edadDias": 12,
+  "fecha": "2026-11-05",
   "estado": "SIN_MEDICACION_ACTIVA",
+  "mensaje": "Sin medicación activa para hoy",
+  "cantidadTratamientos": 0,
   "tratamientos": []
 }
 ```
@@ -145,11 +177,26 @@ Respuesta de US3:
 {
   "fecha": "2026-11-05",
   "galponesConTratamiento": 1,
+  "cantidadTratamientos": 1,
+  "resumen": "Amprolio 20% Solución en Galpón 5",
   "galpones": [
     {
       "galponId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
       "estado": "CON_MEDICACION_ACTIVA",
-      "cantidadTratamientos": 1
+      "cantidadTratamientos": 1,
+      "tratamientos": [
+        {
+          "diagnosticoId": "3fa85f64-5717-4562-b3fc-2c963f66afa8",
+          "loteCodigo": "LDP-005",
+          "progreso": "Día 2 de 5",
+          "enfermedad": "Coccidiosis Aviar",
+          "medicamento": "Amprolio 20% Solución",
+          "principioActivo": "Amprolio",
+          "dosisHoy": "200 g diluidos en 100 L de agua potable",
+          "viaAdministracion": "Agua de bebida en bebederos automáticos",
+          "aplicaHoy": true
+        }
+      ]
     }
   ]
 }
@@ -159,9 +206,15 @@ Respuesta de US3:
 
 ## Polish & Cross-Cutting Concerns
 
-- [ ] T013 Documentar que esta consulta no registra el consumo real ni descuenta inventario.
-- [ ] T014 Probar `401`, `403`, listado vacío y formato JSON mediante MockMvc.
-- [ ] T015 Ejecutar pruebas y `git diff --check`.
+- [x] T013 Documentar que esta consulta no registra el consumo real ni descuenta inventario.
+- [x] T014 Probar `401`, `403`, listado vacío y formato JSON mediante MockMvc.
+- [x] T015 Ejecutar pruebas y `git diff --check`.
+
+### Contratos integrados de otros planes
+
+- [x] T016 El Plan 008 guarda nombre y principio activo del medicamento; el Plan 011 los conserva en el diagnóstico.
+- [x] T017 El Plan 008 guarda los días ordinales de aplicación y el Plan 011 conserva el calendario para mostrar dosis cero en días de descanso.
+- [x] T018 El Plan 011 permite diagnósticos tratables simultáneos para enfermedades distintas y reintegra al vencer el último.
 
 ## Dependencies & Execution Order
 
@@ -173,3 +226,6 @@ Respuesta de US3:
 
 - La fecha se permite como parámetro para pruebas y auditoría, con valor predeterminado del `Clock` si se omite.
 - El Plan 013 es el único responsable de registrar consumo real y solicitar descuento de existencias.
+- El Plan 011 conserva nombre, principio activo y calendario en la instantánea clínica. Para diagnósticos anteriores a V15, el nombre puede obtenerse de la recepción más reciente y el principio activo puede seguir siendo `null` porque no existía en el contrato antiguo.
+- Un `diasAplicacion` ausente significa todos los días de la vigencia. Si la fecha consultada cae fuera del calendario, el tratamiento sigue activo y `dosisHoy` es `"0"` con `aplicaHoy: false`.
+- Los tratamientos concurrentes corresponden a enfermedades distintas; el Plan 011 impide duplicar la misma enfermedad activa y el reintegro espera al último tratamiento.

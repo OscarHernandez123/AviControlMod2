@@ -15,6 +15,12 @@ public interface DiagnosticoGalponRepositoryPort {
 
   boolean existeActivo(UUID galponId);
 
+  boolean existeActivoMismaEnfermedad(UUID galponId, UUID enfermedadId);
+
+  boolean existeSanitarioActivo(UUID galponId);
+
+  boolean existeOtroActivo(UUID galponId, UUID diagnosticoId);
+
   List<UUID> vencidos(LocalDate fecha);
 
   boolean resolver(DiagnosticoGalpon anterior, DiagnosticoGalpon resuelto);

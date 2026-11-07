@@ -13,16 +13,39 @@ import org.springframework.stereotype.Component;
 public class MedicacionRestMapper {
   public RegistrarMedicacionCommand command(RegistrarMedicacionRequest r) {
     return new RegistrarMedicacionCommand(
-        r.enfermedadId(), r.medicamentoId(), r.dosis(), r.duracionDias(), r.descripcion());
+        r.enfermedadId(),
+        r.medicamentoId(),
+        r.dosis(),
+        r.duracionDias(),
+        r.descripcion(),
+        r.nombreMedicamento(),
+        r.principioActivo(),
+        r.diasAplicacion());
   }
 
   public EditarMedicacionCommand command(UUID id, EditarMedicacionRequest r) {
     return new EditarMedicacionCommand(
-        id, r.enfermedadId(), r.medicamentoId(), r.dosis(), r.duracionDias(), r.descripcion());
+        id,
+        r.enfermedadId(),
+        r.medicamentoId(),
+        r.dosis(),
+        r.duracionDias(),
+        r.descripcion(),
+        r.nombreMedicamento(),
+        r.principioActivo(),
+        r.diasAplicacion());
   }
 
   public MedicacionResponse response(MedicacionResult r) {
     return new MedicacionResponse(
-        r.id(), r.enfermedadId(), r.medicamentoId(), r.dosis(), r.duracionDias(), r.descripcion());
+        r.id(),
+        r.enfermedadId(),
+        r.medicamentoId(),
+        r.dosis(),
+        r.duracionDias(),
+        r.descripcion(),
+        r.nombreMedicamento(),
+        r.principioActivo(),
+        r.diasAplicacion());
   }
 }

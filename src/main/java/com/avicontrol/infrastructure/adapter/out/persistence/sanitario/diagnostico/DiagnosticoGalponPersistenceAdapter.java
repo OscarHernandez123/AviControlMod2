@@ -27,7 +27,7 @@ public class DiagnosticoGalponPersistenceAdapter implements DiagnosticoGalponRep
   public void crear(DiagnosticoGalpon d) {
     try {
       jdbc.update(
-          "INSERT INTO diagnosticos_galpon (id, galpon_id, active_galpon_id, lote_id, enfermedad_id, enfermedad_nombre, requiere_sacrificio_sanitario, medicacion_id, medicamento_id, dosis, duracion_dias, descripcion_medicacion, observaciones, fecha_diagnostico, fecha_reintegro, estado, fecha_resolucion, version) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+          "INSERT INTO diagnosticos_galpon (id, galpon_id, active_galpon_id, lote_id, enfermedad_id, enfermedad_nombre, requiere_sacrificio_sanitario, medicacion_id, medicamento_id, dosis, duracion_dias, descripcion_medicacion, observaciones, fecha_diagnostico, fecha_reintegro, estado, fecha_resolucion, version, medicamento_nombre, principio_activo, dias_aplicacion) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
           d.id(),
           d.galponId(),
           d.galponId(),
@@ -45,11 +45,14 @@ public class DiagnosticoGalponPersistenceAdapter implements DiagnosticoGalponRep
           d.fechaReintegro(),
           d.estado().name(),
           null,
-          d.version());
+          d.version(),
+          d.medicamentoNombre(),
+          d.principioActivo(),
+          diasTexto(d.diasAplicacion()));
     } catch (DataIntegrityViolationException e) {
       String detail = e.getMostSpecificCause().getMessage();
       if (detail != null
-          && detail.toLowerCase(Locale.ROOT).contains("uq_diagnostico_activo_galpon"))
+          && detail.toLowerCase(Locale.ROOT).contains("uq_diagnostico_activo_galpon_enfermedad"))
         throw new DiagnosticoActivoExistenteException();
       throw e;
     }
@@ -76,6 +79,38 @@ public class DiagnosticoGalponPersistenceAdapter implements DiagnosticoGalponRep
             "SELECT COUNT(*) FROM diagnosticos_galpon WHERE active_galpon_id = ?",
             Integer.class,
             galponId);
+    return count != null && count > 0;
+  }
+
+  @Override
+  public boolean existeActivoMismaEnfermedad(UUID galponId, UUID enfermedadId) {
+    Integer count =
+        jdbc.queryForObject(
+            "SELECT COUNT(*) FROM diagnosticos_galpon WHERE active_galpon_id = ? AND enfermedad_id = ?",
+            Integer.class,
+            galponId,
+            enfermedadId);
+    return count != null && count > 0;
+  }
+
+  @Override
+  public boolean existeSanitarioActivo(UUID galponId) {
+    Integer count =
+        jdbc.queryForObject(
+            "SELECT COUNT(*) FROM diagnosticos_galpon WHERE active_galpon_id = ? AND requiere_sacrificio_sanitario = TRUE",
+            Integer.class,
+            galponId);
+    return count != null && count > 0;
+  }
+
+  @Override
+  public boolean existeOtroActivo(UUID galponId, UUID diagnosticoId) {
+    Integer count =
+        jdbc.queryForObject(
+            "SELECT COUNT(*) FROM diagnosticos_galpon WHERE active_galpon_id = ? AND id <> ?",
+            Integer.class,
+            galponId,
+            diagnosticoId);
     return count != null && count > 0;
   }
 
@@ -120,6 +155,21 @@ public class DiagnosticoGalponPersistenceAdapter implements DiagnosticoGalponRep
         fechaReintegro == null ? null : fechaReintegro.toLocalDate(),
         EstadoDiagnostico.valueOf(rs.getString("estado")),
         fechaResolucion == null ? null : fechaResolucion.toLocalDate(),
-        rs.getLong("version"));
+        rs.getLong("version"),
+        rs.getString("medicamento_nombre"),
+        rs.getString("principio_activo"),
+        diasLista(rs.getString("dias_aplicacion")));
+  }
+
+  private static String diasTexto(List<Integer> dias) {
+    return dias == null
+        ? null
+        : dias.stream().map(String::valueOf).collect(java.util.stream.Collectors.joining(","));
+  }
+
+  private static List<Integer> diasLista(String texto) {
+    return texto == null
+        ? null
+        : java.util.Arrays.stream(texto.split(",")).map(Integer::valueOf).toList();
   }
 }
