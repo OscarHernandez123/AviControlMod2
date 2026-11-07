@@ -12,6 +12,9 @@ import com.avicontrol.domain.exception.sanitario.aislamiento.Modulo1NoDisponible
 import com.avicontrol.domain.exception.sanitario.aislamiento.SolicitudAislamientoDuplicadaException;
 import com.avicontrol.domain.exception.sanitario.aislamiento.SolicitudAislamientoNoEncontradaException;
 import com.avicontrol.domain.exception.sanitario.aislamiento.SolicitudAislamientoNoPendienteException;
+import com.avicontrol.domain.exception.sanitario.diagnostico.DiagnosticoActivoExistenteException;
+import com.avicontrol.domain.exception.sanitario.diagnostico.GalponNoAisladoException;
+import com.avicontrol.domain.exception.sanitario.diagnostico.MedicacionNoCompatibleException;
 import com.avicontrol.domain.exception.sanitario.enfermedad.EnfermedadNoEncontradaException;
 import com.avicontrol.domain.exception.sanitario.medicacion.EnfermedadNoDisponibleException;
 import com.avicontrol.domain.exception.sanitario.medicacion.MedicacionNoEncontradaException;
@@ -82,6 +85,12 @@ public class ApiExceptionHandler {
         || exception instanceof EstadoGalponNoAislableException) {
       return response(
           HttpStatus.CONFLICT, "CONFLICTO_AISLAMIENTO", exception.getMessage(), List.of(), request);
+    }
+    if (exception instanceof DiagnosticoActivoExistenteException
+        || exception instanceof GalponNoAisladoException
+        || exception instanceof MedicacionNoCompatibleException) {
+      return response(
+          HttpStatus.CONFLICT, "CONFLICTO_DIAGNOSTICO", exception.getMessage(), List.of(), request);
     }
     if (exception instanceof UnidadIncompatibleException
         || exception instanceof RecepcionNoEditableException

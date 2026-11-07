@@ -35,20 +35,21 @@ src/main/java/com/avicontrol/
 │   │   ├── DiagnosticoGalpon.java
 │   │   └── EstadoDiagnostico.java
 │   ├── exception/sanitario/diagnostico/
+│   │   ├── DatosDiagnosticoInvalidosException.java
+│   │   ├── DiagnosticoActivoExistenteException.java
 │   │   ├── GalponNoAisladoException.java
 │   │   ├── MedicacionRequeridaException.java
 │   │   └── MedicacionNoCompatibleException.java
 │   └── port/out/
-│       ├── modulo1/
-│       │   ├── GalponQueryPort.java
-│       │   ├── GalponUpdatePort.java
-│       │   └── LoteQueryPort.java
+│       ├── sanitario/aislamiento/GalponLoteAislamientoQueryPort.java
 │       └── sanitario/diagnostico/
 │           ├── DiagnosticoGalponRepositoryPort.java
 │           ├── EnfermedadQueryPort.java
+│           ├── GalponReintegroPort.java
 │           └── MedicacionQueryPort.java
 ├── application/
 │   └── sanitario/diagnostico/
+│       ├── RegistrarDiagnosticoCommand.java
 │       ├── RegistrarDiagnosticoUseCase.java
 │       ├── ReintegrarGalponesTratadosUseCase.java
 │       └── result/DiagnosticoGalponResult.java
@@ -59,12 +60,17 @@ src/main/java/com/avicontrol/
     │   │   ├── DiagnosticoGalponResponse.java
     │   │   └── RegistrarDiagnosticoRequest.java
     │   └── mapper/DiagnosticoRestMapper.java
-    ├── adapter/out/persistence/sanitario/diagnostico/DiagnosticoGalponPersistenceAdapter.java
+    ├── adapter/out/persistence/sanitario/diagnostico/
+    │   ├── DiagnosticoCatalogoQueryAdapter.java
+    │   └── DiagnosticoGalponPersistenceAdapter.java
+    ├── adapter/out/integration/modulo1/
+    │   ├── GalponReintegroLocalAdapter.java
+    │   └── GalponReintegroNoDisponibleAdapter.java
     ├── scheduler/sanitario/diagnostico/ReintegroGalponesScheduler.java
     └── config/DiagnosticoBeanConfiguration.java
 
 src/main/resources/db/migration/
-└── V__crear_diagnosticos.sql
+└── V12__crear_diagnosticos_galpon.sql
 
 src/test/java/com/avicontrol/
 ├── domain/model/sanitario/diagnostico/DiagnosticoGalponTest.java
@@ -74,7 +80,7 @@ src/test/java/com/avicontrol/
 └── infrastructure/adapter/in/rest/sanitario/diagnostico/DiagnosticoControllerTest.java
 ```
 
-**Structure Decision**: diagnóstico es un agregado persistido que guarda referencias e instantáneas necesarias para conservar su decisión clínica. Catálogos y galpón/lote se verifican mediante puertos; el scheduler nunca sobrescribe un estado distinto de `aislamiento`.
+**Structure Decision**: diagnóstico es un agregado persistido que guarda referencias e instantáneas necesarias para conservar su decisión clínica. Se reutiliza el puerto de lectura de galpón/lote del Plan 020 y se añade un puerto específico de reintegro, sin cambiar las firmas compartidas con otros planes. El scheduler nunca sobrescribe un estado distinto de `aislamiento` ni otro lote.
 
 ## Phase 1: Setup (Shared Infrastructure)
 
@@ -128,11 +134,23 @@ src/test/java/com/avicontrol/
 {
   "id": "b07f5fd4-3b77-4e9a-a4eb-5d54f907c8a4",
   "galponId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+  "loteId": "d290f1ee-6c54-4b01-90e6-d701748f0851",
+  "enfermedadId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+  "enfermedadNombre": "Newcastle",
+  "medicacionId": "d290f1ee-6c54-4b01-90e6-d701748f0851",
+  "medicamentoId": "d290f1ee-6c54-4b01-90e6-d701748f0851",
+  "dosis": "0.5 ml por ave",
+  "duracionDias": 5,
+  "descripcionMedicacion": "Administrar según indicación veterinaria",
+  "observaciones": "Tratamiento prescrito",
+  "fechaDiagnostico": "2026-11-07",
   "estado": "ACTIVO",
   "requiereSacrificioSanitario": false,
   "fechaReintegro": "2026-11-12"
 }
 ```
+
+Para una enfermedad que requiere sacrificio sanitario, `medicacionId` se omite de la solicitud. En la respuesta, `medicacionId`, `medicamentoId`, `dosis`, `duracionDias`, `descripcionMedicacion` y `fechaReintegro` son `null`; `requiereSacrificioSanitario` es `true`. Sólo se admite un diagnóstico `ACTIVO` por galpón, protegido por un índice único.
 
 ---
 
@@ -160,6 +178,7 @@ src/test/java/com/avicontrol/
 | Método y ruta | Rol | Solicitud | Respuesta |
 | --- | --- | --- | --- |
 | `POST /api/galpones/{galponId}/diagnosticos` | `ROLE_VETERINARIO` | `RegistrarDiagnosticoRequest` | `201 Created` con diagnóstico y fecha de reintegro opcional |
+| `GET /api/diagnosticos/{diagnosticoId}` | `ROLE_VETERINARIO` | — | `200 OK` con la instantánea clínica y estado vigente del diagnóstico |
 
 **Errores**: `400` datos inválidos; `401` no autenticado; `403` sin rol; `404` galpón, lote, enfermedad o medicación ausente; `409` galpón no aislado o medicación incompatible; `503` Módulo 1 no disponible.
 
@@ -184,3 +203,6 @@ src/test/java/com/avicontrol/
 
 - El Plan 012 consume la habilitación de sacrificio sanitario, pero este plan no emite ni ejecuta la orden.
 - La fecha de diagnóstico procede del `Clock`, no del cliente; la duración se consulta al momento de confirmar.
+- En `local` y `test`, el reintegro usa la tabla de revisión `modulo1_galpon_local` del Plan 020; fuera de esos perfiles el puerto del Módulo 1 responde `503` hasta conectar el contrato real.
+- El scheduler se ejecuta al iniciar y cada minuto. Reintenta diagnósticos vencidos tras indisponibilidad; si el galpón ya no está aislado o contiene otro lote, marca el reintegro `REINTEGRO_OMITIDO` sin cambiar el galpón. La actualización del galpón local y la resolución del diagnóstico comparten transacción.
+- Las instantáneas de nombre de enfermedad, decisión sanitaria, medicamento, dosis y duración prueban que las ediciones posteriores de los Planes 008 y 009 no alteran el diagnóstico previo.
