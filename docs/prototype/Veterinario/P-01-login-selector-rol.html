@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AviControl - P01 Inicio de Sesión y Selector de Rol (Portal de Gestión Avícola)</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: #1e1e1e;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      margin: 0;
+      padding: 12px;
+    }
+    /* Lienzo estricto de Figma: 1416px x 945px sin scroll ni cortes */
+    .figma-frame {
+      width: 1416px;
+      height: 945px;
+      background-color: #FAF8F2;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      position: relative;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+      border-radius: 12px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- BARRA EXTERNA DE PROTOTIPO (FUERA DEL LIENZO DE 1416x945 PARA ALTERNAR ENTRE LOGIN Y SELECTOR DE ROL) -->
+  <div class="w-[1416px] mb-2 px-4 py-1.5 rounded-lg bg-slate-800 border border-slate-700 text-slate-300 text-xs flex items-center justify-between select-none">
+    <div class="flex items-center gap-2">
+      <span class="bg-amber-500/20 text-amber-300 border border-amber-500/40 px-2 py-0.5 rounded font-bold text-[10px] uppercase">
+        Nota de Prototipo (Navegación de Entrada)
+      </span>
+      <span class="text-[11px] text-slate-400">
+        Alterna entre el Inicio de Sesión y el Selector de Rol (P-01). Al elegir "Veterinario" navega a P-02:
+      </span>
+    </div>
+    <div class="flex items-center gap-2">
+      <button onclick="cambiarVista('vistaSelectorRol')" id="btnTabSelector" class="px-3 py-1 rounded bg-[#0F766E] text-white text-[11px] font-bold transition">
+        1. Ver P-01: Selector de Rol (Por defecto)
+      </button>
+      <button onclick="cambiarVista('vistaLogin')" id="btnTabLogin" class="px-3 py-1 rounded bg-slate-700 hover:bg-slate-600 text-white text-[11px] font-semibold transition">
+        2. Ver Pantalla previa: Inicio de Sesión
+      </button>
+    </div>
+  </div>
+
+  <!-- CONTENEDOR PRINCIPAL: 1416px x 945px -->
+  <div class="figma-frame">
+
+    <!-- ===================================================================================== -->
+    <!-- VISTA A: P-01 SELECTOR DE ROL (Frame Principal · Portal de Gestión Avícola por Rol)   -->
+    <!-- ===================================================================================== -->
+    <div id="vistaSelectorRol" class="w-full h-full flex flex-col justify-between p-10 select-none">
+      
+      <!-- Header Superior del Portal -->
+      <header class="flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-full bg-[#18794E] text-white font-extrabold text-lg flex items-center justify-center shadow-sm">
+            A
+          </div>
+          <div class="leading-tight">
+            <h1 class="text-lg font-extrabold text-slate-900 tracking-tight">AviControl</h1>
+            <p class="text-xs font-semibold text-[#18794E]">Gestión Avícola</p>
+          </div>
+        </div>
+
+        <div class="inline-flex items-center gap-2 bg-emerald-100/90 border border-emerald-300 text-[#185C2B] text-xs font-bold px-4 py-1.5 rounded-full shadow-sm">
+          <span class="w-2 h-2 rounded-full bg-[#18794E]"></span>
+          <span>Sistema de Permisos según Rol Activo</span>
+        </div>
+      </header>
+
+      <!-- Tarjeta Central de Selección de Rol -->
+      <main class="my-auto flex items-center justify-center">
+        <div class="w-[540px] bg-[#6E716B] rounded-2xl p-9 shadow-2xl border border-stone-500/40 flex flex-col items-center">
+          
+          <h2 class="text-3xl font-extrabold text-white tracking-tight text-center">Gestión avícola</h2>
+          <p class="text-xs text-stone-200 font-medium mt-1.5 mb-7 text-center">
+            Selecciona tu rol para ingresar al portal
+          </p>
+
+          <div class="w-full space-y-4">
+
+            <!-- Rol 1: Administrador (#D97706) -->
+            <a
+              href="#"
+              onclick="alert('En este prototipo estamos enfocados en el Actor Veterinario. Haz clic en la tarjeta Veterinario para ir a P-02.'); return false;"
+              class="w-full bg-[#E07A00] hover:bg-[#c96d00] text-white rounded-full px-5 py-3.5 flex items-center gap-4 shadow-md transition group"
+            >
+              <div class="w-11 h-11 rounded-full bg-white/15 flex items-center justify-center shrink-0">
+                <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                </svg>
+              </div>
+              <div class="text-left">
+                <p class="text-base font-extrabold leading-tight">Administrador</p>
+                <p class="text-[11px] text-amber-100 font-medium mt-0.5">Resumen de galpones &amp; inventario central</p>
+              </div>
+            </a>
+
+            <!-- Rol 2: Nutricionista (#15803D) -->
+            <a
+              href="#"
+              onclick="alert('En este prototipo estamos enfocados en el Actor Veterinario. Haz clic en la tarjeta Veterinario para ir a P-02.'); return false;"
+              class="w-full bg-[#15803D] hover:bg-[#126b33] text-white rounded-full px-5 py-3.5 flex items-center gap-4 shadow-md transition group"
+            >
+              <div class="w-11 h-11 rounded-full bg-white/15 flex items-center justify-center shrink-0">
+                <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                </svg>
+              </div>
+              <div class="text-left">
+                <p class="text-base font-extrabold leading-tight">Nutricionista</p>
+                <p class="text-[11px] text-emerald-100 font-medium mt-0.5">Planes nutricionales &amp; raciones g/p/d</p>
+              </div>
+            </a>
+
+            <!-- Rol 3: VETERINARIO (ACTIVO Y CONECTADO A P-02-inicio-veterinario.html) -->
+            <a
+              href="P-02-inicio-veterinario.html"
+              class="w-full bg-[#11787A] hover:bg-[#0e6365] text-white rounded-full px-5 py-3.5 flex items-center justify-between shadow-lg ring-2 ring-white/80 transition transform hover:scale-[1.01]"
+            >
+              <div class="flex items-center gap-4">
+                <div class="w-11 h-11 rounded-full bg-white/20 flex items-center justify-center shrink-0">
+                  <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/>
+                  </svg>
+                </div>
+                <div class="text-left">
+                  <p class="text-base font-extrabold leading-tight flex items-center gap-2">
+                    <span>Veterinario</span>
+                    <span class="bg-amber-400 text-slate-950 text-[10px] font-extrabold px-2 py-0.5 rounded-full">Ir a P-02 →</span>
+                  </p>
+                  <p class="text-[11px] text-teal-100 font-medium mt-0.5">Aislamiento &amp; Sacrificio Sanitario</p>
+                </div>
+              </div>
+            </a>
+
+            <!-- Rol 4: Trabajador (#4D7C0F) -->
+            <a
+              href="#"
+              onclick="alert('En este prototipo estamos enfocados en el Actor Veterinario. Haz clic en la tarjeta Veterinario para ir a P-02.'); return false;"
+              class="w-full bg-[#4D7C0F] hover:bg-[#3f660c] text-white rounded-full px-5 py-3.5 flex items-center gap-4 shadow-md transition group"
+            >
+              <div class="w-11 h-11 rounded-full bg-white/15 flex items-center justify-center shrink-0">
+                <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/>
+                </svg>
+              </div>
+              <div class="text-left">
+                <p class="text-base font-extrabold leading-tight">Trabajador</p>
+                <p class="text-[11px] text-lime-100 font-medium mt-0.5">Registro de mortalidad &amp; consulta diaria</p>
+              </div>
+            </a>
+
+          </div>
+
+          <p class="text-[11px] text-stone-300 font-medium mt-7">
+            AviControl M2 · Módulo de Operaciones Avícolas
+          </p>
+        </div>
+      </main>
+
+      <!-- Pie de Página Académico -->
+      <footer class="flex items-center justify-between text-xs text-stone-400 font-medium">
+        <span>Universidad del Magdalena · Proyecto AviControl M2</span>
+        <span>Basado en Especificaciones de Casos de Uso (Specs 001 - 023)</span>
+      </footer>
+
+    </div>
+
+    <!-- ===================================================================================== -->
+    <!-- VISTA B: PANTALLA DE INICIO DE SESIÓN (InicioSesión.jpg -> Al enviar abre P-01)        -->
+    <!-- ===================================================================================== -->
+    <div id="vistaLogin" class="hidden w-full h-full flex items-center justify-center p-10 select-none">
+      
+      <div class="w-[980px] h-[610px] bg-white rounded-2xl shadow-2xl border border-stone-200/90 overflow-hidden grid grid-cols-12">
+        
+        <!-- Columna Izquierda: Formulario de Credenciales -->
+        <div class="col-span-6 p-12 flex flex-col justify-between">
+          <div>
+            <!-- Logo AviControl -->
+            <div class="flex items-center gap-3 mb-10">
+              <div class="w-10 h-10 rounded-full bg-[#185C2B] text-white font-extrabold text-base flex items-center justify-center">
+                A
+              </div>
+              <div class="leading-tight">
+                <h1 class="text-lg font-extrabold text-slate-900 tracking-tight">AviControl</h1>
+                <p class="text-xs font-semibold text-[#185C2B]">Gestión Avícola</p>
+              </div>
+            </div>
+
+            <h2 class="text-2xl font-extrabold text-slate-900 tracking-tight">¡Bienvenido de nuevo!</h2>
+            <p class="text-xs text-slate-500 font-medium mt-1 mb-7">
+              Ingresa tus credenciales para acceder a la plataforma
+            </p>
+
+            <form onsubmit="cambiarVista('vistaSelectorRol'); return false;" class="space-y-4">
+              <div>
+                <label class="block text-xs font-bold text-slate-700 mb-1.5">
+                  Usuario o Correo Electrónico
+                </label>
+                <div class="relative">
+                  <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+                    </svg>
+                  </span>
+                  <input
+                    type="email"
+                    value="veterinario@avicontrol.com"
+                    placeholder="ej. veterinario@avicontrol.com"
+                    class="w-full pl-10 pr-4 py-2.5 rounded-xl border border-stone-300 text-xs font-medium text-slate-800 focus:outline-none focus:border-[#185C2B]"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <div class="flex items-center justify-between mb-1.5">
+                  <label class="text-xs font-bold text-slate-700">Contraseña</label>
+                  <span class="text-[11px] font-bold text-[#185C2B] cursor-pointer hover:underline">¿Olvidaste tu contraseña?</span>
+                </div>
+                <div class="relative">
+                  <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+                    </svg>
+                  </span>
+                  <input
+                    type="password"
+                    value="••••••••••••"
+                    class="w-full pl-10 pr-4 py-2.5 rounded-xl border border-stone-300 text-xs font-medium text-slate-800 focus:outline-none focus:border-[#185C2B]"
+                  />
+                </div>
+              </div>
+
+              <div class="flex items-center gap-2 pt-1">
+                <input type="checkbox" checked class="rounded accent-[#185C2B]" />
+                <span class="text-xs text-slate-600 font-medium">Recordar mi sesión</span>
+              </div>
+
+              <button
+                type="submit"
+                class="w-full bg-[#185C2B] hover:bg-[#134821] text-white text-xs font-bold py-3 rounded-xl shadow-md transition mt-2"
+              >
+                Iniciar Sesión (Ir a Selector de Rol P-01)
+              </button>
+            </form>
+          </div>
+
+          <div class="pt-4 border-t border-stone-200/80 flex items-center justify-between text-xs">
+            <span class="text-slate-400">¿No tienes cuenta activa?</span>
+            <span class="font-bold text-[#185C2B] cursor-pointer hover:underline">Solicitar Acceso al Administrador</span>
+          </div>
+        </div>
+
+        <!-- Columna Derecha: Banner Institucional Verde (#226B38) -->
+        <div class="col-span-6 bg-[#226B38] text-white p-12 flex flex-col justify-between relative">
+          <div class="flex justify-end">
+            <span class="bg-white/15 border border-white/25 text-white text-[11px] font-bold px-3.5 py-1 rounded-full">
+              Versión 2.4 · Productivo
+            </span>
+          </div>
+
+          <div class="my-auto">
+            <div class="w-12 h-12 rounded-2xl bg-white/15 border border-white/20 flex items-center justify-center mb-6 text-2xl">
+              🐔
+            </div>
+            <h3 class="text-2xl font-extrabold leading-snug tracking-tight">
+              Control integral para galpones y nutrición avícola
+            </h3>
+            <p class="text-xs text-emerald-100/90 leading-relaxed mt-3">
+              Gestión en tiempo real de trazabilidad de lotes, aislamiento sanitario, raciones nutricionales por etapa y cálculo automatizado de demanda de alimento.
+            </p>
+
+            <div class="grid grid-cols-2 gap-3.5 mt-7">
+              <div class="p-3.5 rounded-xl bg-white/10 border border-white/15">
+                <p class="text-xs font-extrabold">Gestión de Galpones</p>
+                <p class="text-[11px] text-emerald-100/80 mt-0.5">Aislamiento &amp; Cosecha</p>
+              </div>
+              <div class="p-3.5 rounded-xl bg-white/10 border border-white/15">
+                <p class="text-xs font-extrabold">Plan Nutricional</p>
+                <p class="text-[11px] text-emerald-100/80 mt-0.5">Raciones por Etapa</p>
+              </div>
+            </div>
+          </div>
+
+          <p class="text-[11px] text-emerald-100/70">
+            © 2026 AviControl System. Todos los derechos reservados.
+          </p>
+        </div>
+
+      </div>
+
+    </div>
+
+  </div>
+
+  <script>
+    function cambiarVista(vistaActiva) {
+      const vSelector = document.getElementById('vistaSelectorRol');
+      const vLogin = document.getElementById('vistaLogin');
+      const bSelector = document.getElementById('btnTabSelector');
+      const bLogin = document.getElementById('btnTabLogin');
+
+      if (vistaActiva === 'vistaLogin') {
+        vSelector.classList.add('hidden');
+        vLogin.classList.remove('hidden');
+        bLogin.className = 'px-3 py-1 rounded bg-[#185C2B] text-white text-[11px] font-bold transition';
+        bSelector.className = 'px-3 py-1 rounded bg-slate-700 hover:bg-slate-600 text-white text-[11px] font-semibold transition';
+      } else {
+        vLogin.classList.add('hidden');
+        vSelector.classList.remove('hidden');
+        bSelector.className = 'px-3 py-1 rounded bg-[#0F766E] text-white text-[11px] font-bold transition';
+        bLogin.className = 'px-3 py-1 rounded bg-slate-700 hover:bg-slate-600 text-white text-[11px] font-semibold transition';
+      }
+    }
+  </script>
+
+</body>
+</html>
