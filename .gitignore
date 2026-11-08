@@ -32,6 +32,11 @@ build/
 
 target_test-classes/
 
+# Local environment variables
+.env
+.env.*
+!.env.example
+
 
 ### agent ###
 .github/copilot-instructions.md

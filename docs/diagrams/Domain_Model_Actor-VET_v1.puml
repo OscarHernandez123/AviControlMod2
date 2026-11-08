@@ -1,0 +1,206 @@
+@startuml AviControl_Dominio_Veterinario_Produccion
+!theme plain
+skinparam classAttributeIconSize 0
+skinparam shadowing false
+skinparam roundcorner 8
+skinparam linetype ortho
+hide empty members
+
+title Modelo de Dominio Java (JPA / POO) - Actor Veterinario (Módulo 2)
+
+' ================= ENUMS (Mapeados con @Enumerated(EnumType.STRING)) =================
+enum NivelRiesgo {
+  BAJO
+  MEDIO
+  ALTO
+  CRITICO
+}
+
+enum TipoEnfermedad {
+  VIRAL
+  BACTERIANA
+  PARASITARIA
+  FUNGICA
+}
+
+enum EstadoSolicitud {
+  PENDIENTE_VALIDACION
+  APROBADA
+  RECHAZADA
+}
+
+enum EstadoDiagnostico {
+  ACTIVO
+  CERRADO_POR_REINTEGRO
+  CERRADO_POR_SACRIFICIO
+}
+
+enum EstadoOrden {
+  PENDIENTE_EJECUCION
+  EJECUTADA
+}
+
+' ================= AGREGADOS DE DOMINIO (@Entity) =================
+
+class Enfermedad <<AggregateRoot>> {
+  - id : UUID
+  - nombre : String
+  - nivelRiesgo : NivelRiesgo
+  - tipo : TipoEnfermedad
+  - descripcionClinica : String
+  - requiereSacrificioSanitario : boolean
+  - version : Integer <<@Version>>
+  --
+  + admiteMedicacion() : boolean
+  + {static} registrar(nombre, riesgo, tipo, desc, reqSacrificio) : Enfermedad
+}
+
+class Medicacion <<AggregateRoot>> {
+  - id : UUID
+  - enfermedadId : UUID
+  - medicamentoId : UUID
+  - dosis : String
+  - diasTotales : Integer
+  - descripcion : String
+  - version : Integer <<@Version>>
+  --
+  + esCompatibleCon(enfermedadId: UUID) : boolean
+  + {static} registrar(enfermedadId, medicamentoId, dosis, dias, desc) : Medicacion
+}
+
+class SolicitudAislamiento <<AggregateRoot>> {
+  - id : UUID
+  - galponId : UUID
+  - galponNombreHistorico : String
+  - loteId : UUID
+  - loteNombreHistorico : String
+  - poblacionActualReportada : Integer
+  - edadLoteDias : Integer
+  - motivo : String
+  - signosObservados : String
+  - trabajadorId : UUID
+  - emitidaEn : Instant
+  - estado : EstadoSolicitud
+  - decision : DecisionAislamiento <<@Embedded>>
+  - version : Integer <<@Version>>
+  --
+  + aprobar(veterinarioId: UUID, obs: String, ahora: Instant) : void
+  + rechazar(veterinarioId: UUID, obs: String, ahora: Instant) : void
+}
+
+class DecisionAislamiento <<ValueObject>> {
+  - veterinarioId : UUID
+  - decididaEn : Instant
+  - resultado : EstadoSolicitud
+  - observaciones : String
+}
+
+class DiagnosticoGalpon <<AggregateRoot>> {
+  - id : UUID
+  - solicitudAislamientoId : UUID
+  - galponId : UUID
+  - galponNombreHistorico : String
+  - loteId : UUID
+  - loteNombreHistorico : String
+  - enfermedadId : UUID
+  - nombreEnfermedadHistorico : String
+  - requiereSacrificioHistorico : boolean
+  - medicacionId : UUID
+  - medicamentoIdHistorico : UUID
+  - medicamentoNombreHistorico : String
+  - dosisHistorica : String
+  - viaAdministracionHistorica : String
+  - descripcionHistorica : String
+  - diasMedicacion : Integer
+  - fechaDiagnostico : LocalDate
+  - fechaReintegro : LocalDate
+  - veterinarioId : UUID
+  - registradoEn : Instant
+  - estado : EstadoDiagnostico
+  - version : Integer <<@Version>>
+  --
+  + cumplioPlazoReintegro(hoy: LocalDate) : boolean
+  + cerrarPorReintegro() : void
+  + cerrarPorSacrificio() : void
+  + {static} registrarTratable(...) : DiagnosticoGalpon
+  + {static} registrarMortal(...) : DiagnosticoGalpon
+}
+
+class ConsumoMedicamento <<AggregateRoot>> {
+  - id : UUID
+  - diagnosticoId : UUID
+  - galponId : UUID
+  - loteId : UUID
+  - medicamentoId : UUID
+  - medicamentoNombreHistorico : String
+  - cantidadIngresada : BigDecimal
+  - unidadIngresada : String
+  - cantidadNormalizada : BigDecimal
+  - unidadBase : String
+  - fechaAplicacion : LocalDate
+  - registradoPor : UUID
+  - registradoEn : Instant
+  - detalles : List<DetalleConsumo> <<@OneToMany>>
+  - version : Integer <<@Version>>
+  --
+  + agregarDetalle(detalle: DetalleConsumo) : void
+  + validarSumaDetalles() : void
+}
+
+class DetalleConsumo <<Entity>> {
+  - id : UUID
+  - consumoId : UUID
+  - recepcionId : UUID
+  - codigoLoteRecepcion : String
+  - cantidadDescontadaUnidadBase : BigDecimal
+  - precioNetoHistoricoUnidadBase : BigDecimal
+  - moneda : String
+}
+
+class OrdenSacrificioSanitario <<AggregateRoot>> {
+  - id : UUID
+  - diagnosticoId : UUID
+  - galponId : UUID
+  - loteId : UUID
+  - enfermedadNombreHistorico : String
+  - alcanceTotal : boolean = true
+  - poblacionAfectadaMomento : Integer
+  - poblacionSacrificada : Integer
+  - motivoClinico : String
+  - estado : EstadoOrden
+  - emitidaPor : UUID
+  - emitidaEn : Instant
+  - ejecutadaPor : UUID
+  - ejecutadaEn : Instant
+  - observacionesEjecucion : String
+  - version : Integer <<@Version>>
+  --
+  + confirmarEjecucionFisica(avesSobrantes: Integer, obs: String, ahora: Instant) : void
+}
+
+class AlertaSanitaria <<AggregateRoot>> {
+  - id : UUID
+  - registroMortalidadAnormalId : UUID
+  - galponId : UUID
+  - loteId : UUID
+  - prioridad : String
+  - estado : String
+  - fechaHoraEmision : Instant
+}
+
+' ================= RELACIONES ESTRUCTURALES =================
+
+Enfermedad "1" <-- "0..*" Medicacion : "Filtro por enfermedadId"
+
+SolicitudAislamiento "1" *-- "0..1" DecisionAislamiento : "@Embedded"
+
+SolicitudAislamiento "1" <-- "0..1" DiagnosticoGalpon : "solicitudAislamientoId"
+Enfermedad "1" <-- "0..*" DiagnosticoGalpon : "Snapshot patológico"
+Medicacion "0..1" <-- "0..*" DiagnosticoGalpon : "Snapshot terapéutico"
+
+DiagnosticoGalpon "1" <-- "0..*" ConsumoMedicamento : "diagnosticoId"
+ConsumoMedicamento "1" *-- "1..*" DetalleConsumo : "@OneToMany(cascade=ALL)"
+
+DiagnosticoGalpon "1" <-- "0..1" OrdenSacrificioSanitario : "diagnosticoId"
+
+@enduml
