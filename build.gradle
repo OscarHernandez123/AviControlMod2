@@ -69,3 +69,7 @@ spotless {
 		googleJavaFormat()
 	}
 }
+
+tasks.named('bootRun') {
+	systemProperty 'spring.profiles.active', 'dev'
+}

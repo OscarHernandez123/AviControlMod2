@@ -40,3 +40,6 @@ target_test-classes/
 
 ### agent ###
 .github/copilot-instructions.md
+
+# Local Spring Boot Profiles
+application-dev.yml
