@@ -3,19 +3,24 @@ package com.avicontrol.infrastructure.adapter.out.integration.modulo1;
 import com.avicontrol.domain.exception.modulo1.PoblacionVivaInsuficienteException;
 import com.avicontrol.domain.exception.modulo1.ReferenciaLoteInconsistenteException;
 import com.avicontrol.domain.port.out.modulo1.ActualizarInventarioVivoPort;
+import io.micrometer.core.instrument.MeterRegistry;
 import java.util.UUID;
 import org.springframework.context.annotation.Profile;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 @Repository
 @Profile({"local", "test"})
 public class InventarioVivoModulo1Adapter implements ActualizarInventarioVivoPort {
   private final JdbcTemplate jdbc;
+  private final MeterRegistry metrics;
 
-  public InventarioVivoModulo1Adapter(JdbcTemplate jdbc) {
+  public InventarioVivoModulo1Adapter(JdbcTemplate jdbc, MeterRegistry metrics) {
     this.jdbc = jdbc;
+    this.metrics = metrics;
   }
 
   @Override
@@ -23,7 +28,10 @@ public class InventarioVivoModulo1Adapter implements ActualizarInventarioVivoPor
   public ActualizarInventarioVivoPort.Resultado descontar(
       ActualizarInventarioVivoPort.Descuento c) {
     var existente = repetido(c);
-    if (existente.isPresent()) return existente.get();
+    if (existente.isPresent()) {
+      metrics.counter("avicontrol.inventario_vivo.reintentos").increment();
+      return existente.get();
+    }
     var previa =
         jdbc
             .query(
@@ -35,10 +43,15 @@ public class InventarioVivoModulo1Adapter implements ActualizarInventarioVivoPor
             .findFirst()
             .orElseThrow(ReferenciaLoteInconsistenteException::new);
     existente = repetido(c);
-    if (existente.isPresent()) return existente.get();
-    if (!c.loteId().equals(previa[0])
-        || (c.versionEsperada() >= 0 && c.versionEsperada() != (long) previa[2]))
+    if (existente.isPresent()) {
+      metrics.counter("avicontrol.inventario_vivo.reintentos").increment();
+      return existente.get();
+    }
+    if (!c.loteId().equals(previa[0])) throw new ReferenciaLoteInconsistenteException();
+    if (c.versionEsperada() >= 0 && c.versionEsperada() != (long) previa[2]) {
+      metrics.counter("avicontrol.inventario_vivo.conflictos_version").increment();
       throw new ReferenciaLoteInconsistenteException();
+    }
     int anterior = (int) previa[1];
     if (anterior < c.cantidadBajas()) throw new PoblacionVivaInsuficienteException();
     int cambiado =
@@ -49,7 +62,10 @@ public class InventarioVivoModulo1Adapter implements ActualizarInventarioVivoPor
             c.loteId(),
             (long) previa[2],
             c.cantidadBajas());
-    if (cambiado != 1) throw new ReferenciaLoteInconsistenteException();
+    if (cambiado != 1) {
+      metrics.counter("avicontrol.inventario_vivo.conflictos_version").increment();
+      throw new ReferenciaLoteInconsistenteException();
+    }
     jdbc.update(
         "INSERT INTO descuentos_inventario_vivo (idempotency_key,lote_id,galpon_id,cantidad,causa,actor,poblacion_anterior,poblacion_resultante) VALUES (?,?,?,?,?,?,?,?)",
         c.idempotencyKey(),
@@ -60,6 +76,13 @@ public class InventarioVivoModulo1Adapter implements ActualizarInventarioVivoPor
         c.actor(),
         anterior,
         anterior - c.cantidadBajas());
+    TransactionSynchronizationManager.registerSynchronization(
+        new TransactionSynchronization() {
+          @Override
+          public void afterCommit() {
+            metrics.counter("avicontrol.inventario_vivo.descuentos_aplicados").increment();
+          }
+        });
     return new ActualizarInventarioVivoPort.Resultado(
         c.loteId(), anterior, -c.cantidadBajas(), anterior - c.cantidadBajas(), c.causa());
   }

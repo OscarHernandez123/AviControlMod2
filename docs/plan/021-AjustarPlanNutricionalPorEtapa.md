@@ -59,6 +59,7 @@ src/main/resources/db/migration/
 
 src/test/java/com/avicontrol/
 ├── application/alimentacion/NutricionInventarioIntegrationTest.java
+├── domain/model/nutricion/PlanNutricionalPlantillaTest.java
 └── infrastructure/adapter/in/rest/inventario/InventarioNutricionControllerTest.java
 ```
 
@@ -66,16 +67,16 @@ src/test/java/com/avicontrol/
 
 ## Phase 1: Setup (Shared Infrastructure)
 
-- [ ] T001 Confirmar tipos de ave, catálogo de alimentos, stock de sólo lectura y sincronización con Plan 022.
-- [ ] T002 Crear migraciones para plantilla, instancia, etapas e historial de ajustes.
-- [ ] T003 Definir enums, estados y pruebas de etapas omitidas, activas y completadas.
+- [x] T001 Confirmar tipos de ave, catálogo de alimentos, stock de sólo lectura y sincronización con Plan 022.
+- [x] T002 Crear migraciones para plantilla, instancia, etapas e historial de ajustes.
+- [x] T003 Definir enums, estados y pruebas de etapas omitidas, activas y completadas.
 
 ## Phase 2: Foundational (Blocking Prerequisites)
 
-- [ ] T004 Validar rangos contiguos, ración positiva y unicidad de predeterminado por tipo de ave.
-- [ ] T005 Implementar reglas de inmutabilidad para etapa completada y alimento/costo de etapa activa.
-- [ ] T006 Implementar recálculo en cascada y actualización de fecha proyectada de salida.
-- [ ] T007 Persistir cada ajuste con motivo, justificación, responsable y valores antes/después.
+- [x] T004 Validar rangos contiguos, ración positiva y unicidad de predeterminado por tipo de ave.
+- [x] T005 Implementar reglas de inmutabilidad para etapa completada y alimento/costo de etapa activa.
+- [x] T006 Implementar recálculo en cascada y actualización de fecha proyectada de salida.
+- [x] T007 Persistir cada ajuste con motivo, justificación, responsable y valores antes/después.
 
 **Checkpoint**: el dominio no permite solapamientos ni cambios históricos, y nunca descuenta inventario.
 
@@ -85,8 +86,8 @@ src/test/java/com/avicontrol/
 
 **Independent Test**: tres etapas 1-7, 8-21 y 22-45 se aceptan; una etapa solapada o ración cero se rechaza; otro predeterminado se desmarca.
 
-- [ ] T008 [P] [US1] Probar continuidad, ración y predeterminado único.
-- [ ] T009 [US1] Implementar creación, listado, detalle y edición de plantillas.
+- [x] T008 [P] [US1] Probar continuidad, ración y predeterminado único.
+- [x] T009 [US1] Implementar creación, listado, detalle y edición de plantillas.
 
 ## Phase 4: User Story 2 - Asignar o sustituir plan (Priority: P1)
 
@@ -94,8 +95,8 @@ src/test/java/com/avicontrol/
 
 **Independent Test**: ingreso en día 14 omite Pre-inicio; sustitución en día 25 conserva etapas concluidas y bloqueos de activa.
 
-- [ ] T010 [P] [US2] Probar asignación automática, ausencia de predeterminado y sustitución segura.
-- [ ] T011 [US2] Implementar asignación y sustitución por lote activo.
+- [x] T010 [P] [US2] Probar asignación automática, ausencia de predeterminado y sustitución segura.
+- [x] T011 [US2] Implementar asignación y sustitución por lote activo.
 
 ## Phase 5: User Story 3 - Seleccionar alimento compatible (Priority: P1)
 
@@ -103,8 +104,8 @@ src/test/java/com/avicontrol/
 
 **Independent Test**: alimento con duración recomendada de diez días reajusta una etapa futura; sin stock se permite con alerta; en etapa activa se rechaza.
 
-- [ ] T012 [P] [US3] Probar compatibilidad, presentaciones, vencidos, sin stock y bloqueo activo.
-- [ ] T013 [US3] Implementar consulta y selección de alimento futuro.
+- [x] T012 [P] [US3] Probar compatibilidad, presentaciones, vencidos, sin stock y bloqueo activo.
+- [x] T013 [US3] Implementar consulta y selección de alimento futuro.
 
 ## Phase 6: User Story 4 - Ajustar duración activa (Priority: P1)
 
@@ -112,9 +113,9 @@ src/test/java/com/avicontrol/
 
 **Independent Test**: extender Inicio de 14 a 19 días desplaza Engorde cinco días, actualiza fecha de salida y añade una entrada de historial.
 
-- [ ] T014 [P] [US4] Probar cascada, ajustes sucesivos, justificación y etapa completada.
-- [ ] T015 [US4] Implementar ajuste, auditoría y notificación/recalculo al Plan 022.
-- [ ] T016 [US3] Calcular demanda diaria en kg y bultos equivalentes, y días de autonomía con stock vigente; demanda cero no divide por cero.
+- [x] T014 [P] [US4] Probar cascada, ajustes sucesivos, justificación y etapa completada.
+- [x] T015 [US4] Implementar ajuste, auditoría y notificación/recalculo al Plan 022.
+- [x] T016 [US3] Calcular demanda diaria en kg y bultos equivalentes, y días de autonomía con stock vigente; demanda cero no divide por cero.
 
 ## Endpoints
 
@@ -272,8 +273,8 @@ La consulta del plan devuelve etapas, historial y, para la etapa activa, demanda
 
 ## Polish & Cross-Cutting Concerns
 
-- [ ] T017 Documentar fórmulas de demanda y que no existen reservas ni movimientos de inventario.
-- [ ] T018 Ejecutar pruebas de dominio, HTTP y `git diff --check`.
+- [x] T017 Documentar fórmulas de demanda y que no existen reservas ni movimientos de inventario.
+- [x] T018 Ejecutar pruebas de dominio, HTTP y `git diff --check`.
 
 ## Dependencies & Execution Order
 
@@ -282,6 +283,7 @@ La consulta del plan devuelve etapas, historial y, para la etapa activa, demanda
 
 ## Notes
 
+- La demanda diaria es población viva × ración kg/ave/día; los bultos equivalentes dividen los kilogramos por el peso nominal, y la autonomía divide el stock vigente por la demanda diaria cuando ésta es positiva. Son cálculos de lectura: no reservan ni descuentan inventario.
 - Sin predeterminado, el lote queda pendiente de asignación y demanda cero hasta configuración manual.
 - El Plan 022 consume proyecciones e historial, sin permitir reescribir costos bloqueados.
 - El Módulo 1 aún no está conectado: `PlanNutricionalLoteUseCase.asignarAlAlojar` recibe el alojamiento confirmado y publica el evento de pendiente cuando falta plantilla; el endpoint de asignación manual acepta contexto del lote para revisión local. La integración definitiva deberá sustituir ese contexto por una consulta confiable al Módulo 1.

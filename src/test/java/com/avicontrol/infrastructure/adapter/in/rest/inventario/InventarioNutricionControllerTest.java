@@ -13,6 +13,8 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
 import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,7 +23,34 @@ import org.springframework.transaction.annotation.Transactional;
 @ActiveProfiles("test")
 @Transactional
 class InventarioNutricionControllerTest {
+  @DynamicPropertySource
+  static void baseAislada(DynamicPropertyRegistry registry) {
+    registry.add(
+        "spring.datasource.url",
+        () ->
+            "true".equals(System.getenv("AVICONTROL_RUN_POSTGRES_TESTS"))
+                ? System.getenv("AVICONTROL_TEST_DB_URL")
+                : "jdbc:h2:mem:inventario_nutricion_controller;MODE=PostgreSQL;DB_CLOSE_DELAY=-1;DATABASE_TO_LOWER=TRUE");
+    if ("true".equals(System.getenv("AVICONTROL_RUN_POSTGRES_TESTS"))) {
+      registry.add("spring.datasource.username", () -> "avicontrol");
+      registry.add("spring.datasource.password", () -> "avicontrol");
+      registry.add("spring.datasource.driver-class-name", () -> "org.postgresql.Driver");
+    }
+  }
+
   @Autowired MockMvc mvc;
+
+  @Test
+  void openApiIncluyeEndpointsDeInventarioNutricionYProyecciones() throws Exception {
+    mvc.perform(
+            get("/v3/api-docs")
+                .with(SecurityMockMvcRequestPostProcessors.user("admin").roles("ADMINISTRADOR")))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.paths['/api/inventario'].get").exists())
+        .andExpect(jsonPath("$.paths['/api/inventario/resumen'].get").exists())
+        .andExpect(jsonPath("$.paths['/api/nutricion/plantillas'].post").exists())
+        .andExpect(jsonPath("$.paths['/api/lotes/{loteId}/alimento-requerido'].get").exists());
+  }
 
   @Test
   void inventarioRequiereAdministrador() throws Exception {
@@ -30,7 +59,8 @@ class InventarioNutricionControllerTest {
                 .with(SecurityMockMvcRequestPostProcessors.user("admin").roles("ADMINISTRADOR")))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.alimentos").isArray())
-        .andExpect(jsonPath("$.medicamentos").isArray());
+        .andExpect(jsonPath("$.medicamentos").isArray())
+        .andExpect(jsonPath("$.tarjetasMedicamento.TOTAL").exists());
     mvc.perform(
             get("/api/inventario")
                 .with(SecurityMockMvcRequestPostProcessors.user("trabajador").roles("TRABAJADOR")))

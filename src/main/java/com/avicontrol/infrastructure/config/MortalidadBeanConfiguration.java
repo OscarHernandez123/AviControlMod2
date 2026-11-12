@@ -12,6 +12,7 @@ import com.avicontrol.domain.port.out.modulo1.LoteQueryPort;
 import com.avicontrol.domain.port.out.mortalidad.RegistroMortalidadAnormalRepositoryPort;
 import com.avicontrol.domain.port.out.mortalidad.RegistroMortalidadRepositoryPort;
 import com.avicontrol.domain.port.out.sanitario.aislamiento.GalponLoteAislamientoQueryPort;
+import io.micrometer.core.instrument.MeterRegistry;
 import java.time.Clock;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -20,8 +21,8 @@ import org.springframework.context.annotation.Configuration;
 public class MortalidadBeanConfiguration {
   @Bean
   GenerarAlertaSanitariaUseCase generarAlertaSanitaria(
-      AlertaSanitariaRepositoryPort repo, Clock clock) {
-    return new GenerarAlertaSanitariaUseCase(repo, clock);
+      AlertaSanitariaRepositoryPort repo, Clock clock, MeterRegistry metrics) {
+    return new GenerarAlertaSanitariaUseCase(repo, clock, metrics);
   }
 
   @Bean
@@ -41,8 +42,10 @@ public class MortalidadBeanConfiguration {
       ActualizarInventarioVivoUseCase inventario,
       RegistroMortalidadRepositoryPort registros,
       RegistrarMortalidadAnormalUseCase anormal,
-      Clock clock) {
-    return new RegistrarMortalidadUseCase(galpones, lotes, inventario, registros, anormal, clock);
+      Clock clock,
+      MeterRegistry metrics) {
+    return new RegistrarMortalidadUseCase(
+        galpones, lotes, inventario, registros, anormal, clock, metrics);
   }
 
   @Bean

@@ -50,6 +50,10 @@ public class ConsultarInventarioUseCase {
                       estado);
                 })
             .toList();
-    return new InventarioActual(alimentos, actual.medicamentos(), actual.tarjetasAlimentoKg());
+    return new InventarioActual(
+        alimentos,
+        actual.medicamentos(),
+        actual.tarjetasAlimentoKg(),
+        actual.tarjetasMedicamento());
   }
 }

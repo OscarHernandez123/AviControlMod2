@@ -44,6 +44,7 @@ public class RegistrarMortalidadAnormalUseCase {
         || c.responsable() == null
         || c.responsable().isBlank())
       throw new IllegalArgumentException("Reporte anormal inválido");
+    reportes.bloquearGalpon(c.galponId());
     if (c.idempotencyKey() != null) {
       var existente = reportes.buscar(c.idempotencyKey());
       if (existente.isPresent()) {

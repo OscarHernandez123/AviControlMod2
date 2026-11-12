@@ -46,15 +46,15 @@ src/test/java/com/avicontrol/infrastructure/adapter/in/rest/mortalidad/Mortalida
 
 ## Phase 1: Setup (Shared Infrastructure)
 
-- [ ] T001 Acordar con el Módulo 1 un comando de descuento que reciba lote, galpón, bajas, causa, actor, versión y clave de idempotencia.
-- [ ] T002 Confirmar que el contrato mantiene inmutable `poblacionInicial` y devuelve población anterior y resultante.
-- [ ] T003 Preparar pruebas de saldo total, saldo insuficiente, reintento y versión obsoleta.
+- [x] T001 Definir el contrato del puerto hacia el Módulo 1 con lote, galpón, bajas, causa, actor, versión y clave de idempotencia; la conexión real se hará cuando esté disponible.
+- [x] T002 Confirmar que el adaptador local sólo modifica población actual y devuelve población anterior y resultante; `poblacionInicial` pertenece al Módulo 1.
+- [x] T003 Preparar pruebas de saldo total, saldo insuficiente, reintento y versión obsoleta.
 
 ## Phase 2: Foundational (Blocking Prerequisites)
 
-- [ ] T004 Crear `ActualizarInventarioVivoCommand` con causa trazable e idempotency key obligatoria.
-- [ ] T005 Validar cantidad positiva, lote/galpón presentes y coherencia de referencias.
-- [ ] T006 Implementar el puerto y adaptador con actualización condicional o bloqueo a nivel del lote.
+- [x] T004 Crear `ActualizarInventarioVivoCommand` con causa trazable e idempotency key obligatoria.
+- [x] T005 Validar cantidad positiva, lote/galpón presentes y coherencia de referencias.
+- [x] T006 Implementar el puerto y adaptador con actualización condicional o bloqueo a nivel del lote.
 
 **Checkpoint**: una misma causa confirmada no se descuenta dos veces y nunca deja población negativa.
 
@@ -64,9 +64,9 @@ src/test/java/com/avicontrol/infrastructure/adapter/in/rest/mortalidad/Mortalida
 
 **Independent Test**: sobre 8.000 aves, 40 bajas dejan 7.960; sobre 25, 25 dejan cero; 60 sobre 50 se rechaza sin modificar nada.
 
-- [ ] T007 [P] [US1] Probar cálculo, cero, saldo negativo, idempotencia y concurrencia.
-- [ ] T008 [US1] Implementar `ActualizarInventarioVivoUseCase` y adaptador de integración.
-- [ ] T009 [US1] Integrar el caso de uso con el Plan 016 después de confirmar el registro de mortalidad.
+- [x] T007 [P] [US1] Probar cálculo, cero, saldo negativo, idempotencia y concurrencia.
+- [x] T008 [US1] Implementar `ActualizarInventarioVivoUseCase` y adaptador de integración.
+- [x] T009 [US1] Integrar el caso de uso con el Plan 016 después de confirmar el registro de mortalidad.
 
 ## Endpoints
 
@@ -100,8 +100,8 @@ No expone endpoints HTTP públicos: es un contrato interno de aplicación invoca
 
 ## Polish & Cross-Cutting Concerns
 
-- [ ] T010 Añadir métricas de reintentos, conflictos de versión y descuentos aplicados.
-- [ ] T011 Documentar consumidores permitidos y ejecutar pruebas más `git diff --check`.
+- [x] T010 Añadir métricas de reintentos, conflictos de versión y descuentos aplicados.
+- [x] T011 Documentar consumidores permitidos y ejecutar pruebas más `git diff --check`.
 
 ## Dependencies & Execution Order
 
@@ -113,3 +113,7 @@ No expone endpoints HTTP públicos: es un contrato interno de aplicación invoca
 
 - `poblacionActual` puede llegar a cero, nunca ser negativa.
 - La actualización por sacrificio tiene reglas propias; no debe reutilizar este caso de uso sin un contrato explícito.
+- Consumidor autorizado: `RegistrarMortalidadUseCase` del Plan 016. El puerto valida lote y galpón, cantidad positiva, versión y clave de idempotencia; el adaptador local sólo actualiza `poblacion_viva` y conserva el resto de los datos del galpón.
+- Los contadores `avicontrol.inventario_vivo.reintentos`, `avicontrol.inventario_vivo.conflictos_version` y `avicontrol.inventario_vivo.descuentos_aplicados` cubren reintentos, versión obsoleta y descuentos confirmados.
+- La conexión con el Módulo 1 real sigue pendiente; fuera de `local` y `test`, el adaptador responde `503` y no simula descuentos.
+- Verificado el 12/11/2026 con saldo cero, saldo insuficiente, versión obsoleta, reintento y descuentos concurrentes en H2 y PostgreSQL.

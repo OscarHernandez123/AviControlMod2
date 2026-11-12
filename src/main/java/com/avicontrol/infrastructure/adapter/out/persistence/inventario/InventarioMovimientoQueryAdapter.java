@@ -79,7 +79,7 @@ public class InventarioMovimientoQueryAdapter implements InventarioMovimientoQue
 
     Map<String, MedicamentoAcumulado> medicamentos = new LinkedHashMap<>();
     jdbc.query(
-        "SELECT r.medicamento_id, r.nombre_medicamento, r.presentacion, r.contenido_por_presentacion, r.unidad_contenido, r.fecha_vencimiento, r.estado, "
+        "SELECT r.medicamento_id, r.nombre_medicamento, r.presentacion, r.contenido_por_presentacion, r.unidad_contenido, r.cantidad_presentaciones, r.cantidad_unidad_base, r.unidad_base, r.fecha_vencimiento, r.estado, "
             + "COALESCE((SELECT SUM(CASE WHEN m.tipo_movimiento IN ('ENTRADA','AJUSTE_POSITIVO','AJUSTE') THEN m.cantidad ELSE -m.cantidad END) "
             + "FROM movimientos_inventario m WHERE m.recepcion_id = r.id AND m.tipo_producto = 'MEDICAMENTO' AND m.estado = 'CONFIRMADO'), 0) "
             + "- COALESCE((SELECT SUM(d.cantidad_unidad_base) FROM detalles_consumo_medicamento d WHERE d.recepcion_id = r.id), 0) AS saldo "
@@ -89,13 +89,33 @@ public class InventarioMovimientoQueryAdapter implements InventarioMovimientoQue
           String presentacion = rs.getString("presentacion");
           BigDecimal contenido = rs.getBigDecimal("contenido_por_presentacion");
           String unidad = rs.getString("unidad_contenido");
+          String unidadBase = rs.getString("unidad_base");
+          BigDecimal contenidoBase =
+              rs.getBigDecimal("cantidad_unidad_base")
+                  .divide(
+                      BigDecimal.valueOf(rs.getInt("cantidad_presentaciones")),
+                      8,
+                      java.math.RoundingMode.HALF_UP);
           String clave =
-              id + "|" + presentacion + "|" + contenido.stripTrailingZeros() + "|" + unidad;
+              id
+                  + "|"
+                  + presentacion
+                  + "|"
+                  + contenido.stripTrailingZeros()
+                  + "|"
+                  + unidad
+                  + "|"
+                  + unidadBase;
           MedicamentoAcumulado m = medicamentos.get(clave);
           if (m == null) {
             m =
                 new MedicamentoAcumulado(
-                    id, rs.getString("nombre_medicamento"), presentacion, contenido, unidad);
+                    id,
+                    rs.getString("nombre_medicamento"),
+                    presentacion,
+                    contenido,
+                    contenidoBase,
+                    unidad);
             medicamentos.put(clave, m);
           }
           if ("CONFIRMADA".equals(rs.getString("estado"))
@@ -112,12 +132,27 @@ public class InventarioMovimientoQueryAdapter implements InventarioMovimientoQue
                         m.id,
                         m.nombre,
                         m.presentacion,
-                        m.stock.divide(m.contenido, 4, java.math.RoundingMode.HALF_UP),
+                        m.stock.divide(m.contenidoBase, 4, java.math.RoundingMode.HALF_UP),
                         m.contenido,
                         m.unidad,
-                        m.stock))
+                        "MILIGRAMO".equals(m.unidad) ? m.stock.movePointRight(3) : m.stock))
             .toList();
-    return new InventarioActual(alimentosResult, medicamentosResult, tarjetas);
+    Map<String, BigDecimal> tarjetasMedicamento = new LinkedHashMap<>();
+    tarjetasMedicamento.put("FRASCOS", BigDecimal.ZERO);
+    tarjetasMedicamento.put("BOLSAS", BigDecimal.ZERO);
+    tarjetasMedicamento.put("CAJAS", BigDecimal.ZERO);
+    tarjetasMedicamento.put("TOTAL", BigDecimal.ZERO);
+    for (ExistenciaMedicamento medicamento : medicamentosResult) {
+      String presentacion = medicamento.presentacion().strip().toUpperCase(Locale.ROOT);
+      if (presentacion.startsWith("FRASCO"))
+        tarjetasMedicamento.merge("FRASCOS", medicamento.cantidad(), BigDecimal::add);
+      else if (presentacion.startsWith("BOLSA"))
+        tarjetasMedicamento.merge("BOLSAS", medicamento.cantidad(), BigDecimal::add);
+      else if (presentacion.startsWith("CAJA"))
+        tarjetasMedicamento.merge("CAJAS", medicamento.cantidad(), BigDecimal::add);
+      tarjetasMedicamento.merge("TOTAL", medicamento.cantidad(), BigDecimal::add);
+    }
+    return new InventarioActual(alimentosResult, medicamentosResult, tarjetas, tarjetasMedicamento);
   }
 
   private static final class AlimentoAcumulado {
@@ -140,15 +175,22 @@ public class InventarioMovimientoQueryAdapter implements InventarioMovimientoQue
     final String nombre;
     final String presentacion;
     final BigDecimal contenido;
+    final BigDecimal contenidoBase;
     final String unidad;
     BigDecimal stock = BigDecimal.ZERO;
 
     MedicamentoAcumulado(
-        UUID id, String nombre, String presentacion, BigDecimal contenido, String unidad) {
+        UUID id,
+        String nombre,
+        String presentacion,
+        BigDecimal contenido,
+        BigDecimal contenidoBase,
+        String unidad) {
       this.id = id;
       this.nombre = nombre;
       this.presentacion = presentacion;
       this.contenido = contenido;
+      this.contenidoBase = contenidoBase;
       this.unidad = unidad;
     }
   }

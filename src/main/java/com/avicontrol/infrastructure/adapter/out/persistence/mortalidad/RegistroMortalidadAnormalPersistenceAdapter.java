@@ -8,6 +8,8 @@ import java.util.Optional;
 import java.util.UUID;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 
 @Repository
 public class RegistroMortalidadAnormalPersistenceAdapter
@@ -16,6 +18,13 @@ public class RegistroMortalidadAnormalPersistenceAdapter
 
   public RegistroMortalidadAnormalPersistenceAdapter(JdbcTemplate jdbc) {
     this.jdbc = jdbc;
+  }
+
+  @Override
+  @Transactional(propagation = Propagation.MANDATORY)
+  public void bloquearGalpon(UUID galponId) {
+    jdbc.queryForList(
+        "SELECT id FROM modulo1_galpon_local WHERE id=? FOR UPDATE", UUID.class, galponId);
   }
 
   @Override

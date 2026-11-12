@@ -1,6 +1,7 @@
 package com.avicontrol.application.alimentacion;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -9,8 +10,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.avicontrol.AviControlModulo2Application;
+import com.avicontrol.application.alimentacion.port.ProyeccionAlimentoRepositoryPort;
 import com.avicontrol.application.inventario.ConsultarCoberturaAlimentoUseCase;
 import com.avicontrol.application.inventario.ConsultarInventarioUseCase;
+import com.avicontrol.application.inventario.ConsultarResumenInventarioUseCase;
 import com.avicontrol.application.nutricion.GestionarPlantillasUseCase;
 import com.avicontrol.application.nutricion.PlanNutricionalLoteUseCase;
 import com.avicontrol.application.recepcion.RegistrarRecepcionAlimentoCommand;
@@ -45,7 +48,14 @@ class NutricionInventarioIntegrationTest {
     registry.add(
         "spring.datasource.url",
         () ->
-            "jdbc:h2:mem:nutricion_inventario_integration;MODE=PostgreSQL;DB_CLOSE_DELAY=-1;DATABASE_TO_LOWER=TRUE");
+            "true".equals(System.getenv("AVICONTROL_RUN_POSTGRES_TESTS"))
+                ? System.getenv("AVICONTROL_TEST_DB_URL")
+                : "jdbc:h2:mem:nutricion_inventario_integration;MODE=PostgreSQL;DB_CLOSE_DELAY=-1;DATABASE_TO_LOWER=TRUE");
+    if ("true".equals(System.getenv("AVICONTROL_RUN_POSTGRES_TESTS"))) {
+      registry.add("spring.datasource.username", () -> "avicontrol");
+      registry.add("spring.datasource.password", () -> "avicontrol");
+      registry.add("spring.datasource.driver-class-name", () -> "org.postgresql.Driver");
+    }
   }
 
   private static final UUID ALIMENTO = UUID.fromString("550e8400-e29b-41d4-a716-446655440000");
@@ -56,9 +66,147 @@ class NutricionInventarioIntegrationTest {
   @Autowired GestionarPlantillasUseCase plantillas;
   @Autowired PlanNutricionalLoteUseCase planes;
   @Autowired ProyeccionAlimentoUseCase proyecciones;
+  @Autowired ProyeccionAlimentoRepositoryPort proyeccionRepository;
   @Autowired ConsultarInventarioUseCase inventario;
+  @Autowired ConsultarResumenInventarioUseCase resumenInventario;
   @Autowired ConsultarCoberturaAlimentoUseCase cobertura;
   @Autowired MockMvc mvc;
+
+  @Test
+  void nuevaPlantillaPredeterminadaDesmarcaLaAnterior() {
+    for (String nombre : List.of("Broiler A", "Broiler B")) {
+      plantillas.crear(
+          new PlanNutricionalPlantilla(
+              null,
+              nombre,
+              "BROILER",
+              true,
+              true,
+              Instant.now(clock),
+              List.of(
+                  new PlanNutricionalPlantilla.Etapa(
+                      EtapaCrianza.PRE_INICIO,
+                      1,
+                      7,
+                      new BigDecimal("0.05"),
+                      EtapaCrianza.PRE_INICIO,
+                      new BigDecimal("40"),
+                      null),
+                  new PlanNutricionalPlantilla.Etapa(
+                      EtapaCrianza.INICIO,
+                      8,
+                      21,
+                      new BigDecimal("0.10"),
+                      EtapaCrianza.INICIO,
+                      new BigDecimal("40"),
+                      null),
+                  new PlanNutricionalPlantilla.Etapa(
+                      EtapaCrianza.ENGORDE,
+                      22,
+                      45,
+                      new BigDecimal("0.12"),
+                      EtapaCrianza.ENGORDE,
+                      new BigDecimal("40"),
+                      null))));
+    }
+
+    assertEquals(
+        1,
+        jdbc.queryForObject(
+            "SELECT COUNT(*) FROM plantillas_nutricionales WHERE tipo_ave='BROILER' AND es_predeterminado=TRUE",
+            Integer.class));
+    assertEquals(
+        "Broiler B",
+        plantillas.listar().stream()
+            .filter(PlanNutricionalPlantilla::esPredeterminado)
+            .findFirst()
+            .orElseThrow()
+            .nombre());
+  }
+
+  @Test
+  void resumenLimitaRecepcionesRecientesACinco() {
+    LocalDate hoy = LocalDate.now(clock);
+    UUID alimento = ALIMENTO;
+    jdbc.update(
+        "INSERT INTO alimentos_comerciales_nutricion (id,nombre,tipo_alimento,peso_nominal_bulto_kg,proteina_porcentaje,energia_kcal_kg,activo) VALUES (?,?,?,?,?,?,TRUE)",
+        alimento,
+        "Alimento resumen",
+        "INICIO",
+        new BigDecimal("40"),
+        new BigDecimal("20"),
+        new BigDecimal("3100"));
+    for (int i = 0; i < 6; i++) {
+      recepciones.registrar(
+          new RegistrarRecepcionAlimentoCommand(
+              alimento,
+              EtapaCrianza.INICIO,
+              "RES-" + i,
+              hoy.minusDays(6 - i),
+              hoy.plusDays(30),
+              1,
+              new BigDecimal("40"),
+              new BigDecimal("400"),
+              BigDecimal.ZERO,
+              "admin"));
+    }
+
+    var recientes = resumenInventario.consultar().recepcionesAlimentoRecientes();
+    assertEquals(5, recientes.size());
+    assertEquals("RES-5", recientes.get(0).codigoLote());
+    assertEquals("RES-1", recientes.get(4).codigoLote());
+  }
+
+  @Test
+  void inventarioConvierteMiligramosAUnidadBaseYDevuelveStockEnUnidadOriginal() {
+    LocalDate hoy = LocalDate.now(clock);
+    UUID medicamento = UUID.randomUUID();
+    UUID recepcion = UUID.randomUUID();
+    jdbc.update(
+        "INSERT INTO recepciones_medicamento (id, medicamento_id, codigo_lote, presentacion, fecha_ingreso, fecha_vencimiento, cantidad_presentaciones, contenido_por_presentacion, unidad_contenido, precio_neto_por_presentacion, impuesto_porcentaje, cantidad_unidad_base, unidad_base, precio_neto_unidad_base, precio_neto_total, valor_impuesto, precio_total, estado, actor, nombre_medicamento) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        recepcion,
+        medicamento,
+        "MED-MG",
+        "Tableta",
+        hoy.minusDays(1),
+        hoy.plusDays(30),
+        10,
+        new BigDecimal("500"),
+        "MILIGRAMO",
+        new BigDecimal("100"),
+        BigDecimal.ZERO,
+        new BigDecimal("5"),
+        "GRAMO",
+        new BigDecimal("200"),
+        new BigDecimal("1000"),
+        BigDecimal.ZERO,
+        new BigDecimal("1000"),
+        "CONFIRMADA",
+        "admin",
+        "Medicamento MG");
+    jdbc.update(
+        "INSERT INTO movimientos_inventario (id, recepcion_id, producto_id, tipo_producto, tipo_movimiento, cantidad, unidad, actor, fecha_registro, estado) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        UUID.randomUUID(),
+        recepcion,
+        medicamento,
+        "MEDICAMENTO",
+        "ENTRADA",
+        new BigDecimal("5"),
+        "GRAMO",
+        "admin",
+        java.sql.Timestamp.from(Instant.now(clock)),
+        "CONFIRMADO");
+
+    var existencia = inventario.consultar().medicamentos().get(0);
+    assertEquals(0, new BigDecimal("10").compareTo(existencia.cantidad()));
+    assertEquals(0, new BigDecimal("5000").compareTo(existencia.stockActual()));
+    assertEquals("MILIGRAMO", existencia.unidad());
+    assertEquals(
+        0,
+        new BigDecimal("10").compareTo(inventario.consultar().tarjetasMedicamento().get("TOTAL")));
+    assertEquals(
+        0, BigDecimal.ZERO.compareTo(inventario.consultar().tarjetasMedicamento().get("FRASCOS")));
+  }
 
   @Test
   void recepcionPlanProrrogaYCoberturaMantienenCostoCapturado() throws Exception {
@@ -196,6 +344,9 @@ class NutricionInventarioIntegrationTest {
     var ajustada = proyecciones.consultarLote(loteId).etapas().get(0);
     assertEquals(0, new BigDecimal("160.0000").compareTo(ajustada.proyeccionKg()));
     assertEquals(0, new BigDecimal("12.00").compareTo(ajustada.costoUnitarioKg()));
+    assertFalse(
+        proyeccionRepository.actualizarDuracion(
+            ajustada.id(), inicial.version(), 18, new BigDecimal("180")));
     assertEquals(0, new BigDecimal("240").compareTo(proyecciones.balance().get(0).balanceKg()));
     assertEquals(
         1,
