@@ -75,7 +75,9 @@ src/main/resources/db/migration/
 src/test/java/com/avicontrol/
 ├── domain/model/medicamento/ConsumoMedicamentoTest.java
 ├── application/medicamento/RegistrarConsumoMedicamentoUseCaseTest.java
-└── infrastructure/adapter/in/rest/medicamento/ConsumoMedicamentoControllerTest.java
+└── infrastructure/adapter/in/rest/medicamento/
+    ├── ConsumoMedicamentoControllerTest.java
+    └── ConsumoMedicamentoPostgresTest.java
 ```
 
 **Structure Decision**: consumo y detalle se persisten localmente como evidencia de costo. El diagnóstico es sólo fuente de lote, galpón y medicación. El puerto de inventario bloquea y selecciona recepciones FEFO; los detalles confirmados son también el registro de salida que resta saldo. Selección y persistencia comparten la misma transacción de base de datos, sin descuento parcial.
@@ -84,9 +86,9 @@ src/test/java/com/avicontrol/
 
 **Purpose**: acordar el contrato atómico de Inventario y la consulta de diagnóstico.
 
-- [ ] T001 Confirmar que el diagnóstico expone medicamento, lote, galpón y vigencia de tratamiento.
-- [ ] T002 Definir con Inventario una operación FEFO que devuelva el desglose por recepción y falle sin descuentos parciales.
-- [ ] T003 Crear la migración de consumo y detalles con cantidad normalizada, unidad, recepción y precio histórico.
+- [x] T001 Confirmar que el diagnóstico expone medicamento, lote, galpón y vigencia de tratamiento.
+- [x] T002 Definir con Inventario una operación FEFO que devuelva el desglose por recepción y falle sin descuentos parciales.
+- [x] T003 Crear la migración de consumo y detalles con cantidad normalizada, unidad, recepción y precio histórico.
 
 ---
 
@@ -94,10 +96,10 @@ src/test/java/com/avicontrol/
 
 **Purpose**: implementar normalización, trazabilidad y límites transaccionales.
 
-- [ ] T004 Crear `UnidadConsumoMedicamento` con conversiones `MILIGRAMO` a `GRAMO`, volumen a `MILILITRO` y conteo a `UNIDAD`.
-- [ ] T005 Rechazar dimensiones incompatibles y cantidades no positivas.
-- [ ] T006 Crear `ConsumoMedicamento` y detalles que conserven por recepción cantidad, precio neto histórico por unidad base y moneda.
-- [ ] T007 Definir puertos, idempotencia y compensación/reintento para un fallo entre Inventario y persistencia local.
+- [x] T004 Crear `UnidadConsumoMedicamento` con conversiones `MILIGRAMO` a `GRAMO`, volumen a `MILILITRO` y conteo a `UNIDAD`.
+- [x] T005 Rechazar dimensiones incompatibles y cantidades no positivas.
+- [x] T006 Crear `ConsumoMedicamento` y detalles que conserven por recepción cantidad, precio neto histórico por unidad base y moneda.
+- [x] T007 Definir puertos, idempotencia y compensación/reintento para un fallo entre Inventario y persistencia local.
 
 **Checkpoint**: toda distribución queda trazable por recepción y una falla no deja consumo ni descuento parcial.
 
@@ -111,15 +113,15 @@ src/test/java/com/avicontrol/
 
 ### Tests for User Story 1
 
-- [ ] T008 [P] [US1] Probar normalización, unidades incompatibles y detalles con precios diferentes.
-- [ ] T009 [P] [US1] Probar FEFO, varias recepciones, existencias insuficientes e idempotencia.
-- [ ] T010 [P] [US1] Probar MockMvc para éxito, validación, autorización y errores de Inventario.
+- [x] T008 [P] [US1] Probar normalización, unidades incompatibles y detalles con precios diferentes.
+- [x] T009 [P] [US1] Probar FEFO, varias recepciones, existencias insuficientes e idempotencia.
+- [x] T010 [P] [US1] Probar MockMvc para éxito, validación, autorización y errores de Inventario.
 
 ### Implementation for User Story 1
 
-- [ ] T011 [US1] Implementar `RegistrarConsumoMedicamentoUseCase` y obtener el diagnóstico vigente al confirmar.
-- [ ] T012 [US1] Solicitar la salida FEFO usando el medicamento del diagnóstico y persistir consumo con todos los detalles retornados.
-- [ ] T013 [US1] Exponer endpoint, DTO y mapper sin aceptar medicamento, lote ni galpón desde el cliente.
+- [x] T011 [US1] Implementar `RegistrarConsumoMedicamentoUseCase` y obtener el diagnóstico vigente al confirmar.
+- [x] T012 [US1] Solicitar la salida FEFO usando el medicamento del diagnóstico y persistir consumo con todos los detalles retornados.
+- [x] T013 [US1] Exponer endpoint, DTO y mapper sin aceptar medicamento, lote ni galpón desde el cliente.
 
 ## Endpoints
 
@@ -178,9 +180,9 @@ El costo para Módulo 3 se calcula por cada detalle como `cantidadUnidadBase × 
 
 ## Polish & Cross-Cutting Concerns
 
-- [ ] T014 Documentar la semántica FEFO, las unidades y el contrato de costo para Módulo 3.
-- [ ] T015 Añadir métricas de rechazos por falta de existencias y reintentos de integración.
-- [ ] T016 Ejecutar pruebas y `git diff --check`.
+- [x] T014 Documentar la semántica FEFO, las unidades y el contrato de costo para Módulo 3.
+- [x] T015 Añadir métricas de rechazos por falta de existencias y reintentos de integración.
+- [x] T016 Ejecutar pruebas y `git diff --check`.
 
 ---
 
@@ -198,3 +200,5 @@ El costo para Módulo 3 se calcula por cada detalle como `cantidadUnidadBase × 
 - Se aceptan sólo aplicaciones dentro de un tratamiento activo, desde la fecha del diagnóstico y antes de la fecha de reintegro. No se registran aplicaciones futuras.
 - Las métricas `avicontrol.medicamento.consumo.rechazos` y `avicontrol.medicamento.consumo.reintentos` registran falta de existencias y claves repetidas.
 - Si Inventario pasa a ser un servicio remoto, se necesitará una reserva idempotente y compensación o reintento coordinado antes de sustituir esta transacción local.
+- En la implementación local, la selección FEFO y la persistencia de los detalles comparten transacción: cualquier fallo revierte todo el consumo. La consulta de idempotencia bloquea el diagnóstico para serializar reintentos simultáneos con la misma clave.
+- Verificación del 11/11/2026: `spotlessJavaCheck` y 151 pruebas de la suite completa correctas; las pruebas de consumo también pasaron con PostgreSQL real en una base aislada, incluidas dos solicitudes simultáneas con la misma clave.

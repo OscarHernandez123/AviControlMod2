@@ -74,9 +74,9 @@ src/test/java/com/avicontrol/
 
 **Purpose**: preparar el esquema y valores controlados del catálogo.
 
-- [ ] T001 Definir valores permitidos de `NivelRiesgo` y `TipoEnfermedad` con el vocabulario acordado.
-- [ ] T002 Crear la migración con todos los campos obligatorios y sin valor predeterminado para `requiereSacrificioSanitario`.
-- [ ] T003 Preparar fixtures con textos vacíos, valores de enum inválidos y ambas decisiones de sacrificio.
+- [x] T001 Definir valores permitidos de `NivelRiesgo` y `TipoEnfermedad` con el vocabulario acordado.
+- [x] T002 Crear la migración con todos los campos obligatorios y sin valor predeterminado para `requiereSacrificioSanitario`.
+- [x] T003 Preparar fixtures con textos vacíos, valores de enum inválidos y ambas decisiones de sacrificio.
 
 ---
 
@@ -84,9 +84,9 @@ src/test/java/com/avicontrol/
 
 **Purpose**: implementar las invariantes de la enfermedad y la persistencia atómica.
 
-- [ ] T004 Crear `Enfermedad` y validar nombre, tipo y descripción después de eliminar espacios exteriores.
-- [ ] T005 Exigir que riesgo, tipo e indicador de sacrificio estén presentes y sean válidos.
-- [ ] T006 Definir repositorio, excepciones y configuración de beans sin dependencias de diagnóstico.
+- [x] T004 Crear `Enfermedad` y validar nombre, tipo y descripción después de eliminar espacios exteriores.
+- [x] T005 Exigir que riesgo, tipo e indicador de sacrificio estén presentes y sean válidos.
+- [x] T006 Definir repositorio, excepciones y configuración de beans sin dependencias de diagnóstico.
 
 **Checkpoint**: no existe forma de persistir una enfermedad parcial ni de inferir la decisión sanitaria por defecto.
 
@@ -100,14 +100,14 @@ src/test/java/com/avicontrol/
 
 ### Tests for User Story 1
 
-- [ ] T007 [P] [US1] Probar dominio para textos vacíos, enums, booleano ausente y ambos valores del indicador.
-- [ ] T008 [P] [US1] Probar caso de uso y MockMvc de éxito, validación y autorización.
+- [x] T007 [P] [US1] Probar dominio para textos vacíos, enums, booleano ausente y ambos valores del indicador.
+- [x] T008 [P] [US1] Probar caso de uso y MockMvc de éxito, validación y autorización.
 
 ### Implementation for User Story 1
 
-- [ ] T009 [US1] Implementar `RegistrarEnfermedadUseCase` y su comando.
-- [ ] T010 [US1] Exponer `POST /api/enfermedades` sólo para `ROLE_VETERINARIO`.
-- [ ] T011 [US1] Crear DTO, respuesta y mapper REST.
+- [x] T009 [US1] Implementar `RegistrarEnfermedadUseCase` y su comando.
+- [x] T010 [US1] Exponer `POST /api/enfermedades` sólo para `ROLE_VETERINARIO`.
+- [x] T011 [US1] Crear DTO, respuesta y mapper REST.
 
 ```json
 {
@@ -142,13 +142,13 @@ Para `PUT /api/enfermedades/{enfermedadId}` se envía el mismo JSON completo del
 
 ### Tests for User Story 2
 
-- [ ] T012 [P] [US2] Probar edición válida, enfermedad inexistente y que no se consulta ni escribe diagnóstico.
-- [ ] T013 [P] [US2] Probar autorización del endpoint.
+- [x] T012 [P] [US2] Probar edición válida, enfermedad inexistente y que no se consulta ni escribe diagnóstico.
+- [x] T013 [P] [US2] Probar autorización del endpoint.
 
 ### Implementation for User Story 2
 
-- [ ] T014 [US2] Implementar `EditarEnfermedadUseCase` reutilizando todas las validaciones.
-- [ ] T015 [US2] Exponer `PUT /api/enfermedades/{enfermedadId}` para `ROLE_VETERINARIO`.
+- [x] T014 [US2] Implementar `EditarEnfermedadUseCase` reutilizando todas las validaciones.
+- [x] T015 [US2] Exponer `PUT /api/enfermedades/{enfermedadId}` para `ROLE_VETERINARIO`.
 
 **Checkpoint**: el catálogo se actualiza, pero los diagnósticos históricos permanecen inmutables.
 
@@ -174,9 +174,9 @@ Para `PUT /api/enfermedades/{enfermedadId}` se envía el mismo JSON completo del
 
 ## Polish & Cross-Cutting Concerns
 
-- [ ] T016 Mapear `400` datos inválidos, `401` no autenticado, `403` rol no autorizado y `404` enfermedad inexistente.
-- [ ] T017 Documentar los enums y la obligatoriedad del booleano en OpenAPI.
-- [ ] T018 Ejecutar pruebas y `git diff --check`.
+- [x] T016 Mapear `400` datos inválidos, `401` no autenticado, `403` rol no autorizado y `404` enfermedad inexistente.
+- [x] T017 Documentar los enums y la obligatoriedad del booleano en OpenAPI.
+- [x] T018 Ejecutar pruebas y `git diff --check`.
 
 ---
 
@@ -191,3 +191,4 @@ Para `PUT /api/enfermedades/{enfermedadId}` se envía el mismo JSON completo del
 
 - `true` identifica una enfermedad que puede sustentar sacrificio sanitario total; no crea esa orden por sí mismo.
 - La relación de una medicación con la enfermedad se resolverá en el Plan 008, sin acoplar este catálogo a medicaciones o diagnósticos.
+- **Verificación de cierre (11/11/2026)**: `spotlessJavaCheck test` completó 144 pruebas sin fallos. En PostgreSQL 16, `POST /api/enfermedades` respondió `201` y `PUT /api/enfermedades/{enfermedadId}` respondió `200`; el registro temporal se eliminó. OpenAPI confirmó los cinco campos obligatorios y los valores de `NivelRiesgo`. La prueba de diagnóstico edita la enfermedad mediante el endpoint y confirma que la instantánea clínica anterior conserva el nombre y la decisión sanitaria originales.

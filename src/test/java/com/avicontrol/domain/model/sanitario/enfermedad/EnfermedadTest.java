@@ -38,6 +38,58 @@ class EnfermedadTest {
                 0,
                 now,
                 now));
+    assertThrows(
+        DatosEnfermedadInvalidosException.class,
+        () ->
+            new Enfermedad(
+                UUID.randomUUID(),
+                "Newcastle",
+                null,
+                TipoEnfermedad.VIRAL,
+                "Clínica",
+                false,
+                0,
+                now,
+                now));
+    assertThrows(
+        DatosEnfermedadInvalidosException.class,
+        () ->
+            new Enfermedad(
+                UUID.randomUUID(),
+                "Newcastle",
+                NivelRiesgo.ALTO,
+                null,
+                "Clínica",
+                false,
+                0,
+                now,
+                now));
+    assertThrows(
+        DatosEnfermedadInvalidosException.class,
+        () ->
+            new Enfermedad(
+                UUID.randomUUID(),
+                "Newcastle",
+                NivelRiesgo.ALTO,
+                TipoEnfermedad.VIRAL,
+                "   ",
+                false,
+                0,
+                now,
+                now));
+    Enfermedad normalizada =
+        new Enfermedad(
+            UUID.randomUUID(),
+            "  Newcastle  ",
+            NivelRiesgo.ALTO,
+            TipoEnfermedad.VIRAL,
+            "  Clínica  ",
+            false,
+            0,
+            now,
+            now);
+    assertEquals("Newcastle", normalizada.nombre());
+    assertEquals("Clínica", normalizada.descripcionClinica());
   }
 
   @Test

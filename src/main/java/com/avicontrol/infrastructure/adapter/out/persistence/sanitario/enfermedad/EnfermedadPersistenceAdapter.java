@@ -6,6 +6,7 @@ import com.avicontrol.domain.model.sanitario.enfermedad.TipoEnfermedad;
 import com.avicontrol.domain.port.out.sanitario.enfermedad.EnfermedadRepositoryPort;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Timestamp;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -30,8 +31,8 @@ public class EnfermedadPersistenceAdapter implements EnfermedadRepositoryPort {
         e.descripcionClinica(),
         e.requiereSacrificioSanitario(),
         e.version(),
-        e.fechaCreacion(),
-        e.fechaActualizacion());
+        Timestamp.from(e.fechaCreacion()),
+        Timestamp.from(e.fechaActualizacion()));
   }
 
   @Override
@@ -50,7 +51,7 @@ public class EnfermedadPersistenceAdapter implements EnfermedadRepositoryPort {
             e.descripcionClinica(),
             e.requiereSacrificioSanitario(),
             e.version(),
-            e.fechaActualizacion(),
+            Timestamp.from(e.fechaActualizacion()),
             e.id(),
             anterior.version())
         == 1;

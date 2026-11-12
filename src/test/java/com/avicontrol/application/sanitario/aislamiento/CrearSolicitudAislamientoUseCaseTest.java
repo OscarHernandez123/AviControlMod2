@@ -9,6 +9,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.avicontrol.domain.exception.sanitario.aislamiento.EstadoGalponNoAislableException;
+import com.avicontrol.domain.exception.sanitario.aislamiento.LoteActivoNoEncontradoException;
 import com.avicontrol.domain.model.sanitario.aislamiento.GalponLoteAislamiento;
 import com.avicontrol.domain.port.out.sanitario.aislamiento.GalponLoteAislamientoQueryPort;
 import com.avicontrol.domain.port.out.sanitario.aislamiento.SolicitudAislamientoRepositoryPort;
@@ -59,6 +60,28 @@ class CrearSolicitudAislamientoUseCaseTest {
                 .crear(
                     new CrearSolicitudAislamientoCommand(
                         galpon, "Tos", "Decaimiento", "trabajador")));
+    verify(repo, never()).crear(any());
+  }
+
+  @Test
+  void rechazaSinLoteActivoOSinAves() {
+    UUID galpon = UUID.randomUUID();
+    SolicitudAislamientoRepositoryPort repo = mock(SolicitudAislamientoRepositoryPort.class);
+    GalponLoteAislamientoQueryPort query = mock(GalponLoteAislamientoQueryPort.class);
+    var caso = new CrearSolicitudAislamientoUseCase(repo, query, clock);
+    var command = new CrearSolicitudAislamientoCommand(galpon, "Tos", "Decaimiento", "trabajador");
+    when(query.consultar(galpon))
+        .thenReturn(
+            Optional.of(
+                new GalponLoteAislamiento(
+                    galpon, null, "PRODUCTIVA", 8000, LocalDate.of(2026, 11, 1))));
+    assertThrows(LoteActivoNoEncontradoException.class, () -> caso.crear(command));
+    when(query.consultar(galpon))
+        .thenReturn(
+            Optional.of(
+                new GalponLoteAislamiento(
+                    galpon, UUID.randomUUID(), "PRODUCTIVA", 0, LocalDate.of(2026, 11, 1))));
+    assertThrows(EstadoGalponNoAislableException.class, () -> caso.crear(command));
     verify(repo, never()).crear(any());
   }
 }

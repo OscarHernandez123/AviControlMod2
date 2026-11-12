@@ -3,6 +3,7 @@ package com.avicontrol.infrastructure.adapter.in.rest.sanitario.diagnostico;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -65,9 +66,17 @@ class DiagnosticoControllerTest {
     jdbc.update(
         "UPDATE medicaciones SET duracion_dias = 7, dosis = '1 ml', descripcion = 'Nueva pauta' WHERE id = ?",
         medicacion);
-    jdbc.update(
-        "UPDATE enfermedades SET requiere_sacrificio_sanitario = TRUE, nombre = 'Otro nombre' WHERE id = ?",
-        enfermedad);
+    mvc.perform(
+            put("/api/enfermedades/{id}", enfermedad)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                    {"nombre":"Otro nombre","nivelRiesgo":"CRITICO","tipo":"VIRAL",
+                     "descripcionClinica":"Signos actualizados","requiereSacrificioSanitario":true}
+                    """)
+                .with(SecurityMockMvcRequestPostProcessors.user("vet").roles("VETERINARIO")))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.requiereSacrificioSanitario").value(true));
     mvc.perform(
             get("/api/diagnosticos/{id}", diagnostico)
                 .with(SecurityMockMvcRequestPostProcessors.user("vet").roles("VETERINARIO")))

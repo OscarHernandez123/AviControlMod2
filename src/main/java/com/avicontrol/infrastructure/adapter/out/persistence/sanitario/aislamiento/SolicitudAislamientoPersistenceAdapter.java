@@ -6,6 +6,7 @@ import com.avicontrol.domain.model.sanitario.aislamiento.SolicitudAislamiento;
 import com.avicontrol.domain.port.out.sanitario.aislamiento.SolicitudAislamientoRepositoryPort;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Timestamp;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -35,7 +36,7 @@ public class SolicitudAislamientoPersistenceAdapter implements SolicitudAislamie
           s.poblacionVivaReportada(),
           s.edadDiasReportada(),
           s.trabajador(),
-          s.fechaEmision(),
+          Timestamp.from(s.fechaEmision()),
           s.estado().name(),
           s.version());
     } catch (DataIntegrityViolationException e) {
@@ -81,7 +82,7 @@ public class SolicitudAislamientoPersistenceAdapter implements SolicitudAislamie
             s.estado().name(),
             s.observaciones(),
             s.veterinario(),
-            s.fechaDecision(),
+            Timestamp.from(s.fechaDecision()),
             s.version(),
             s.id(),
             anterior.version())

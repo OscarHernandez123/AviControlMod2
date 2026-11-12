@@ -8,6 +8,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.avicontrol.AviControlModulo2Application;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -75,5 +76,46 @@ class EnfermedadControllerTest {
                 .content(BODY)
                 .with(SecurityMockMvcRequestPostProcessors.user("vet").roles("VETERINARIO")))
         .andExpect(status().isNotFound());
+    mvc.perform(
+            put("/api/enfermedades/{id}", UUID.randomUUID())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(BODY)
+                .with(SecurityMockMvcRequestPostProcessors.user("admin").roles("ADMINISTRADOR")))
+        .andExpect(status().isForbidden());
+    mvc.perform(post("/api/enfermedades").contentType(MediaType.APPLICATION_JSON).content(BODY))
+        .andExpect(status().isUnauthorized());
+  }
+
+  @Test
+  void identificaCamposObligatoriosYRechazaEnumInvalido() throws Exception {
+    for (String campo :
+        new String[] {
+          "nombre", "nivelRiesgo", "tipo", "descripcionClinica", "requiereSacrificioSanitario"
+        }) {
+      ObjectNode body = (ObjectNode) json.readTree(BODY);
+      body.remove(campo);
+      mvc.perform(
+              post("/api/enfermedades")
+                  .contentType(MediaType.APPLICATION_JSON)
+                  .content(json.writeValueAsString(body))
+                  .with(SecurityMockMvcRequestPostProcessors.user("vet").roles("VETERINARIO")))
+          .andExpect(status().isBadRequest())
+          .andExpect(
+              jsonPath("$.fieldErrors[0]").value(org.hamcrest.Matchers.containsString(campo)));
+    }
+    mvc.perform(
+            post("/api/enfermedades")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(BODY.replace("Newcastle", "   "))
+                .with(SecurityMockMvcRequestPostProcessors.user("vet").roles("VETERINARIO")))
+        .andExpect(status().isBadRequest())
+        .andExpect(
+            jsonPath("$.fieldErrors[0]").value(org.hamcrest.Matchers.containsString("nombre")));
+    mvc.perform(
+            post("/api/enfermedades")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(BODY.replace("VIRAL", "DESCONOCIDA"))
+                .with(SecurityMockMvcRequestPostProcessors.user("vet").roles("VETERINARIO")))
+        .andExpect(status().isBadRequest());
   }
 }

@@ -23,6 +23,7 @@ import com.avicontrol.domain.port.out.inventario.InventarioMovimientoQueryPort;
 import com.avicontrol.domain.port.out.sanitario.diagnostico.DiagnosticoGalponRepositoryPort;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.math.BigDecimal;
+import java.sql.Timestamp;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -247,6 +248,42 @@ class ConsumoMedicamentoControllerTest {
             d.id()));
   }
 
+  @Test
+  void dosReintentosSimultaneosConMismaClaveDevuelvenElMismoConsumo() throws Exception {
+    UUID medicamento = UUID.randomUUID();
+    DiagnosticoGalpon d = diagnostico(medicamento);
+    LocalDate hoy = LocalDate.now(clock);
+    recepcion(
+        medicamento, new BigDecimal("100"), new BigDecimal("10"), hoy.plusMonths(1), "MILILITRO");
+    UUID clave = UUID.randomUUID();
+    CountDownLatch inicio = new CountDownLatch(1);
+    try (var executor = Executors.newFixedThreadPool(2)) {
+      java.util.concurrent.Callable<ConsumoMedicamentoResult> tarea =
+          () -> {
+            inicio.await();
+            return useCase.registrar(
+                new RegistrarConsumoMedicamentoCommand(
+                    d.id(),
+                    new BigDecimal("75"),
+                    UnidadConsumoMedicamento.MILILITRO,
+                    hoy,
+                    "vet",
+                    clave));
+          };
+      Future<ConsumoMedicamentoResult> primero = executor.submit(tarea);
+      Future<ConsumoMedicamentoResult> segundo = executor.submit(tarea);
+      inicio.countDown();
+      assertEquals(primero.get(15, TimeUnit.SECONDS).id(), segundo.get(15, TimeUnit.SECONDS).id());
+    }
+    assertEquals(0, new BigDecimal("25").compareTo(stock(medicamento)));
+    assertEquals(
+        1,
+        jdbc.queryForObject(
+            "SELECT COUNT(*) FROM consumos_medicamento WHERE diagnostico_id = ?",
+            Integer.class,
+            d.id()));
+  }
+
   private DiagnosticoGalpon diagnostico(UUID medicamento) {
     Instant now = Instant.now(clock);
     LocalDate hoy = LocalDate.now(clock);
@@ -272,8 +309,8 @@ class ConsumoMedicamentoControllerTest {
         e.descripcionClinica(),
         false,
         0,
-        now,
-        now);
+        Timestamp.from(now),
+        Timestamp.from(now));
     jdbc.update(
         "INSERT INTO medicaciones (id, enfermedad_id, medicamento_id, dosis, duracion_dias, descripcion, version, fecha_creacion, fecha_actualizacion) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
         m.id(),
@@ -283,8 +320,8 @@ class ConsumoMedicamentoControllerTest {
         m.duracionDias(),
         m.descripcion(),
         0,
-        now,
-        now);
+        Timestamp.from(now),
+        Timestamp.from(now));
     DiagnosticoGalpon d =
         DiagnosticoGalpon.crear(UUID.randomUUID(), UUID.randomUUID(), e, m, "Tratamiento", hoy);
     diagnosticos.crear(d);
@@ -332,7 +369,7 @@ class ConsumoMedicamentoControllerTest {
         cantidad,
         unidad,
         "admin",
-        Instant.now(clock),
+        Timestamp.from(Instant.now(clock)),
         "CONFIRMADO");
     return id;
   }

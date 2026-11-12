@@ -4,6 +4,7 @@ import com.avicontrol.domain.model.sanitario.medicacion.Medicacion;
 import com.avicontrol.domain.port.out.sanitario.medicacion.MedicacionRepositoryPort;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Timestamp;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -28,8 +29,8 @@ public class MedicacionPersistenceAdapter implements MedicacionRepositoryPort {
         m.duracionDias(),
         m.descripcion(),
         m.version(),
-        m.fechaCreacion(),
-        m.fechaActualizacion(),
+        Timestamp.from(m.fechaCreacion()),
+        Timestamp.from(m.fechaActualizacion()),
         m.nombreMedicamento(),
         m.principioActivo(),
         diasTexto(m.diasAplicacion()));
@@ -51,7 +52,7 @@ public class MedicacionPersistenceAdapter implements MedicacionRepositoryPort {
             m.duracionDias(),
             m.descripcion(),
             m.version(),
-            m.fechaActualizacion(),
+            Timestamp.from(m.fechaActualizacion()),
             m.nombreMedicamento(),
             m.principioActivo(),
             diasTexto(m.diasAplicacion()),

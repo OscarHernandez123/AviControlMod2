@@ -9,6 +9,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.avicontrol.domain.exception.sanitario.aislamiento.EstadoGalponNoAislableException;
+import com.avicontrol.domain.exception.sanitario.aislamiento.Modulo1NoDisponibleException;
 import com.avicontrol.domain.model.sanitario.aislamiento.DecisionAislamiento;
 import com.avicontrol.domain.model.sanitario.aislamiento.EstadoSolicitudAislamiento;
 import com.avicontrol.domain.model.sanitario.aislamiento.SolicitudAislamiento;
@@ -77,6 +78,26 @@ class ValidarAislamientoUseCaseTest {
                     new ValidarAislamientoCommand(
                         id, DecisionAislamiento.ACEPTAR, "Aislar", "vet")));
     verify(query).estadoVigente(galpon);
+    verify(repo, never()).resolver(any(), any());
+  }
+
+  @Test
+  void noResuelveSiNoPuedeConsultarGalpon() {
+    UUID id = UUID.randomUUID();
+    UUID galpon = UUID.randomUUID();
+    SolicitudAislamientoRepositoryPort repo = mock(SolicitudAislamientoRepositoryPort.class);
+    GalponQueryPort query = mock(GalponQueryPort.class);
+    GalponUpdatePort update = mock(GalponUpdatePort.class);
+    when(repo.buscar(id)).thenReturn(Optional.of(pendiente(id, galpon)));
+    when(query.estadoVigente(galpon)).thenReturn(Optional.empty());
+    assertThrows(
+        Modulo1NoDisponibleException.class,
+        () ->
+            new ValidarAislamientoUseCase(repo, query, update, Clock.systemUTC())
+                .validar(
+                    new ValidarAislamientoCommand(
+                        id, DecisionAislamiento.ACEPTAR, "Aislar", "vet")));
+    verify(update, never()).aislarSiProductiva(any());
     verify(repo, never()).resolver(any(), any());
   }
 }

@@ -1,15 +1,26 @@
 package com.avicontrol.infrastructure.adapter.in.rest.sanitario.aislamiento;
 
+import static org.hamcrest.Matchers.containsString;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.avicontrol.AviControlModulo2Application;
+import com.avicontrol.application.sanitario.aislamiento.CrearSolicitudAislamientoCommand;
+import com.avicontrol.application.sanitario.aislamiento.CrearSolicitudAislamientoUseCase;
+import com.avicontrol.application.sanitario.aislamiento.result.SolicitudAislamientoResult;
+import com.avicontrol.domain.exception.sanitario.aislamiento.SolicitudAislamientoDuplicadaException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -33,6 +44,7 @@ class SolicitudAislamientoControllerTest {
       """;
   @Autowired MockMvc mvc;
   @Autowired JdbcTemplate jdbc;
+  @Autowired CrearSolicitudAislamientoUseCase crear;
   private final ObjectMapper json = new ObjectMapper();
 
   @BeforeEach
@@ -146,5 +158,56 @@ class SolicitudAislamientoControllerTest {
                 .content(BODY)
                 .with(trabajador))
         .andExpect(status().isConflict());
+  }
+
+  @Test
+  void dosSolicitudesSimultaneasCreanUnaSolaPendiente() throws Exception {
+    CountDownLatch inicio = new CountDownLatch(1);
+    try (var executor = Executors.newFixedThreadPool(2)) {
+      java.util.concurrent.Callable<Object> tarea =
+          () -> {
+            inicio.await();
+            try {
+              return crear.crear(
+                  new CrearSolicitudAislamientoCommand(
+                      GALPON, "Signos respiratorios", "Tos y decaimiento", "trabajador"));
+            } catch (RuntimeException e) {
+              return e;
+            }
+          };
+      Future<Object> primera = executor.submit(tarea);
+      Future<Object> segunda = executor.submit(tarea);
+      inicio.countDown();
+      Object a = primera.get(15, TimeUnit.SECONDS);
+      Object b = segunda.get(15, TimeUnit.SECONDS);
+      assertTrue(
+          (a instanceof SolicitudAislamientoResult
+                  && b instanceof SolicitudAislamientoDuplicadaException)
+              || (b instanceof SolicitudAislamientoResult
+                  && a instanceof SolicitudAislamientoDuplicadaException));
+    }
+    assertEquals(
+        1,
+        jdbc.queryForObject(
+            "SELECT COUNT(*) FROM solicitudes_aislamiento WHERE galpon_id = ?",
+            Integer.class,
+            GALPON));
+    assertEquals(
+        "PRODUCTIVA",
+        jdbc.queryForObject(
+            "SELECT estado FROM modulo1_galpon_local WHERE id = ?", String.class, GALPON));
+  }
+
+  @Test
+  void openApiPublicaLosCuatroEndpointsDeAislamiento() throws Exception {
+    mvc.perform(get("/v3/api-docs"))
+        .andExpect(status().isOk())
+        .andExpect(
+            content().string(containsString("/api/galpones/{galponId}/solicitudes-aislamiento")))
+        .andExpect(content().string(containsString("/api/solicitudes-aislamiento/pendientes")))
+        .andExpect(content().string(containsString("/api/solicitudes-aislamiento/{solicitudId}")))
+        .andExpect(
+            content()
+                .string(containsString("/api/solicitudes-aislamiento/{solicitudId}/validacion")));
   }
 }

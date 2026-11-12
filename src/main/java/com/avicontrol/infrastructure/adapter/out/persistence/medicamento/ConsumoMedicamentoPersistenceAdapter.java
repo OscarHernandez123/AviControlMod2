@@ -7,6 +7,7 @@ import com.avicontrol.domain.port.out.medicamento.ConsumoMedicamentoRepositoryPo
 import io.micrometer.core.instrument.MeterRegistry;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Timestamp;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -40,7 +41,7 @@ public class ConsumoMedicamentoPersistenceAdapter implements ConsumoMedicamentoR
         c.cantidadUnidadBase(),
         c.unidadBase().name(),
         c.fechaAplicacion(),
-        c.fechaRegistro(),
+        Timestamp.from(c.fechaRegistro()),
         c.actor(),
         c.idempotenciaClave());
     for (DetalleConsumoMedicamento detalle : c.detallesInventario()) {
@@ -61,7 +62,10 @@ public class ConsumoMedicamentoPersistenceAdapter implements ConsumoMedicamentoR
   }
 
   @Override
+  @Transactional(propagation = Propagation.MANDATORY)
   public Optional<ConsumoMedicamento> buscarPorIdempotencia(UUID diagnosticoId, UUID clave) {
+    jdbc.queryForList(
+        "SELECT id FROM diagnosticos_galpon WHERE id = ? FOR UPDATE", UUID.class, diagnosticoId);
     Optional<ConsumoMedicamento> encontrado =
         jdbc
             .query(

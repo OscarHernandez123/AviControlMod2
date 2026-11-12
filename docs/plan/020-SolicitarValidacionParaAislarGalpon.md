@@ -68,22 +68,24 @@ src/main/resources/db/migration/
 src/test/java/com/avicontrol/
 ├── domain/model/sanitario/aislamiento/SolicitudAislamientoTest.java
 ├── application/sanitario/aislamiento/CrearSolicitudAislamientoUseCaseTest.java
-└── infrastructure/adapter/in/rest/sanitario/aislamiento/SolicitudAislamientoControllerTest.java
+└── infrastructure/adapter/in/rest/sanitario/aislamiento/
+    ├── SolicitudAislamientoControllerTest.java
+    └── SolicitudAislamientoPostgresTest.java
 ```
 
 **Structure Decision**: la solicitud es un agregado local inmutable. Galpón y lote se consultan mediante un puerto y nunca se actualizan desde este caso de uso.
 
 ## Phase 1: Setup (Shared Infrastructure)
 
-- [ ] T001 Confirmar contrato de galpón/lote activo y estado `productiva` del Módulo 1.
-- [ ] T002 Crear migración con unicidad parcial de solicitud pendiente por galpón.
-- [ ] T003 Preparar fixtures de lote ausente, población cero, estado no productivo y solicitud pendiente.
+- [x] T001 Confirmar contrato de galpón/lote activo y estado `productiva` del Módulo 1.
+- [x] T002 Crear migración con unicidad parcial de solicitud pendiente por galpón.
+- [x] T003 Preparar fixtures de lote ausente, población cero, estado no productivo y solicitud pendiente.
 
 ## Phase 2: Foundational (Blocking Prerequisites)
 
-- [ ] T004 Crear `SolicitudAislamiento` con estado inicial `PENDIENTE_VALIDACION` e inmutabilidad.
-- [ ] T005 Validar textos no vacíos, población positiva y snapshot de edad calculada con `Clock`.
-- [ ] T006 Definir repositorio que impida dos solicitudes pendientes simultáneas bajo concurrencia.
+- [x] T004 Crear `SolicitudAislamiento` con estado inicial `PENDIENTE_VALIDACION` e inmutabilidad.
+- [x] T005 Validar textos no vacíos, población positiva y snapshot de edad calculada con `Clock`.
+- [x] T006 Definir repositorio que impida dos solicitudes pendientes simultáneas bajo concurrencia.
 
 **Checkpoint**: la solicitud no puede ser parcial, duplicada ni alterar el estado del galpón.
 
@@ -93,9 +95,9 @@ src/test/java/com/avicontrol/
 
 **Independent Test**: un galpón productivo con lote activo crea una solicitud pendiente; un galpón no productivo, sin aves o texto vacío no crea ninguna solicitud.
 
-- [ ] T007 [P] [US1] Probar snapshot, validaciones y que no se llama ningún puerto de actualización.
-- [ ] T008 [US1] Implementar `CrearSolicitudAislamientoUseCase`.
-- [ ] T009 [US1] Exponer endpoint y DTO REST.
+- [x] T007 [P] [US1] Probar snapshot, validaciones y que no se llama ningún puerto de actualización.
+- [x] T008 [US1] Implementar `CrearSolicitudAislamientoUseCase`.
+- [x] T009 [US1] Exponer endpoint y DTO REST.
 
 ## Phase 4: User Story 2 - Evitar solicitudes duplicadas (Priority: P2)
 
@@ -103,8 +105,8 @@ src/test/java/com/avicontrol/
 
 **Independent Test**: tras una solicitud pendiente, un nuevo POST devuelve conflicto e informa el estado existente.
 
-- [ ] T010 [P] [US2] Probar carrera de dos solicitudes y restricción única.
-- [ ] T011 [US2] Traducir duplicado a error de negocio sin crear un registro adicional.
+- [x] T010 [P] [US2] Probar carrera de dos solicitudes y restricción única.
+- [x] T011 [US2] Traducir duplicado a error de negocio sin crear un registro adicional.
 
 ## Endpoints
 
@@ -145,8 +147,8 @@ En `local` y `test`, el Módulo 1 se sustituye por un galpón de revisión con U
 
 ## Polish & Cross-Cutting Concerns
 
-- [ ] T012 Documentar que sólo el Plan 010 puede resolver la solicitud y cambiar a aislamiento.
-- [ ] T013 Ejecutar pruebas, OpenAPI y `git diff --check`.
+- [x] T012 Documentar que sólo el Plan 010 puede resolver la solicitud y cambiar a aislamiento.
+- [x] T013 Ejecutar pruebas, OpenAPI y `git diff --check`.
 
 ## Dependencies & Execution Order
 
@@ -158,3 +160,6 @@ En `local` y `test`, el Módulo 1 se sustituye por un galpón de revisión con U
 
 - Los datos enviados y sus snapshots no se editan, anulan ni retiran; únicamente el Plan 010 resuelve el estado de la solicitud.
 - El Plan 010 consume la solicitud pendiente y decide la validación veterinaria.
+- La representación del estado del galpón en el adaptador local es `PRODUCTIVA`; corresponde al estado `productiva` descrito por el spec. El contrato real del Módulo 1 aún debe conectarse cuando esté disponible.
+- La unicidad de una solicitud pendiente se implementa con `pending_galpon_id` no nulo sólo para pendientes y un índice único sobre esa columna. Las solicitudes resueltas conservan su historial.
+- Verificación del 12/11/2026: pruebas de creación, consulta, validación, autorización, concurrencia y OpenAPI correctas en H2; el flujo también pasó en una base PostgreSQL aislada.

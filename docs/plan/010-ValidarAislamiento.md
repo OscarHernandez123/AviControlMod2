@@ -66,7 +66,9 @@ src/main/java/com/avicontrol/
 src/test/java/com/avicontrol/
 ├── domain/model/sanitario/aislamiento/SolicitudAislamientoTest.java
 ├── application/sanitario/aislamiento/ValidarAislamientoUseCaseTest.java
-└── infrastructure/adapter/in/rest/sanitario/aislamiento/AislamientoControllerTest.java
+└── infrastructure/adapter/in/rest/sanitario/aislamiento/
+    ├── AislamientoControllerTest.java
+    └── AislamientoPostgresTest.java
 ```
 
 **Structure Decision**: la solicitud y su decisión se administran localmente. Galpón sigue siendo propiedad del Módulo 1: se consulta de nuevo antes de validar y se actualiza sólo mediante su puerto.
@@ -75,9 +77,9 @@ src/test/java/com/avicontrol/
 
 **Purpose**: confirmar el contrato de la solicitud del Plan 020 y las transiciones del Módulo 1.
 
-- [ ] T001 Acordar los estados de solicitud pendientes y resueltos con el Plan 020.
-- [ ] T002 Verificar el contrato para leer y cambiar solamente el estado operativo del galpón.
-- [ ] T003 Preparar fixtures de solicitud pendiente, solicitud resuelta, galpón productivo, aislamiento y módulo no disponible.
+- [x] T001 Acordar los estados de solicitud pendientes y resueltos con el Plan 020.
+- [x] T002 Verificar el contrato para leer y cambiar solamente el estado operativo del galpón.
+- [x] T003 Preparar fixtures de solicitud pendiente, solicitud resuelta, galpón productivo, aislamiento y módulo no disponible.
 
 ---
 
@@ -85,9 +87,9 @@ src/test/java/com/avicontrol/
 
 **Purpose**: establecer transiciones de solicitud y validaciones de estado.
 
-- [ ] T004 Crear `SolicitudAislamiento` con decisión única desde estado pendiente.
-- [ ] T005 Definir excepciones de solicitud ausente o resuelta y de estado de galpón incompatible.
-- [ ] T006 Implementar repositorio y puertos del Módulo 1; proteger la solicitud de dobles decisiones con versión o actualización condicional.
+- [x] T004 Crear `SolicitudAislamiento` con decisión única desde estado pendiente.
+- [x] T005 Definir excepciones de solicitud ausente o resuelta y de estado de galpón incompatible.
+- [x] T006 Implementar repositorio y puertos del Módulo 1; proteger la solicitud de dobles decisiones con versión o actualización condicional.
 
 **Checkpoint**: una solicitud sólo puede ser resuelta una vez y no puede cambiar un galpón sin verificarlo nuevamente.
 
@@ -101,16 +103,16 @@ src/test/java/com/avicontrol/
 
 ### Tests for User Story 1
 
-- [ ] T007 [P] [US1] Probar aceptación, rechazo, decisión duplicada y cambio concurrente de estado.
-- [ ] T008 [P] [US1] Probar el caso de uso con puertos simulados y que se consulta el estado justo antes de actualizar.
-- [ ] T009 [P] [US1] Probar MockMvc para autorización y contrato JSON.
+- [x] T007 [P] [US1] Probar aceptación, rechazo, decisión duplicada y cambio concurrente de estado.
+- [x] T008 [P] [US1] Probar el caso de uso con puertos simulados y que se consulta el estado justo antes de actualizar.
+- [x] T009 [P] [US1] Probar MockMvc para autorización y contrato JSON.
 
 ### Implementation for User Story 1
 
-- [ ] T010 [US1] Implementar `ValidarAislamientoUseCase` y consultar solicitud y galpón vigente.
-- [ ] T011 [US1] Al aceptar, actualizar el galpón a `aislamiento` y registrar la decisión de manera consistente.
-- [ ] T012 [US1] Al rechazar, registrar sólo la decisión y conservar el estado del galpón.
-- [ ] T013 [US1] Exponer `POST /api/solicitudes-aislamiento/{solicitudId}/validacion` para `ROLE_VETERINARIO`.
+- [x] T010 [US1] Implementar `ValidarAislamientoUseCase` y consultar solicitud y galpón vigente.
+- [x] T011 [US1] Al aceptar, actualizar el galpón a `aislamiento` y registrar la decisión de manera consistente.
+- [x] T012 [US1] Al rechazar, registrar sólo la decisión y conservar el estado del galpón.
+- [x] T013 [US1] Exponer `POST /api/solicitudes-aislamiento/{solicitudId}/validacion` para `ROLE_VETERINARIO`.
 
 ```json
 {
@@ -144,9 +146,9 @@ src/test/java/com/avicontrol/
 
 ## Polish & Cross-Cutting Concerns
 
-- [ ] T014 Mapear `400` decisión inválida, `401` no autenticado, `403` sin rol, `404` solicitud ausente, `409` solicitud resuelta o estado incompatible y `503` Módulo 1 no disponible.
-- [ ] T015 Documentar que se vuelve a consultar el estado y que no se alteran otras entidades del Módulo 1.
-- [ ] T016 Ejecutar pruebas y `git diff --check`.
+- [x] T014 Mapear `400` decisión inválida, `401` no autenticado, `403` sin rol, `404` solicitud ausente, `409` solicitud resuelta o estado incompatible y `503` Módulo 1 no disponible.
+- [x] T015 Documentar que se vuelve a consultar el estado y que no se alteran otras entidades del Módulo 1.
+- [x] T016 Ejecutar pruebas y `git diff --check`.
 
 ---
 
@@ -162,3 +164,5 @@ src/test/java/com/avicontrol/
 - Un galpón ya en `aislamiento` no se valida de nuevo.
 - Si la actualización remota falla, la solicitud no debe permanecer incorrectamente como aceptada; se requiere transacción distribuida, compensación o reintento seguro documentado.
 - La implementación de `local` y `test` usa una única base de datos: el cambio condicional de estado y la resolución condicional de solicitud comparten transacción. Fuera de esos perfiles el adaptador del Módulo 1 devuelve `503`; para conectar el servicio remoto debe definirse un mecanismo de compensación o reintento antes de habilitar la aceptación.
+- El adaptador local usa `PRODUCTIVA` y `AISLAMIENTO` como valores persistidos para los estados `productiva` y `aislamiento` del spec. La integración real con Módulo 1 sigue pendiente de su contrato.
+- Verificación del 12/11/2026: aceptación, rechazo, doble decisión, cambio concurrente, autorización y OpenAPI probados en H2; aceptación y rechazo también pasaron en una base PostgreSQL aislada.
