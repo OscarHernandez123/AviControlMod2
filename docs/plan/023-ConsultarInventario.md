@@ -49,7 +49,7 @@ src/main/java/com/avicontrol/
     │   └── ResumenInventarioQueryAdapter.java
     └── adapter/out/integration/inventario/DemandaAlimentoQueryAdapter.java
 
-src/main/java/db/migration/V8__permitir_movimientos_repetidos.java
+src/main/resources/db/migration/V8__permitir_movimientos_repetidos.sql
 
 src/test/java/com/avicontrol/
 ├── application/alimentacion/NutricionInventarioIntegrationTest.java

@@ -8,5 +8,6 @@ CREATE TABLE movimientos_inventario (
   unidad VARCHAR(20) NOT NULL,
   actor VARCHAR(100) NOT NULL,
   fecha_registro TIMESTAMP WITH TIME ZONE NOT NULL,
-  UNIQUE (recepcion_id, tipo_producto, tipo_movimiento)
+  CONSTRAINT uq_movimientos_recepcion_producto_tipo
+    UNIQUE (recepcion_id, tipo_producto, tipo_movimiento)
 );
