@@ -43,6 +43,7 @@ src/main/java/com/avicontrol/
 │   └── sanitario/enfermedad/
 │       ├── EditarEnfermedadCommand.java
 │       ├── EditarEnfermedadUseCase.java
+│       ├── ListarEnfermedadesUseCase.java
 │       ├── RegistrarEnfermedadCommand.java
 │       ├── RegistrarEnfermedadUseCase.java
 │       └── result/EnfermedadResult.java
@@ -155,6 +156,14 @@ Para `PUT /api/enfermedades/{enfermedadId}` se envía el mismo JSON completo del
 ---
 
 ## Endpoints
+
+### Listar enfermedades
+
+| Método y ruta | Rol | Solicitud | Respuesta |
+| --- | --- | --- | --- |
+| `GET /api/enfermedades` | `ROLE_VETERINARIO` | Sin cuerpo | `200 OK` con la lista de enfermedades registradas |
+
+Este endpoint permite cargar el catálogo persistido en la pantalla veterinaria después de recargarla.
 
 ### Registrar enfermedad
 

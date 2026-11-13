@@ -1,529 +1,222 @@
-import { useContext, useState } from 'react';
-import { FarmContext } from '../context/FarmContext';
+import { useEffect, useState } from 'react';
 import Sidebar from '../components/Sidebar';
 import Topbar from '../components/Topbar';
 import StatCard from '../components/StatCard';
 import BaseModal from '../components/BaseModal';
 import ApiMessage from '../components/ApiMessage';
+import { createDisease, listDiseases, updateDisease } from '../services/diseasesApi';
+
+const blank = {
+  nombre: '', nivelRiesgo: 'MODERADO', tipo: 'OTRA',
+  descripcionClinica: '', requiereSacrificioSanitario: false
+};
+const types = ['VIRAL', 'BACTERIANA', 'PARASITARIA', 'FUNGICA', 'OTRA'];
+const risks = ['BAJO', 'MODERADO', 'ALTO', 'CRITICO'];
 
 function VetDiseasesPage() {
-  const { vetDiseases, saveVetDisease } = useContext(FarmContext);
+  const [items, setItems] = useState([]);
+  const [form, setForm] = useState(blank);
+  const [editingId, setEditingId] = useState(null);
+  const [detail, setDetail] = useState(null);
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState('');
+  const [typeFilter, setTypeFilter] = useState('');
+  const [riskFilter, setRiskFilter] = useState('');
+  const [message, setMessage] = useState('');
+  const [messageType, setMessageType] = useState('info');
+  const [saving, setSaving] = useState(false);
 
-  const [searchTerm, setSearchTerm] = useState('');
-  const [typeFilter, setTypeFilter] = useState('Todas');
-  const [riskFilter, setRiskFilter] = useState('Todos');
-  const [toastMsg, setToastMsg] = useState('');
-
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [detailDisease, setDetailDisease] = useState(null);
-
-  const [form, setForm] = useState({
-    id: '',
-    nombre: '',
-    tipo: 'Viral',
-    agente: '',
-    riesgo: 'Alto',
-    aislamientoObligatorio: true,
-    sintomas: '',
-    protocolo: ''
+  async function refresh(signal) {
+    try {
+      setItems(await listDiseases(signal));
+    } catch (error) {
+      if (error.name !== 'AbortError') {
+        setMessageType('error');
+        setMessage(error.message);
+      }
+    }
+  }
+  useEffect(() => {
+    const controller = new AbortController();
+    refresh(controller.signal);
+    return () => controller.abort();
+  }, []);
+  const filtered = items.filter((item) => {
+    const text = search.trim().toLowerCase();
+    return (!text || item.nombre.toLowerCase().includes(text) ||
+      item.descripcionClinica.toLowerCase().includes(text) ||
+      item.id.toLowerCase().includes(text)) &&
+      (!typeFilter || item.tipo === typeFilter) &&
+      (!riskFilter || item.nivelRiesgo === riskFilter);
   });
-
-  const filteredDiseases = vetDiseases.filter((row) => {
-    const q = searchTerm.trim().toLowerCase();
-    const matchesSearch =
-      !q ||
-      row.id.toLowerCase().includes(q) ||
-      row.nombre.toLowerCase().includes(q) ||
-      row.agente.toLowerCase().includes(q) ||
-      row.sintomas.toLowerCase().includes(q);
-    const matchesType = typeFilter === 'Todas' || row.tipo === typeFilter;
-    const matchesRisk = riskFilter === 'Todos' || row.riesgo === riskFilter;
-    return matchesSearch && matchesType && matchesRisk;
-  });
-
-  const highRiskCount = vetDiseases.filter(
-    (d) => d.riesgo === 'Alto' || d.aislamientoObligatorio
-  ).length;
-
-  const handleOpenNew = () => {
-    const nextNum = String(vetDiseases.length + 1).padStart(3, '0');
+  function edit(item) {
+    setDetail(null);
+    setEditingId(item.id);
     setForm({
-      id: `#ENF-${nextNum}`,
-      nombre: '',
-      tipo: 'Viral',
-      agente: '',
-      riesgo: 'Alto',
-      aislamientoObligatorio: true,
-      sintomas: '',
-      protocolo: ''
+      nombre: item.nombre, nivelRiesgo: item.nivelRiesgo, tipo: item.tipo,
+      descripcionClinica: item.descripcionClinica,
+      requiereSacrificioSanitario: item.requiereSacrificioSanitario
     });
-    setIsModalOpen(true);
-  };
-
-  const handleOpenEdit = (disease) => {
-    setForm({ ...disease });
-    setIsModalOpen(true);
-  };
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    saveVetDisease(form);
-    setIsModalOpen(false);
-    setToastMsg(
-      `Enfermedad "${form.nombre}" (${form.id}) guardada en el catálogo sanitario.`
-    );
-  };
-
-  const getRiskBadge = (riesgo) => {
-    if (riesgo === 'Alto') {
-      return { bg: '#ffe0e3', color: '#ed2b33', dot: '/assets/dot-red.svg' };
+    setOpen(true);
+  }
+  async function submit(event) {
+    event.preventDefault();
+    setSaving(true);
+    try {
+      const saved = editingId
+        ? await updateDisease(editingId, form)
+        : await createDisease(form);
+      setItems((previous) => [...previous.filter((item) => item.id !== saved.id), saved]
+        .sort((a, b) => a.nombre.localeCompare(b.nombre)));
+      setOpen(false);
+      setMessageType('success');
+      setMessage('Enfermedad guardada: ' + saved.nombre);
+    } catch (error) {
+      setMessageType('error');
+      setMessage(error.message);
+    } finally {
+      setSaving(false);
     }
-    if (riesgo === 'Medio') {
-      return { bg: '#ffe8ba', color: '#bf5400', dot: '/assets/dot-orange.svg' };
-    }
-    return {
-      bg: '#d6f0d1',
-      color: '#1f5929',
-      dot: '/assets/vet-dot-aceptada.svg'
-    };
-  };
-
-  return (
-    <div className="avi-role-layout">
-      <Sidebar role="veterinario" />
-
-      <div className="avi-main-frame">
-        <Topbar roleLabel="Veterinario" avatarSrc="/assets/vet-avatar.svg" />
-        <ApiMessage
-          message={toastMsg}
-          type="success"
-          onClose={() => setToastMsg('')}
-        />
-
-        <div className="avi-dashboard-content">
-          {/* Subtítulo superior y botón de acción */}
-          <div className="avi-page-heading">
-            <div className="avi-heading-copy">
-              <p className="avi-page-subtitle">
-                Catálogo y registro de patologías aviares, sintomatología clínica y protocolos de aislamiento
-              </p>
-            </div>
-
-            <button
-              type="button"
-              className="avi-btn-green-cta"
-              onClick={handleOpenNew}
-            >
-              <span>＋  Registrar enfermedad</span>
-            </button>
+  }
+  return <div className="avi-role-layout">
+    <Sidebar role="veterinario" />
+    <div className="avi-main-frame">
+      <Topbar roleLabel="Veterinario" avatarSrc="/assets/vet-avatar.svg" />
+      <ApiMessage message={message} type={messageType} onClose={() => setMessage('')} />
+      <div className="avi-dashboard-content">
+        <div className="avi-page-heading">
+          <p className="avi-page-subtitle">Catálogo de enfermedades para diagnósticos clínicos</p>
+          <button type="button" className="avi-btn-green-cta" onClick={() => {
+            setEditingId(null); setForm(blank); setOpen(true);
+          }}>＋ Registrar enfermedad</button>
+        </div>
+        <div className="avi-metrics-row">
+          <StatCard label="Enfermedades registradas" value={String(items.length)}
+            status="Registros del backend" statusColor="#2d743b"
+            icon="/assets/vet-stethoscope.svg" tileBg="#e6f7e4" width="437px" />
+          <StatCard label="Requieren sacrificio sanitario"
+            value={String(items.filter((item) => item.requiereSacrificioSanitario).length)}
+            status="Según el catálogo" statusColor="#9e4a0f"
+            icon="/assets/vet-bell.svg" tileBg="#f4eee3" width="437px" />
+        </div>
+        <div className="avi-receptions-filter-bar">
+          <input className="avi-receptions-search-input" type="search"
+            placeholder="Buscar enfermedad o descripción" value={search}
+            onChange={(event) => setSearch(event.target.value)} />
+          <select className="avi-receptions-select" value={typeFilter}
+            onChange={(event) => setTypeFilter(event.target.value)}>
+            <option value="">Todos los tipos</option>
+            {types.map((value) => <option key={value}>{value}</option>)}
+          </select>
+          <select className="avi-receptions-select" value={riskFilter}
+            onChange={(event) => setRiskFilter(event.target.value)}>
+            <option value="">Todos los riesgos</option>
+            {risks.map((value) => <option key={value}>{value}</option>)}
+          </select>
+          <button type="button" className="avi-receptions-filter-btn"
+            onClick={() => { setSearch(''); setTypeFilter(''); setRiskFilter(''); }}>Limpiar</button>
+        </div>
+        <div className="avi-recent-orders-panel">
+          <div className="avi-panel-header avi-panel-header-full">
+            <h2 className="avi-panel-title">Enfermedades registradas</h2>
+            <button type="button" className="avi-admin-table-btn avi-admin-table-btn-green"
+              onClick={() => refresh()}>Actualizar</button>
           </div>
-
-          {/* 2 Tarjetas KPI */}
-          <div className="avi-metrics-row">
-            <StatCard
-              label="Enfermedades registradas"
-              value={`${vetDiseases.length} Patologías`}
-              status="Catálogo epidemiológico activo"
-              statusColor="#2d743b"
-              icon="/assets/vet-stethoscope.svg"
-              tileBg="#e6f7e4"
-              width="437px"
-            />
-            <StatCard
-              label="Patologías de cuarentena"
-              value={`${highRiskCount} Alto riesgo`}
-              status="Exigen aislamiento obligatorio"
-              statusColor="#9e4a0f"
-              icon="/assets/vet-bell.svg"
-              tileBg="#f4eee3"
-              width="437px"
-            />
-          </div>
-
-          {/* Barra de búsqueda y filtro */}
-          <form
-            className="avi-receptions-filter-bar"
-            onSubmit={(e) => e.preventDefault()}
-          >
-            <input
-              type="text"
-              className="avi-receptions-search-input"
-              placeholder="Buscar por enfermedad, agente causal o síntomas..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-
-            <select
-              className="avi-receptions-select"
-              value={typeFilter}
-              onChange={(e) => setTypeFilter(e.target.value)}
-            >
-              <option value="Todas">Todos los tipos</option>
-              <option value="Viral">Viral</option>
-              <option value="Bacteriana">Bacteriana</option>
-              <option value="Parasitaria">Parasitaria</option>
-              <option value="Metabólica">Metabólica</option>
-            </select>
-
-            <select
-              className="avi-receptions-select"
-              value={riskFilter}
-              onChange={(e) => setRiskFilter(e.target.value)}
-            >
-              <option value="Todos">Todos los niveles de riesgo</option>
-              <option value="Alto">Riesgo Alto</option>
-              <option value="Medio">Riesgo Medio</option>
-              <option value="Bajo">Riesgo Bajo</option>
-            </select>
-
-            <button
-              type="button"
-              className="avi-receptions-filter-btn"
-              onClick={() => {
-                setSearchTerm('');
-                setTypeFilter('Todas');
-                setRiskFilter('Todos');
-              }}
-            >
-              Filtrar
-            </button>
-          </form>
-
-          {/* Tabla de Enfermedades */}
-          <div className="avi-recent-orders-panel">
-            <div className="avi-panel-header avi-panel-header-full">
-              <div className="avi-panel-icon-28">
-                <img alt="" src="/assets/admin-orders-icon.svg" />
-              </div>
-              <h2 className="avi-panel-title">
-                Catálogo de enfermedades y criterios diagnósticos
-              </h2>
+          <div className="avi-orders-table">
+            <div className="avi-orders-thead">
+              <span style={{ flex: 2 }}>Nombre</span><span style={{ flex: 1 }}>Tipo</span>
+              <span style={{ flex: 1 }}>Riesgo</span>
+              <span style={{ flex: 1 }}>Sacrificio sanitario</span>
+              <span style={{ flex: 1 }}>Acciones</span>
             </div>
-
-            <div className="avi-orders-table">
-              <div className="avi-orders-thead">
-                <span style={{ flex: '0.8' }}>Código</span>
-                <span style={{ flex: '1.5' }}>Nombre patología</span>
-                <span style={{ flex: '1' }}>Clasificación</span>
-                <span style={{ flex: '1.6' }}>Agente causal</span>
-                <span style={{ flex: '1' }}>Riesgo</span>
-                <span style={{ flex: '1' }}>Aislamiento</span>
-                <span style={{ flex: '1.2', textAlign: 'right' }}>Acciones</span>
-              </div>
-
-              {filteredDiseases.map((row) => {
-                const rk = getRiskBadge(row.riesgo);
-                return (
-                  <div key={row.id} className="avi-orders-trow">
-                    <span
-                      className="avi-col-dark"
-                      style={{ flex: '0.8', fontWeight: 700 }}
-                    >
-                      {row.id}
-                    </span>
-                    <span
-                      className="avi-col-dark"
-                      style={{ flex: '1.5', fontWeight: 600 }}
-                    >
-                      {row.nombre}
-                    </span>
-                    <span className="avi-col-dark" style={{ flex: '1' }}>
-                      {row.tipo}
-                    </span>
-                    <span className="avi-col-muted" style={{ flex: '1.6' }}>
-                      {row.agente}
-                    </span>
-                    <div style={{ flex: '1', display: 'flex', alignItems: 'center' }}>
-                      <div
-                        className="avi-crit-badge"
-                        style={{ backgroundColor: rk.bg }}
-                      >
-                        <div className="avi-crit-dot">
-                          <img alt="" src={rk.dot} />
-                        </div>
-                        <span style={{ color: rk.color }}>{row.riesgo}</span>
-                      </div>
-                    </div>
-                    <span
-                      className="avi-col-dark"
-                      style={{
-                        flex: '1',
-                        fontWeight: 600,
-                        color: row.aislamientoObligatorio ? '#b45309' : '#2d743b'
-                      }}
-                    >
-                      {row.aislamientoObligatorio ? 'Obligatorio' : 'Preventivo'}
-                    </span>
-                    <div
-                      style={{
-                        flex: '1.2',
-                        display: 'flex',
-                        justifyContent: 'flex-end',
-                        gap: '6px'
-                      }}
-                    >
-                      <button
-                        type="button"
-                        className="avi-admin-table-btn avi-admin-table-btn-green"
-                        onClick={() => setDetailDisease(row)}
-                      >
-                        Ver ficha
-                      </button>
-                      <button
-                        type="button"
-                        className="avi-admin-table-btn avi-admin-table-btn-orange"
-                        onClick={() => handleOpenEdit(row)}
-                      >
-                        Editar
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+            {filtered.map((item) => <div key={item.id} className="avi-orders-trow">
+              <span className="avi-col-dark" style={{ flex: 2 }}>{item.nombre}</span>
+              <span style={{ flex: 1 }}>{item.tipo}</span>
+              <span style={{ flex: 1 }}>{item.nivelRiesgo}</span>
+              <span style={{ flex: 1 }}>{item.requiereSacrificioSanitario ? 'Sí' : 'No'}</span>
+              <span style={{ flex: 1, display: 'flex', gap: 6 }}>
+                <button type="button" className="avi-admin-table-btn avi-admin-table-btn-green"
+                  onClick={() => setDetail(item)}>Ver ficha</button>
+                <button type="button" className="avi-admin-table-btn avi-admin-table-btn-orange"
+                  onClick={() => edit(item)}>Editar</button>
+              </span>
+            </div>)}
+            {filtered.length === 0 && <p>No hay enfermedades para mostrar.</p>}
           </div>
         </div>
       </div>
-
-      {/* Modal: Registrar / Editar Enfermedad */}
-      <BaseModal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        maxWidth="720px"
-      >
-        <form className="avi-figma-modal-720" onSubmit={handleSubmit}>
-          <div className="avi-figma-modal-header">
-            <div className="avi-figma-modal-titles">
-              <h2 className="avi-figma-modal-title">
-                Registrar enfermedad aviar ({form.id})
-              </h2>
-              <p className="avi-figma-modal-subtitle">
-                Estandariza patologías para los diagnósticos clínicos y protocolos de bioseguridad
-              </p>
-            </div>
-            <button
-              type="button"
-              className="avi-figma-modal-close"
-              onClick={() => setIsModalOpen(false)}
-            >
-              ×
-            </button>
-          </div>
-
-          <div className="avi-figma-modal-grid">
-            <div className="avi-figma-field">
-              <label className="avi-figma-label">Nombre de la patología</label>
-              <input
-                type="text"
-                className="avi-figma-input"
-                placeholder="Ej. Gumboro (Infección de la Bolsa de Fabricio)"
-                value={form.nombre}
-                onChange={(e) => setForm({ ...form, nombre: e.target.value })}
-                required
-              />
-            </div>
-
-            <div className="avi-figma-field">
-              <label className="avi-figma-label">Clasificación etiológica</label>
-              <div className="avi-figma-select-wrap">
-                <select
-                  className="avi-figma-input avi-figma-select"
-                  value={form.tipo}
-                  onChange={(e) => setForm({ ...form, tipo: e.target.value })}
-                >
-                  <option value="Viral">Viral</option>
-                  <option value="Bacteriana">Bacteriana</option>
-                  <option value="Parasitaria">Parasitaria</option>
-                  <option value="Metabólica">Metabólica</option>
-                </select>
-                <img
-                  alt=""
-                  src="/assets/admin-select-chevron.svg"
-                  className="avi-figma-select-chevron"
-                />
-              </div>
-            </div>
-
-            <div className="avi-figma-field">
-              <label className="avi-figma-label">Agente causal</label>
-              <input
-                type="text"
-                className="avi-figma-input"
-                placeholder="Ej. Birnavirus aviar / Salmonella spp."
-                value={form.agente}
-                onChange={(e) => setForm({ ...form, agente: e.target.value })}
-                required
-              />
-            </div>
-
-            <div className="avi-figma-field">
-              <label className="avi-figma-label">
-                Nivel de riesgo y aislamiento
-              </label>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                <div className="avi-figma-select-wrap">
-                  <select
-                    className="avi-figma-input avi-figma-select"
-                    value={form.riesgo}
-                    onChange={(e) => setForm({ ...form, riesgo: e.target.value })}
-                  >
-                    <option value="Alto">Riesgo Alto</option>
-                    <option value="Medio">Riesgo Medio</option>
-                    <option value="Bajo">Riesgo Bajo</option>
-                  </select>
-                  <img
-                    alt=""
-                    src="/assets/admin-select-chevron.svg"
-                    className="avi-figma-select-chevron"
-                  />
-                </div>
-                <div className="avi-figma-select-wrap">
-                  <select
-                    className="avi-figma-input avi-figma-select"
-                    value={form.aislamientoObligatorio ? 'si' : 'no'}
-                    onChange={(e) =>
-                      setForm({
-                        ...form,
-                        aislamientoObligatorio: e.target.value === 'si'
-                      })
-                    }
-                  >
-                    <option value="si">Aislamiento Obligatorio</option>
-                    <option value="no">Manejo Preventivo</option>
-                  </select>
-                  <img
-                    alt=""
-                    src="/assets/admin-select-chevron.svg"
-                    className="avi-figma-select-chevron"
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div className="avi-figma-field" style={{ gridColumn: '1 / -1' }}>
-              <label className="avi-figma-label">
-                Signos clínicos y lesiones características
-              </label>
-              <input
-                type="text"
-                className="avi-figma-input"
-                placeholder="Ej. Depresión aguda, diarrea blanquecina, postración..."
-                value={form.sintomas}
-                onChange={(e) => setForm({ ...form, sintomas: e.target.value })}
-                required
-              />
-            </div>
-
-            <div className="avi-figma-field" style={{ gridColumn: '1 / -1' }}>
-              <label className="avi-figma-label">
-                Protocolo sanitario y de bioseguridad recomendado
-              </label>
-              <input
-                type="text"
-                className="avi-figma-input"
-                placeholder="Ej. Cuarentena de galpón, desinfección de equipos..."
-                value={form.protocolo}
-                onChange={(e) => setForm({ ...form, protocolo: e.target.value })}
-                required
-              />
-            </div>
-          </div>
-
-          <div className="avi-figma-modal-footer">
-            <button
-              type="button"
-              className="avi-figma-btn-cancel"
-              onClick={() => setIsModalOpen(false)}
-            >
-              Cancelar
-            </button>
-            <button type="submit" className="avi-figma-btn-green">
-              Guardar enfermedad
-            </button>
-          </div>
-        </form>
-      </BaseModal>
-
-      {/* Modal: Ficha Clínica de Enfermedad */}
-      <BaseModal
-        isOpen={Boolean(detailDisease)}
-        onClose={() => setDetailDisease(null)}
-        maxWidth="680px"
-      >
-        {detailDisease && (
-          <div className="avi-figma-modal-720">
-            <div className="avi-figma-modal-header">
-              <div className="avi-figma-modal-titles">
-                <h2 className="avi-figma-modal-title">
-                  {detailDisease.nombre} ({detailDisease.id})
-                </h2>
-                <p className="avi-figma-modal-subtitle">
-                  Clasificación {detailDisease.tipo} · Agente: {detailDisease.agente}
-                </p>
-              </div>
-              <button
-                type="button"
-                className="avi-figma-modal-close"
-                onClick={() => setDetailDisease(null)}
-              >
-                ×
-              </button>
-            </div>
-
-            <div className="avi-figma-modal-grid">
-              <div className="avi-figma-field">
-                <label className="avi-figma-label">Nivel de riesgo</label>
-                <div className="avi-figma-readonly-box">
-                  Riesgo {detailDisease.riesgo}
-                </div>
-              </div>
-              <div className="avi-figma-field">
-                <label className="avi-figma-label">Medida de contención</label>
-                <div className="avi-figma-valid-box">
-                  {detailDisease.aislamientoObligatorio
-                    ? 'Aislamiento obligatorio de galpón'
-                    : 'Manejo preventivo en lote'}
-                </div>
-              </div>
-              <div className="avi-figma-field" style={{ gridColumn: '1 / -1' }}>
-                <label className="avi-figma-label">Sintomatología principal</label>
-                <div className="avi-figma-readonly-box">
-                  {detailDisease.sintomas}
-                </div>
-              </div>
-              <div className="avi-figma-field" style={{ gridColumn: '1 / -1' }}>
-                <label className="avi-figma-label">Protocolo recomendado</label>
-                <div className="avi-figma-demand-box">
-                  {detailDisease.protocolo}
-                </div>
-              </div>
-            </div>
-
-            <div className="avi-figma-modal-footer">
-              <button
-                type="button"
-                className="avi-figma-btn-cancel"
-                onClick={() => setDetailDisease(null)}
-              >
-                Cerrar
-              </button>
-              <button
-                type="button"
-                className="avi-figma-btn-orange"
-                onClick={() => {
-                  const target = detailDisease;
-                  setDetailDisease(null);
-                  handleOpenEdit(target);
-                }}
-              >
-                Editar enfermedad
-              </button>
-            </div>
-          </div>
-        )}
-      </BaseModal>
     </div>
-  );
+    <BaseModal isOpen={open} onClose={() => setOpen(false)} maxWidth="720px">
+      <form className="avi-figma-modal-720" onSubmit={submit}>
+        <div className="avi-figma-modal-header">
+          <h2 className="avi-figma-modal-title">
+            {editingId ? 'Editar enfermedad' : 'Registrar enfermedad'}
+          </h2>
+          <button type="button" className="avi-figma-modal-close"
+            onClick={() => setOpen(false)}>×</button>
+        </div>
+        <div className="avi-figma-modal-grid">
+          <label className="avi-figma-field"><span className="avi-figma-label">Nombre</span>
+            <input className="avi-figma-input" value={form.nombre} required
+              onChange={(event) => setForm({ ...form, nombre: event.target.value })} />
+          </label>
+          <label className="avi-figma-field"><span className="avi-figma-label">Tipo</span>
+            <select className="avi-figma-input" value={form.tipo}
+              onChange={(event) => setForm({ ...form, tipo: event.target.value })}>
+              {types.map((value) => <option key={value}>{value}</option>)}
+            </select>
+          </label>
+          <label className="avi-figma-field"><span className="avi-figma-label">Nivel de riesgo</span>
+            <select className="avi-figma-input" value={form.nivelRiesgo}
+              onChange={(event) => setForm({ ...form, nivelRiesgo: event.target.value })}>
+              {risks.map((value) => <option key={value}>{value}</option>)}
+            </select>
+          </label>
+          <label className="avi-figma-field">
+            <span className="avi-figma-label">Requiere sacrificio sanitario</span>
+            <select className="avi-figma-input" value={String(form.requiereSacrificioSanitario)}
+              onChange={(event) => setForm({
+                ...form, requiereSacrificioSanitario: event.target.value === 'true'
+              })}>
+              <option value="false">No</option><option value="true">Sí</option>
+            </select>
+          </label>
+          <label className="avi-figma-field" style={{ gridColumn: '1 / -1' }}>
+            <span className="avi-figma-label">Descripción clínica</span>
+            <textarea className="avi-figma-input" value={form.descripcionClinica} required
+              onChange={(event) => setForm({ ...form, descripcionClinica: event.target.value })} />
+          </label>
+        </div>
+        <div className="avi-figma-modal-footer">
+          <button type="button" className="avi-figma-btn-cancel"
+            onClick={() => setOpen(false)}>Cancelar</button>
+          <button type="submit" className="avi-figma-btn-green" disabled={saving}>
+            {saving ? 'Guardando…' : 'Guardar enfermedad'}
+          </button>
+        </div>
+      </form>
+    </BaseModal>
+    <BaseModal isOpen={Boolean(detail)} onClose={() => setDetail(null)} maxWidth="680px">
+      {detail && <div className="avi-figma-modal-720">
+        <div className="avi-figma-modal-header">
+          <h2 className="avi-figma-modal-title">{detail.nombre}</h2>
+          <button type="button" className="avi-figma-modal-close"
+            onClick={() => setDetail(null)}>×</button>
+        </div>
+        <div className="avi-figma-modal-grid">
+          <p><strong>ID:</strong> {detail.id}</p>
+          <p><strong>Tipo:</strong> {detail.tipo}</p>
+          <p><strong>Riesgo:</strong> {detail.nivelRiesgo}</p>
+          <p><strong>Sacrificio sanitario:</strong> {detail.requiereSacrificioSanitario ? 'Sí' : 'No'}</p>
+          <p style={{ gridColumn: '1 / -1' }}><strong>Descripción clínica:</strong> {detail.descripcionClinica}</p>
+        </div>
+        <div className="avi-figma-modal-footer">
+          <button type="button" className="avi-figma-btn-orange"
+            onClick={() => edit(detail)}>Editar</button>
+        </div>
+      </div>}
+    </BaseModal>
+  </div>;
 }
 
 export default VetDiseasesPage;

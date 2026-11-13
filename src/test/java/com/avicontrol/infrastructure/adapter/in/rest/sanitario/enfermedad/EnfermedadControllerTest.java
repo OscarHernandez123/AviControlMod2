@@ -1,5 +1,6 @@
 package com.avicontrol.infrastructure.adapter.in.rest.sanitario.enfermedad;
 
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -48,6 +49,13 @@ class EnfermedadControllerTest {
     JsonNode node = json.readTree(response);
     UUID id = UUID.fromString(node.get("id").asText());
     mvc.perform(
+            get("/api/enfermedades")
+                .with(SecurityMockMvcRequestPostProcessors.user("vet").roles("VETERINARIO")))
+        .andExpect(status().isOk())
+        .andExpect(
+            jsonPath("$[?(@.id == '" + id + "')].nombre")
+                .value(org.hamcrest.Matchers.hasItem("Newcastle")));
+    mvc.perform(
             put("/api/enfermedades/{id}", id)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(BODY.replace("true", "false"))
@@ -84,6 +92,10 @@ class EnfermedadControllerTest {
         .andExpect(status().isForbidden());
     mvc.perform(post("/api/enfermedades").contentType(MediaType.APPLICATION_JSON).content(BODY))
         .andExpect(status().isUnauthorized());
+    mvc.perform(
+            get("/api/enfermedades")
+                .with(SecurityMockMvcRequestPostProcessors.user("admin").roles("ADMINISTRADOR")))
+        .andExpect(status().isForbidden());
   }
 
   @Test

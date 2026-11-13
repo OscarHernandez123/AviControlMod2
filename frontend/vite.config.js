@@ -21,6 +21,11 @@ export default defineConfig({
     port: 5173,
     open: false,
     proxy: {
+      '/api/enfermedades': {
+        target: backend,
+        changeOrigin: true,
+        headers: { Authorization: veterinarianAuthorization }
+      },
       '/api/recepciones/alimentos': {
         target: backend,
         changeOrigin: true,
