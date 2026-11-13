@@ -4,15 +4,74 @@ import { FarmContext } from '../context/FarmContext';
 import Sidebar from '../components/Sidebar';
 import Topbar from '../components/Topbar';
 import StatCard from '../components/StatCard';
+import BaseModal from '../components/BaseModal';
 import ApiMessage from '../components/ApiMessage';
 import { getPendingHealthAlerts } from '../services/healthAlertsApi';
+import { getPendingIsolationRequests, getIsolationRequest, validateIsolationRequest, getIsolatedBarns } from '../services/isolationApi';
 
 function VetDashboardPage() {
-  const { vetDiagnosedBarns, vetReviewRequests, vetDiagnoses } =
+  const { vetDiagnosedBarns, vetDiagnoses } =
     useContext(FarmContext);
   const navigate = useNavigate();
   const [healthAlerts, setHealthAlerts] = useState(null);
   const [alertsError, setAlertsError] = useState('');
+  const [pendingRequests, setPendingRequests] = useState([]);
+  const [isolatedBarns, setIsolatedBarns] = useState([]);
+  const [requestsLoading, setRequestsLoading] = useState(true);
+  const [requestsReload, setRequestsReload] = useState(0);
+  const [selectedRequest, setSelectedRequest] = useState(null);
+  const [decision, setDecision] = useState('ACEPTAR');
+  const [observations, setObservations] = useState('');
+  const [decisionSaving, setDecisionSaving] = useState(false);
+  const [decisionMessage, setDecisionMessage] = useState('');
+
+  useEffect(() => {
+    const controller = new AbortController();
+    setRequestsLoading(true);
+    Promise.all([
+      getPendingIsolationRequests({ signal: controller.signal }),
+      getIsolatedBarns({ signal: controller.signal })
+    ])
+      .then(([requests, barns]) => {
+        setPendingRequests(requests);
+        setIsolatedBarns(barns);
+      })
+      .catch((cause) => { if (cause.name !== 'AbortError') setAlertsError(cause.message); })
+      .finally(() => { if (!controller.signal.aborted) setRequestsLoading(false); });
+    return () => controller.abort();
+  }, [requestsReload]);
+
+  const openRequest = async (requestId) => {
+    setAlertsError('');
+    try {
+      const detail = await getIsolationRequest(requestId);
+      setSelectedRequest(detail);
+      setDecision('ACEPTAR');
+      setObservations('');
+    } catch (cause) {
+      setAlertsError(cause.message);
+    }
+  };
+
+  const saveDecision = async (event) => {
+    event.preventDefault();
+    if (!selectedRequest || !observations.trim()) return;
+    setDecisionSaving(true);
+    setAlertsError('');
+    try {
+      const result = await validateIsolationRequest(selectedRequest.id, {
+        decision,
+        observaciones: observations.trim()
+      });
+      setSelectedRequest(null);
+      setDecisionMessage(`Solicitud ${result.estado.toLowerCase()}. Estado del galpón: ${result.estadoGalponResultante}.`);
+      setRequestsReload((value) => value + 1);
+    } catch (cause) {
+      setAlertsError(cause.message);
+    } finally {
+      setDecisionSaving(false);
+    }
+  };
 
   useEffect(() => {
     const controller = new AbortController();
@@ -21,12 +80,6 @@ function VetDashboardPage() {
       .catch((cause) => { if (cause.name !== 'AbortError') setAlertsError(cause.message); });
     return () => controller.abort();
   }, []);
-
-  const vetBarnStatus = [
-    { id: 'disp', label: 'Disponible', count: 10, widthPx: 185, color: '#59bf63' },
-    { id: 'cos', label: 'En cosecha', count: 2, widthPx: 54, color: '#ffa80d' },
-    { id: 'ais', label: 'Aislado', count: 2, widthPx: 54, color: '#ff0d11' }
-  ];
 
   return (
     <div className="avi-role-layout">
@@ -39,6 +92,7 @@ function VetDashboardPage() {
       >
         <Topbar roleLabel="Veterinario" avatarSrc="/assets/vet-avatar.svg" />
         <ApiMessage message={alertsError} type="error" onClose={() => setAlertsError('')} />
+        <ApiMessage message={decisionMessage} type="success" onClose={() => setDecisionMessage('')} />
 
         <div className="avi-dashboard-content" data-node-id="106:68">
           {/* Subtítulo superior discreto */}
@@ -99,30 +153,22 @@ function VetDashboardPage() {
 
           {/* Operational panels */}
           <div className="avi-operational-panels" data-node-id="106:105">
-            {/* Estado de galpones */}
+            {/* Galpones aislados del backend */}
             <div className="avi-panel-barn-status" data-node-id="106:106">
               <div className="avi-panel-header" data-node-id="106:107">
                 <div className="avi-panel-icon-28">
                   <img alt="" src="/assets/admin-chart.svg" />
                 </div>
-                <h2 className="avi-panel-title">Estado de galpones</h2>
+                <h2 className="avi-panel-title">Galpones en aislamiento</h2>
               </div>
-
-              {vetBarnStatus.map((row) => (
-                <div key={row.id} className="avi-status-progress-row">
-                  <span className="avi-status-label">{row.label}</span>
-                  <div className="avi-progress-track">
-                    <div
-                      className="avi-progress-bar"
-                      style={{
-                        width: `${row.widthPx}px`,
-                        backgroundColor: row.color
-                      }}
-                    />
-                  </div>
-                  <span className="avi-status-count">{row.count}</span>
-                </div>
-              ))}
+              {!requestsLoading && isolatedBarns.length === 0 &&
+                <p className="avi-page-subtitle">No hay galpones aislados.</p>}
+              {isolatedBarns.map((barn) => <div className="avi-crit-item-row" key={barn.id}>
+                <span className="avi-crit-item-name">{barn.nombre}</span>
+                <span className="avi-barn-status-pill" style={{ backgroundColor: '#ffe8ba', color: '#bf5400' }}>
+                  Aislamiento · {Number(barn.loteActual?.poblacionActual || 0).toLocaleString('es-CO')} aves
+                </span>
+              </div>)}
             </div>
 
             {/* Galpones diagnosticados */}
@@ -159,7 +205,7 @@ function VetDashboardPage() {
             </div>
           </div>
 
-          {/* Solicitudes de revisión recientes */}
+          {/* Solicitudes de aislamiento pendientes */}
           <div className="avi-recent-orders-panel" data-node-id="106:165">
             <div
               className="avi-panel-header avi-panel-header-full"
@@ -168,70 +214,91 @@ function VetDashboardPage() {
               <div className="avi-panel-icon-28">
                 <img alt="" src="/assets/admin-orders-icon.svg" />
               </div>
-              <h2 className="avi-panel-title">Solicitudes de revisión</h2>
+              <h2 className="avi-panel-title">Solicitudes de aislamiento pendientes</h2>
               <div className="avi-panel-spacer" />
-              <div
-                className="avi-panel-chevron"
-                style={{ cursor: 'pointer' }}
-                title="Ir a Diagnosticar"
-                onClick={() => navigate('/veterinario/diagnosticar')}
-              >
-                <img alt="" src="/assets/admin-chevron.svg" />
-              </div>
+              <button type="button" className="avi-admin-table-btn avi-admin-table-btn-green"
+                onClick={() => setRequestsReload((value) => value + 1)}>Actualizar</button>
             </div>
 
-            <div className="avi-orders-table" data-node-id="106:174">
+            {requestsLoading && <p className="avi-page-subtitle">Cargando solicitudes...</p>}
+            {!requestsLoading && pendingRequests.length === 0 &&
+              <p className="avi-page-subtitle">No hay solicitudes pendientes de validación.</p>}
+
+            {pendingRequests.length > 0 && <div className="avi-orders-table" data-node-id="106:174">
               <div className="avi-orders-thead" data-node-id="106:175">
-                <span style={{ flex: '0.8' }}>Solicitud</span>
-                <span style={{ flex: '1.1' }}>Galpón</span>
-                <span style={{ flex: '1.8' }}>Motivo reportado</span>
-                <span style={{ flex: '1' }}>Fecha</span>
-                <span style={{ flex: '1.1' }}>Estado</span>
+                <span style={{ flex: 1 }}>Solicitud</span>
+                <span style={{ flex: 1 }}>Galpón</span>
+                <span style={{ flex: 2 }}>Motivo reportado</span>
+                <span style={{ flex: 1 }}>Población reportada</span>
+                <span style={{ flex: 1 }}>Acción</span>
               </div>
 
-              {vetReviewRequests.slice(0, 3).map((req) => (
+              {pendingRequests.map((req) => (
                 <div key={req.id} className="avi-orders-trow">
-                  <span
-                    className="avi-col-dark"
-                    style={{ flex: '0.8', fontWeight: 700 }}
-                  >
-                    {req.id}
-                  </span>
-                  <span className="avi-col-dark" style={{ flex: '1.1' }}>
-                    {req.galpon}
-                  </span>
-                  <span className="avi-col-muted" style={{ flex: '1.8' }}>
-                    {req.motivo || 'Revisión sanitaria de galpón'}
-                  </span>
-                  <span className="avi-col-dark" style={{ flex: '1' }}>
-                    {req.fecha}
-                  </span>
-                  <div
-                    style={{
-                      flex: '1.1',
-                      display: 'flex',
-                      alignItems: 'center'
-                    }}
-                  >
-                    <div
-                      className="avi-vet-status-pill"
-                      style={{
-                        backgroundColor: req.badgeBg,
-                        width: `${req.widthPx}px`
-                      }}
-                    >
-                      <div className="avi-vet-dot-12">
-                        <img alt="" src={req.dotIcon} />
-                      </div>
-                      <span style={{ color: req.badgeColor }}>{req.estado}</span>
-                    </div>
-                  </div>
+                  <span className="avi-col-dark" style={{ flex: 1 }}>{req.id.slice(0, 8)}</span>
+                  <span className="avi-col-dark" style={{ flex: 1 }}>{req.galponId.slice(0, 8)}</span>
+                  <span className="avi-col-muted" style={{ flex: 2 }}>{req.motivo}</span>
+                  <span className="avi-col-dark" style={{ flex: 1 }}>{Number(req.poblacionVivaReportada).toLocaleString('es-CO')}</span>
+                  <span style={{ flex: 1 }}><button type="button" className="avi-admin-table-btn avi-admin-table-btn-green"
+                    onClick={() => openRequest(req.id)}>Evaluar</button></span>
                 </div>
               ))}
-            </div>
+            </div>}
           </div>
         </div>
       </div>
+      <BaseModal isOpen={Boolean(selectedRequest)}
+        onClose={() => { if (!decisionSaving) setSelectedRequest(null); }} maxWidth="720px">
+        {selectedRequest && <form className="avi-figma-modal-720" onSubmit={saveDecision}>
+          <div className="avi-figma-modal-header">
+            <div className="avi-figma-modal-titles">
+              <h2 className="avi-figma-modal-title">Validar aislamiento</h2>
+              <p className="avi-figma-modal-subtitle">Solicitud {selectedRequest.id}</p>
+            </div>
+            <button type="button" className="avi-figma-modal-close" disabled={decisionSaving}
+              onClick={() => setSelectedRequest(null)}>×</button>
+          </div>
+          <div className="avi-figma-modal-grid">
+            <div className="avi-figma-field">
+              <label className="avi-figma-label">Galpón</label>
+              <div className="avi-figma-readonly-box">{selectedRequest.galponId}</div>
+            </div>
+            <div className="avi-figma-field">
+              <label className="avi-figma-label">Población reportada</label>
+              <div className="avi-figma-readonly-box">{Number(selectedRequest.poblacionVivaReportada).toLocaleString('es-CO')} aves</div>
+            </div>
+            <div className="avi-figma-field" style={{ gridColumn: '1 / -1' }}>
+              <label className="avi-figma-label">Motivo</label>
+              <div className="avi-figma-readonly-box">{selectedRequest.motivo}</div>
+            </div>
+            <div className="avi-figma-field" style={{ gridColumn: '1 / -1' }}>
+              <label className="avi-figma-label">Signos clínicos</label>
+              <div className="avi-figma-readonly-box">{selectedRequest.signosClinicos}</div>
+            </div>
+            <div className="avi-figma-field">
+              <label className="avi-figma-label" htmlFor="isolation-decision">Decisión</label>
+              <select id="isolation-decision" className="avi-figma-input avi-figma-select"
+                value={decision} disabled={decisionSaving} onChange={(event) => setDecision(event.target.value)}>
+                <option value="ACEPTAR">Aceptar aislamiento</option>
+                <option value="RECHAZAR">Rechazar solicitud</option>
+              </select>
+            </div>
+            <div className="avi-figma-field" style={{ gridColumn: '1 / -1' }}>
+              <label className="avi-figma-label" htmlFor="isolation-observations">Observaciones de la decisión</label>
+              <input id="isolation-observations" className="avi-figma-input" required
+                value={observations} disabled={decisionSaving}
+                onChange={(event) => setObservations(event.target.value)} />
+            </div>
+          </div>
+          <div className="avi-figma-modal-footer">
+            <button type="button" className="avi-figma-btn-cancel" disabled={decisionSaving}
+              onClick={() => setSelectedRequest(null)}>Cancelar</button>
+            <button type="submit" className="avi-figma-btn-green" disabled={decisionSaving}>
+              {decisionSaving ? 'Guardando...' : 'Guardar decisión'}
+            </button>
+          </div>
+        </form>}
+      </BaseModal>
     </div>
   );
 }

@@ -6,6 +6,7 @@ import BaseModal from '../components/BaseModal';
 import ApiMessage from '../components/ApiMessage';
 import { getDailyFoodSummary, getBarnDailyFood, registerDailySupply } from '../services/dailyFoodApi';
 import { getProductiveBarns, registerMortality } from '../services/workerApi';
+import { createIsolationRequest } from '../services/isolationApi';
 
 function WorkerDashboardPage() {
   const [workerBarns, setWorkerBarns] = useState([]);
@@ -23,6 +24,10 @@ function WorkerDashboardPage() {
   const [supplyQuantity, setSupplyQuantity] = useState('');
   const [supplyKey, setSupplyKey] = useState('');
   const [supplySaving, setSupplySaving] = useState(false);
+  const [isolationOpen, setIsolationOpen] = useState(false);
+  const [isolationForm, setIsolationForm] = useState({ barnId: '', motivo: '', signosClinicos: '' });
+  const [isolationSaving, setIsolationSaving] = useState(false);
+  const [requestedIsolationBarns, setRequestedIsolationBarns] = useState([]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -99,6 +104,32 @@ function WorkerDashboardPage() {
     causa: 'DESCONOCIDA',
     observaciones: ''
   });
+
+  const openIsolation = (barnId) => {
+    setIsolationForm({ barnId, motivo: '', signosClinicos: '' });
+    setFoodError('');
+    setIsolationOpen(true);
+  };
+
+  const saveIsolation = async (event) => {
+    event.preventDefault();
+    if (!isolationForm.barnId) return;
+    setIsolationSaving(true);
+    setFoodError('');
+    try {
+      const result = await createIsolationRequest(isolationForm.barnId, {
+        motivo: isolationForm.motivo.trim(),
+        signosClinicos: isolationForm.signosClinicos.trim()
+      });
+      setRequestedIsolationBarns((ids) => [...ids, result.galponId]);
+      setIsolationOpen(false);
+      setToast(`Solicitud ${result.id} enviada al veterinario. Estado: ${result.estado}.`);
+    } catch (cause) {
+      setFoodError(cause.message);
+    } finally {
+      setIsolationSaving(false);
+    }
+  };
 
   const totalLiveBirds = workerBarns.reduce(
     (sum, b) => sum + (b.poblacionNum || 0),
@@ -308,8 +339,11 @@ function WorkerDashboardPage() {
                     >
                       Registrar bajas
                     </button>
-                    <button type="button" className="avi-admin-table-btn avi-worker-btn-disabled"
-                      style={{ flex: 1 }} disabled>Aislamiento pendiente</button>
+                    <button type="button" className="avi-admin-table-btn avi-admin-table-btn-green"
+                      style={{ flex: 1 }} disabled={requestedIsolationBarns.includes(barn.id)}
+                      onClick={() => openIsolation(barn.id)}>
+                      {requestedIsolationBarns.includes(barn.id) ? 'Solicitud pendiente' : 'Solicitar aislamiento'}
+                    </button>
                   </div>
                 </div>
               ))}
@@ -354,6 +388,42 @@ function WorkerDashboardPage() {
           </div>
         </div>
       </div>
+
+      <BaseModal isOpen={isolationOpen} onClose={() => { if (!isolationSaving) setIsolationOpen(false); }} maxWidth="720px">
+        <form className="avi-figma-modal-720" onSubmit={saveIsolation}>
+          <div className="avi-figma-modal-header">
+            <div className="avi-figma-modal-titles">
+              <h2 className="avi-figma-modal-title">Solicitar aislamiento sanitario</h2>
+              <p className="avi-figma-modal-subtitle">
+                {workerBarns.find((barn) => barn.id === isolationForm.barnId)?.name}. El veterinario decidirá la solicitud.
+              </p>
+            </div>
+            <button type="button" className="avi-figma-modal-close" disabled={isolationSaving}
+              onClick={() => setIsolationOpen(false)}>×</button>
+          </div>
+          <div className="avi-figma-modal-grid">
+            <div className="avi-figma-field" style={{ gridColumn: '1 / -1' }}>
+              <label className="avi-figma-label" htmlFor="isolation-reason">Motivo</label>
+              <input id="isolation-reason" className="avi-figma-input" required
+                value={isolationForm.motivo} disabled={isolationSaving}
+                onChange={(event) => setIsolationForm({ ...isolationForm, motivo: event.target.value })} />
+            </div>
+            <div className="avi-figma-field" style={{ gridColumn: '1 / -1' }}>
+              <label className="avi-figma-label" htmlFor="isolation-signs">Signos clínicos reportados</label>
+              <input id="isolation-signs" className="avi-figma-input" required
+                value={isolationForm.signosClinicos} disabled={isolationSaving}
+                onChange={(event) => setIsolationForm({ ...isolationForm, signosClinicos: event.target.value })} />
+            </div>
+          </div>
+          <div className="avi-figma-modal-footer">
+            <button type="button" className="avi-figma-btn-cancel" disabled={isolationSaving}
+              onClick={() => setIsolationOpen(false)}>Cancelar</button>
+            <button type="submit" className="avi-figma-btn-green" disabled={isolationSaving}>
+              {isolationSaving ? 'Enviando...' : 'Enviar solicitud'}
+            </button>
+          </div>
+        </form>
+      </BaseModal>
 
       <BaseModal isOpen={supplyOpen} onClose={() => { if (!supplySaving) setSupplyOpen(false); }} maxWidth="720px">
         <form className="avi-figma-modal-720" onSubmit={saveSupply}>
