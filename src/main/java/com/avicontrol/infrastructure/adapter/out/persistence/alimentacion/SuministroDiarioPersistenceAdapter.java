@@ -6,6 +6,7 @@ import com.avicontrol.domain.port.out.alimentacion.SuministroDiarioQueryPort;
 import com.avicontrol.domain.port.out.alimentacion.SuministroDiarioRepositoryPort;
 import io.micrometer.core.instrument.MeterRegistry;
 import java.math.BigDecimal;
+import java.sql.Timestamp;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
@@ -38,7 +39,7 @@ public class SuministroDiarioPersistenceAdapter
         s.tipoAlimento(),
         s.cantidadKg(),
         s.fechaAplicacion(),
-        s.fechaRegistro(),
+        Timestamp.from(s.fechaRegistro()),
         s.trabajador(),
         s.idempotenciaClave());
     for (Detalle d : s.detalles()) {

@@ -1,0 +1,14 @@
+$kind: http-request
+name: http://localhost:8080/api/alimento-diario/resumen
+description: ""
+url: http://localhost:8080/api/alimento-diario/resumen?galponIds=550e8400-e29b-41d4-a716-446655440101&fecha=2026-11-13
+method: GET
+queryParams:
+  galponIds: 550e8400-e29b-41d4-a716-446655440101
+  fecha: 2026-11-13
+auth:
+  type: basic
+  credentials:
+    username: trabajador
+    password: trabajador123
+order: 31000

@@ -7,6 +7,7 @@ import com.avicontrol.domain.port.out.sanitario.enfermedad.EnfermedadRepositoryP
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -39,6 +40,11 @@ public class EnfermedadPersistenceAdapter implements EnfermedadRepositoryPort {
   public Optional<Enfermedad> buscar(UUID id) {
     return jdbc.query("SELECT * FROM enfermedades WHERE id = ?", this::mapear, id).stream()
         .findFirst();
+  }
+
+  @Override
+  public List<Enfermedad> listar() {
+    return jdbc.query("SELECT * FROM enfermedades ORDER BY nombre, id", this::mapear);
   }
 
   @Override

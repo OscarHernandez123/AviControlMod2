@@ -1,0 +1,22 @@
+$kind: http-request
+name: http://localhost:8080/api/galpones/550e8400-e29b-41d4-a716-446655440101/diagnosticos
+description: ""
+url: http://localhost:8080/api/galpones/550e8400-e29b-41d4-a716-446655440101/diagnosticos
+method: POST
+body:
+  type: json
+  content: "{\r
+
+    \  \"enfermedadId\": \"85cd728f-1ba6-4a95-a08b-dd772cd87114\",\r
+
+    \  \"medicacionId\": \"201c57b4-a240-4a3d-b83e-261243b04bc7\",\r
+
+    \  \"observaciones\": \"Diagnóstico de demostración para validar el flujo\"\r
+
+    }"
+auth:
+  type: basic
+  credentials:
+    username: veterinario
+    password: veterinario123
+order: 44000

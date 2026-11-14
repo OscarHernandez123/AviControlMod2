@@ -6,6 +6,7 @@ import com.avicontrol.domain.port.out.sacrificio.sanitario.OrdenSacrificioSanita
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -51,6 +52,13 @@ public class OrdenSacrificioSanitarioPersistenceAdapter
             o.id(),
             o.version() - 1)
         == 1;
+  }
+
+  @Override
+  public List<OrdenSacrificioSanitario> listar() {
+    return jdbc.query(
+        "SELECT * FROM ordenes_sacrificio_sanitario ORDER BY fecha_emision DESC, id DESC",
+        this::map);
   }
 
   private OrdenSacrificioSanitario map(ResultSet rs, int row) throws SQLException {

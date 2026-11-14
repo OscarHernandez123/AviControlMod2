@@ -1,0 +1,20 @@
+$kind: http-request
+name: http://localhost:8080/api/solicitudes-aislamiento/4c99be61-eb0c-4fa3-ba30-5337fc3f4877/validacion
+description: ""
+url: http://localhost:8080/api/solicitudes-aislamiento/4c99be61-eb0c-4fa3-ba30-5337fc3f4877/validacion
+method: POST
+body:
+  type: json
+  content: "{\r
+
+    \  \"decision\": \"ACEPTAR\",\r
+
+    \  \"observaciones\": \"Se acepta el aislamiento por la alerta de mortalidad anormal\"\r
+
+    }"
+auth:
+  type: basic
+  credentials:
+    username: veterinario
+    password: veterinario123
+order: 39000

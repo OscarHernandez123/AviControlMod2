@@ -1,0 +1,14 @@
+$kind: http-request
+name: http://localhost:8080/api/galpones/550e8400-e29b-41d4-a716-446655440401/validacion-aptitud-sacrificio
+description: ""
+url: http://localhost:8080/api/galpones/550e8400-e29b-41d4-a716-446655440401/validacion-aptitud-sacrificio
+method: POST
+body:
+  type: json
+  content: ""
+auth:
+  type: basic
+  credentials:
+    username: admin
+    password: admin123
+order: 74000

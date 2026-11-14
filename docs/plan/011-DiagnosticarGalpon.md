@@ -186,6 +186,7 @@ Para una enfermedad que requiere sacrificio sanitario, `medicacionId` se omite d
 | Método y ruta | Rol | Solicitud | Respuesta |
 | --- | --- | --- | --- |
 | `POST /api/galpones/{galponId}/diagnosticos` | `ROLE_VETERINARIO` | `RegistrarDiagnosticoRequest` | `201 Created` con diagnóstico y fecha de reintegro opcional |
+| `GET /api/diagnosticos` | `ROLE_VETERINARIO` | — | `200 OK` con el historial de diagnósticos registrados |
 | `GET /api/diagnosticos/{diagnosticoId}` | `ROLE_VETERINARIO` | — | `200 OK` con la instantánea clínica y estado vigente del diagnóstico |
 
 **Errores**: `400` datos inválidos; `401` no autenticado; `403` sin rol; `404` galpón, lote, enfermedad o medicación ausente; `409` galpón no aislado o medicación incompatible; `503` Módulo 1 no disponible.

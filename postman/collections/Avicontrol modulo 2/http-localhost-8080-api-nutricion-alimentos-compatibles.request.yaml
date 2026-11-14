@@ -1,0 +1,13 @@
+$kind: http-request
+name: http://localhost:8080/api/nutricion/alimentos-compatibles
+description: ""
+url: http://localhost:8080/api/nutricion/alimentos-compatibles?tipoAlimento=INICIO
+method: GET
+queryParams:
+  tipoAlimento: INICIO
+auth:
+  type: basic
+  credentials:
+    username: nutricionista
+    password: nutricionista123
+order: 17000

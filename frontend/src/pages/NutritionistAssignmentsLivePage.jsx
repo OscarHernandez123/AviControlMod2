@@ -1,0 +1,295 @@
+import { useEffect, useState } from 'react';
+import Sidebar from '../components/Sidebar';
+import Topbar from '../components/Topbar';
+import ApiMessage from '../components/ApiMessage';
+import {
+  adjustBarnNutritionStage, listCompatibleFoods, listTemplates,
+  selectBarnNutritionStageFood, substituteBarnNutritionPlan
+} from '../services/nutritionCatalogApi';
+import { useNutritionBarns } from '../hooks/useNutritionBarns';
+
+const labels = { PRE_INICIO: 'Pre-inicio', INICIO: 'Inicio', ENGORDE: 'Engorde' };
+const number = (value) => new Intl.NumberFormat('es-CO', { maximumFractionDigits: 2 }).format(Number(value || 0));
+
+function NutritionistAssignmentsLivePage() {
+  const { barns, selectedBarnId, setSelectedBarnId, selectedBarn, loading: barnsLoading,
+    error: barnsError, refresh } = useNutritionBarns();
+  const plan = selectedBarn?.plan;
+  const [templates, setTemplates] = useState([]);
+  const [selectedTemplateId, setSelectedTemplateId] = useState('');
+  const [justification, setJustification] = useState('');
+  const [newEndDay, setNewEndDay] = useState('');
+  const [adjustmentReason, setAdjustmentReason] = useState('BAJO_PESO');
+  const [adjustmentJustification, setAdjustmentJustification] = useState('');
+  const [selectedFutureStageId, setSelectedFutureStageId] = useState('');
+  const [compatibleFoods, setCompatibleFoods] = useState([]);
+  const [selectedFoodId, setSelectedFoodId] = useState('');
+  const [foodsLoading, setFoodsLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const [toast, setToast] = useState('');
+  const [reloadKey, setReloadKey] = useState(0);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    setLoading(true);
+    setError('');
+    listTemplates({ signal: controller.signal }).then((loadedTemplates) => {
+      setTemplates(loadedTemplates.filter((item) => item.activo));
+    }).catch((cause) => {
+      if (cause.name !== 'AbortError') setError(cause.message);
+    }).finally(() => {
+      if (!controller.signal.aborted) setLoading(false);
+    });
+    return () => controller.abort();
+  }, [reloadKey]);
+
+  const substitute = async (event) => {
+    event.preventDefault();
+    if (!selectedTemplateId || !justification.trim()) return;
+    setSaving(true);
+    setError('');
+    try {
+      await substituteBarnNutritionPlan(selectedBarnId, {
+        plantillaId: selectedTemplateId,
+        justificacion: justification.trim()
+      });
+      setSelectedTemplateId('');
+      setJustification('');
+      setToast('El plan del galpón se actualizó correctamente.');
+      setReloadKey((value) => value + 1);
+      refresh();
+    } catch (cause) { setError(cause.message); }
+    finally { setSaving(false); }
+  };
+
+  const active = plan?.etapas?.find((stage) => stage.estadoEtapa === 'ACTIVA');
+  const future = plan?.etapas?.filter((stage) => stage.estadoEtapa === 'FUTURA') || [];
+  const selectedFutureStage = future.find((stage) => stage.id === selectedFutureStageId) || future[0];
+
+  useEffect(() => {
+    if (!selectedFutureStage) {
+      setCompatibleFoods([]);
+      setSelectedFoodId('');
+      return undefined;
+    }
+    const controller = new AbortController();
+    setFoodsLoading(true);
+    listCompatibleFoods(selectedFutureStage.etapaCrianza, { signal: controller.signal })
+      .then((foods) => {
+        setCompatibleFoods(foods);
+        setSelectedFoodId(selectedFutureStage.alimentoId || '');
+      })
+      .catch((cause) => {
+        if (cause.name !== 'AbortError') setError(cause.message);
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setFoodsLoading(false);
+      });
+    return () => controller.abort();
+  }, [selectedFutureStage?.id, selectedFutureStage?.etapaCrianza, selectedFutureStage?.alimentoId]);
+
+  const selectFood = async (event) => {
+    event.preventDefault();
+    if (!selectedFutureStage || !selectedFoodId) return;
+    setSaving(true);
+    setError('');
+    try {
+      await selectBarnNutritionStageFood(selectedBarnId, selectedFutureStage.id, selectedFoodId);
+      setToast('El alimento de la etapa futura se actualizó correctamente.');
+      setReloadKey((value) => value + 1);
+      refresh();
+    } catch (cause) { setError(cause.message); }
+    finally { setSaving(false); }
+  };
+
+  const adjustStage = async (event) => {
+    event.preventDefault();
+    const parsedEndDay = Number(newEndDay);
+    if (!active || !Number.isInteger(parsedEndDay) || parsedEndDay <= active.diaFin
+      || !adjustmentJustification.trim()) return;
+    setSaving(true);
+    setError('');
+    try {
+      await adjustBarnNutritionStage(selectedBarnId, active.id, {
+        nuevoDiaFin: parsedEndDay,
+        motivo: adjustmentReason,
+        justificacion: adjustmentJustification.trim()
+      });
+      setNewEndDay('');
+      setAdjustmentJustification('');
+      setToast('La duración se ajustó y la proyección se recalculó.');
+      setReloadKey((value) => value + 1);
+      refresh();
+    } catch (cause) { setError(cause.message); }
+    finally { setSaving(false); }
+  };
+
+  return (
+    <div className="avi-role-layout">
+      <Sidebar role="nutricionista" />
+      <div className="avi-main-frame">
+        <Topbar roleLabel="Nutricionista" avatarSrc="/assets/admin-avatar.svg" />
+        <ApiMessage message={toast} type="success" onClose={() => setToast('')} />
+        <ApiMessage message={error || barnsError} type="error" onClose={() => setError('')} />
+        <div className="avi-dashboard-content">
+          <div className="avi-page-heading">
+            <div className="avi-heading-copy">
+              <h1 className="avi-page-title avi-title-lg">Plan nutricional del galpón</h1>
+              <p className="avi-page-subtitle">Consulta la etapa vigente y sustituye las etapas futuras del lote.</p>
+            </div>
+          </div>
+          <label className="avi-figma-label" htmlFor="nutrition-barn">Galpón</label>
+          <select id="nutrition-barn" className="avi-figma-input" style={{ maxWidth: 360, marginBottom: 16 }} value={selectedBarnId}
+            onChange={(event) => setSelectedBarnId(event.target.value)}>
+            {barns.length === 0 && <option value="">No hay galpones</option>}
+            {barns.map((item) => <option key={item.id} value={item.id}>{item.nombre}</option>)}
+          </select>
+          {(loading || barnsLoading) && <p className="avi-page-subtitle">Cargando plan nutricional...</p>}
+          {!barnsLoading && selectedBarn && !plan && <p className="avi-page-subtitle">Este galpón no tiene un plan nutricional asignado.</p>}
+          {plan && (
+            <>
+              <div className="avi-recent-orders-panel">
+                <div className="avi-panel-header avi-panel-header-full">
+                  <h2 className="avi-panel-title">{selectedBarn?.nombre} · {plan.estado}</h2>
+                </div>
+                <p className="avi-page-subtitle">Salida proyectada: {plan.fechaSalidaProyectada}</p>
+                <p className="avi-page-subtitle">Etapa activa: {active ? `${labels[active.etapaCrianza]} · ${number(active.demandaDiariaKg)} kg/día` : 'Ninguna'}</p>
+                <div className="avi-orders-table">
+                  <div className="avi-orders-thead">
+                    <span style={{ flex: 1 }}>Etapa</span><span style={{ flex: 1 }}>Estado</span>
+                    <span style={{ flex: 1 }}>Días</span><span style={{ flex: 1 }}>Ración</span>
+                    <span style={{ flex: 1 }}>Demanda diaria</span><span style={{ flex: 1 }}>Autonomía</span>
+                  </div>
+                  {plan.etapas.map((stage) => (
+                    <div className="avi-orders-trow" key={stage.id}>
+                      <span style={{ flex: 1 }}>{labels[stage.etapaCrianza]}</span>
+                      <span style={{ flex: 1 }}>{stage.estadoEtapa}</span>
+                      <span style={{ flex: 1 }}>{stage.diaInicio}–{stage.diaFin}</span>
+                      <span style={{ flex: 1 }}>{stage.racionKgAveDia} kg/ave/día</span>
+                      <span style={{ flex: 1 }}>{number(stage.demandaDiariaKg)} kg</span>
+                      <span style={{ flex: 1 }}>{number(stage.diasAutonomia)} días</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              {active && (
+                <div className="avi-recent-orders-panel">
+                  <div className="avi-panel-header avi-panel-header-full">
+                    <h2 className="avi-panel-title">Extender etapa activa · {labels[active.etapaCrianza]}</h2>
+                  </div>
+                  <p className="avi-page-subtitle">
+                    Termina actualmente el día {active.diaFin}. Las etapas futuras y la salida proyectada se desplazarán según el ajuste.
+                  </p>
+                  <form className="avi-figma-modal-grid" onSubmit={adjustStage}>
+                    <div className="avi-figma-field">
+                      <label className="avi-figma-label" htmlFor="nutrition-new-end-day">Nuevo día final</label>
+                      <input id="nutrition-new-end-day" className="avi-figma-input" type="number"
+                        min={active.diaFin + 1} step="1" value={newEndDay}
+                        onChange={(event) => setNewEndDay(event.target.value)}
+                        placeholder={String(active.diaFin + 1)} required />
+                    </div>
+                    <div className="avi-figma-field">
+                      <label className="avi-figma-label" htmlFor="nutrition-adjustment-reason">Motivo</label>
+                      <select id="nutrition-adjustment-reason" className="avi-figma-input"
+                        value={adjustmentReason} onChange={(event) => setAdjustmentReason(event.target.value)}>
+                        <option value="BAJO_PESO">Bajo peso</option>
+                        <option value="CUARENTENA_SANITARIA">Cuarentena sanitaria</option>
+                      </select>
+                    </div>
+                    <div className="avi-figma-field">
+                      <label className="avi-figma-label" htmlFor="nutrition-adjustment-justification">Justificación técnica</label>
+                      <input id="nutrition-adjustment-justification" className="avi-figma-input"
+                        value={adjustmentJustification}
+                        onChange={(event) => setAdjustmentJustification(event.target.value)} required />
+                    </div>
+                    <button className="avi-btn-orange-cta" type="submit" disabled={saving}>
+                      {saving ? 'Guardando...' : 'Aplicar ajuste'}
+                    </button>
+                  </form>
+                </div>
+              )}
+              {selectedFutureStage && (
+                <div className="avi-recent-orders-panel">
+                  <div className="avi-panel-header avi-panel-header-full">
+                    <h2 className="avi-panel-title">Alimento de etapa futura</h2>
+                  </div>
+                  <p className="avi-page-subtitle">
+                    Selecciona un alimento compatible. La disponibilidad se muestra para planificar compras; no impide asignarlo.
+                  </p>
+                  <form className="avi-figma-modal-grid" onSubmit={selectFood}>
+                    <div className="avi-figma-field">
+                      <label className="avi-figma-label" htmlFor="nutrition-future-stage">Etapa</label>
+                      <select id="nutrition-future-stage" className="avi-figma-input"
+                        value={selectedFutureStage.id}
+                        onChange={(event) => setSelectedFutureStageId(event.target.value)}>
+                        {future.map((stage) => (
+                          <option key={stage.id} value={stage.id}>
+                            {labels[stage.etapaCrianza]} · días {stage.diaInicio}–{stage.diaFin}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="avi-figma-field">
+                      <label className="avi-figma-label" htmlFor="nutrition-future-food">Alimento compatible</label>
+                      <select id="nutrition-future-food" className="avi-figma-input"
+                        value={selectedFoodId} onChange={(event) => setSelectedFoodId(event.target.value)}
+                        disabled={foodsLoading} required>
+                        <option value="">Seleccionar alimento</option>
+                        {compatibleFoods.map((food) => (
+                          <option key={food.id} value={food.id}>
+                            {food.nombre} · {number(food.stockDisponibleKg)} kg · {food.estadoStock}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <button className="avi-btn-orange-cta" type="submit"
+                      disabled={saving || foodsLoading || !selectedFoodId || selectedFoodId === selectedFutureStage.alimentoId}>
+                      {saving ? 'Guardando...' : 'Asignar alimento'}
+                    </button>
+                  </form>
+                  {!foodsLoading && compatibleFoods.length === 0 && (
+                    <p className="avi-page-subtitle">No hay alimentos compatibles para esta etapa. Regístralos en Planes nutricionales.</p>
+                  )}
+                </div>
+              )}
+              <div className="avi-recent-orders-panel">
+                <div className="avi-panel-header avi-panel-header-full"><h2 className="avi-panel-title">Sustituir etapas futuras</h2></div>
+                <p className="avi-page-subtitle">{future.length} etapa(s) futura(s). Al sustituir la plantilla, la etapa activa conserva sus valores.</p>
+                <form className="avi-figma-modal-grid" onSubmit={substitute}>
+                  <div className="avi-figma-field">
+                    <label className="avi-figma-label">Nueva plantilla</label>
+                    <select className="avi-figma-input" value={selectedTemplateId}
+                      onChange={(event) => setSelectedTemplateId(event.target.value)} required>
+                      <option value="">Seleccionar plantilla</option>
+                      {templates.map((item) => <option key={item.id} value={item.id}>{item.nombre} ({item.tipoAve})</option>)}
+                    </select>
+                  </div>
+                  <div className="avi-figma-field">
+                    <label className="avi-figma-label">Justificación</label>
+                    <input className="avi-figma-input" value={justification}
+                      onChange={(event) => setJustification(event.target.value)} required />
+                  </div>
+                  <button className="avi-btn-orange-cta" type="submit" disabled={saving || future.length === 0}>
+                    {saving ? 'Guardando...' : 'Sustituir plan'}
+                  </button>
+                </form>
+              </div>
+              <div className="avi-recent-orders-panel">
+                <div className="avi-panel-header avi-panel-header-full"><h2 className="avi-panel-title">Historial de cambios</h2></div>
+                {(plan.historialAjustes || []).map((entry, index) => (
+                  <p className="avi-page-subtitle" key={`${entry.fechaRegistro}-${index}`}>
+                    {entry.accion} · {entry.actor} · {entry.justificacion || 'Sin justificación'} · {new Date(entry.fechaRegistro).toLocaleString('es-CO')}
+                  </p>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default NutritionistAssignmentsLivePage;

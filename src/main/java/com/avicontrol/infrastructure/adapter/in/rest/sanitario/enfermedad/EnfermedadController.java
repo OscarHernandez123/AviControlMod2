@@ -1,6 +1,7 @@
 package com.avicontrol.infrastructure.adapter.in.rest.sanitario.enfermedad;
 
 import com.avicontrol.application.sanitario.enfermedad.EditarEnfermedadUseCase;
+import com.avicontrol.application.sanitario.enfermedad.ListarEnfermedadesUseCase;
 import com.avicontrol.application.sanitario.enfermedad.RegistrarEnfermedadUseCase;
 import com.avicontrol.infrastructure.adapter.in.rest.sanitario.enfermedad.dto.EditarEnfermedadRequest;
 import com.avicontrol.infrastructure.adapter.in.rest.sanitario.enfermedad.dto.EnfermedadResponse;
@@ -10,9 +11,11 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
 import java.net.URI;
+import java.util.List;
 import java.util.UUID;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -26,15 +29,25 @@ import org.springframework.web.bind.annotation.RestController;
 public class EnfermedadController {
   private final RegistrarEnfermedadUseCase registro;
   private final EditarEnfermedadUseCase edicion;
+  private final ListarEnfermedadesUseCase listado;
   private final EnfermedadRestMapper mapper;
 
   public EnfermedadController(
       RegistrarEnfermedadUseCase registro,
       EditarEnfermedadUseCase edicion,
+      ListarEnfermedadesUseCase listado,
       EnfermedadRestMapper mapper) {
     this.registro = registro;
     this.edicion = edicion;
+    this.listado = listado;
     this.mapper = mapper;
+  }
+
+  @GetMapping
+  @PreAuthorize("hasRole('VETERINARIO')")
+  @Operation(summary = "Listar enfermedades registradas")
+  public List<EnfermedadResponse> listar() {
+    return listado.listar().stream().map(mapper::response).toList();
   }
 
   @PostMapping

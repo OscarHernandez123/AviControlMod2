@@ -1,6 +1,7 @@
 package com.avicontrol.application.recepcion;
 
 import com.avicontrol.domain.model.catalogo.UnidadMedidaMedicamento;
+import java.util.List;
 import java.util.UUID;
 
 public interface CatalogoRecepcionPort {
@@ -11,4 +12,8 @@ public interface CatalogoRecepcionPort {
   String nombreMedicamento(UUID id);
 
   UnidadMedidaMedicamento unidadBaseMedicamento(UUID id);
+
+  List<MedicamentoDisponible> medicamentosDisponibles();
+
+  record MedicamentoDisponible(UUID id, String nombre, UnidadMedidaMedicamento unidadBase) {}
 }

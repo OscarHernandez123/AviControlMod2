@@ -1,0 +1,11 @@
+$kind: http-request
+name: http://localhost:8080/api/alertas-sanitarias/90851cfe-1384-405b-b2cb-4ca059283fbc
+description: ""
+url: http://localhost:8080/api/alertas-sanitarias/90851cfe-1384-405b-b2cb-4ca059283fbc
+method: GET
+auth:
+  type: basic
+  credentials:
+    username: veterinario
+    password: veterinario123
+order: 51000

@@ -1,6 +1,7 @@
 package com.avicontrol.infrastructure.adapter.in.rest.sacrificio.sanitario;
 
 import com.avicontrol.application.sacrificio.sanitario.ConfirmarEjecucionSacrificioSanitarioUseCase;
+import com.avicontrol.application.sacrificio.sanitario.ConsultarOrdenesSacrificioSanitarioUseCase;
 import com.avicontrol.application.sacrificio.sanitario.EmitirOrdenSacrificioSanitarioUseCase;
 import com.avicontrol.infrastructure.adapter.in.rest.sacrificio.sanitario.dto.OrdenSacrificioSanitarioResponse;
 import com.avicontrol.infrastructure.adapter.in.rest.sacrificio.sanitario.mapper.OrdenSacrificioSanitarioRestMapper;
@@ -8,10 +9,12 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import java.util.List;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
@@ -21,15 +24,25 @@ import org.springframework.web.bind.annotation.RestController;
 public class OrdenSacrificioSanitarioController {
   private final EmitirOrdenSacrificioSanitarioUseCase emision;
   private final ConfirmarEjecucionSacrificioSanitarioUseCase ejecucion;
+  private final ConsultarOrdenesSacrificioSanitarioUseCase consulta;
   private final OrdenSacrificioSanitarioRestMapper mapper;
 
   public OrdenSacrificioSanitarioController(
       EmitirOrdenSacrificioSanitarioUseCase emision,
       ConfirmarEjecucionSacrificioSanitarioUseCase ejecucion,
+      ConsultarOrdenesSacrificioSanitarioUseCase consulta,
       OrdenSacrificioSanitarioRestMapper mapper) {
     this.emision = emision;
     this.ejecucion = ejecucion;
+    this.consulta = consulta;
     this.mapper = mapper;
+  }
+
+  @GetMapping("/api/ordenes-sacrificio-sanitario")
+  @PreAuthorize("hasRole('VETERINARIO')")
+  @Operation(summary = "Consultar órdenes de sacrificio sanitario")
+  public List<OrdenSacrificioSanitarioResponse> listar() {
+    return consulta.listar().stream().map(mapper::response).toList();
   }
 
   @PostMapping("/api/galpones/{galponId}/ordenes-sacrificio-sanitario")

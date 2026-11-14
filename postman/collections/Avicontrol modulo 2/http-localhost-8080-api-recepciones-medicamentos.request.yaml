@@ -1,0 +1,36 @@
+$kind: http-request
+name: http://localhost:8080/api/recepciones/medicamentos
+description: ""
+url: http://localhost:8080/api/recepciones/medicamentos
+method: POST
+body:
+  type: json
+  content: "{\r
+
+    \  \"medicamentoId\": \"550e8400-e29b-41d4-a716-446655440000\",\r
+
+    \  \"codigoLote\": \"MED-DEMO-001\",\r
+
+    \  \"presentacion\": \"Frasco\",\r
+
+    \  \"fechaIngreso\": \"2026-11-12\",\r
+
+    \  \"fechaVencimiento\": \"2027-05-12\",\r
+
+    \  \"cantidadPresentaciones\": 2,\r
+
+    \  \"contenidoPorPresentacion\": 500,\r
+
+    \  \"unidadContenido\": \"MILILITRO\",\r
+
+    \  \"precioNetoPorPresentacion\": 45000,\r
+
+    \  \"impuestoPorcentaje\": 19\r
+
+    }\r\n"
+auth:
+  type: basic
+  credentials:
+    username: admin
+    password: admin123
+order: 12000

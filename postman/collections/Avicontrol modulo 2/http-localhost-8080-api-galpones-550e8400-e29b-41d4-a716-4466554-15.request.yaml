@@ -1,0 +1,20 @@
+$kind: http-request
+name: http://localhost:8080/api/galpones/550e8400-e29b-41d4-a716-446655440201/solicitudes-aislamiento
+description: ""
+url: http://localhost:8080/api/galpones/550e8400-e29b-41d4-a716-446655440201/solicitudes-aislamiento
+method: POST
+body:
+  type: json
+  content: "{\r
+
+    \  \"motivo\": \"Evaluación de enfermedad ficticia para prueba sanitaria\",\r
+
+    \  \"signosClinicos\": \"Signos ficticios registrados para validar el flujo\"\r
+
+    }"
+auth:
+  type: basic
+  credentials:
+    username: trabajador
+    password: trabajador123
+order: 59000

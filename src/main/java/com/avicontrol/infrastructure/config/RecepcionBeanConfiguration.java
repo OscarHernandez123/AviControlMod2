@@ -10,6 +10,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
+import org.springframework.jdbc.core.JdbcTemplate;
 
 @Configuration
 public class RecepcionBeanConfiguration {
@@ -23,7 +24,8 @@ public class RecepcionBeanConfiguration {
   @Profile({"local", "test"})
   CatalogoRecepcionPort catalogoLocal(
       @Value("${avicontrol.catalogo.alimentos:}") String alimentos,
-      @Value("${avicontrol.catalogo.medicamentos:}") String medicamentos) {
+      @Value("${avicontrol.catalogo.medicamentos:}") String medicamentos,
+      JdbcTemplate jdbc) {
     Map<UUID, UnidadMedidaMedicamento> bases = new java.util.HashMap<>();
     for (String item : medicamentos.split(",")) {
       if (!item.isBlank()) {
@@ -37,11 +39,21 @@ public class RecepcionBeanConfiguration {
     }
     return new CatalogoRecepcionPort() {
       public boolean alimentoExiste(UUID id) {
-        return alimentosIds.contains(id);
+        return alimentosIds.contains(id) || !nombresComerciales(id).isEmpty();
       }
 
       public String nombreAlimento(UUID id) {
-        return alimentosIds.contains(id) ? "Alimento de prueba" : null;
+        var nombres = nombresComerciales(id);
+        return !nombres.isEmpty()
+            ? nombres.getFirst()
+            : alimentosIds.contains(id) ? "Alimento de prueba" : null;
+      }
+
+      private java.util.List<String> nombresComerciales(UUID id) {
+        return jdbc.query(
+            "SELECT nombre FROM alimentos_comerciales_nutricion WHERE id=? AND activo=TRUE",
+            (rs, row) -> rs.getString("nombre"),
+            id);
       }
 
       public String nombreMedicamento(UUID id) {
@@ -50,6 +62,16 @@ public class RecepcionBeanConfiguration {
 
       public UnidadMedidaMedicamento unidadBaseMedicamento(UUID id) {
         return bases.get(id);
+      }
+
+      public java.util.List<MedicamentoDisponible> medicamentosDisponibles() {
+        return bases.entrySet().stream()
+            .map(
+                entry ->
+                    new MedicamentoDisponible(
+                        entry.getKey(), nombreMedicamento(entry.getKey()), entry.getValue()))
+            .sorted(java.util.Comparator.comparing(MedicamentoDisponible::nombre))
+            .toList();
       }
     };
   }

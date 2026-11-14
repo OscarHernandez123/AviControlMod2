@@ -1,6 +1,7 @@
 package com.avicontrol.infrastructure.adapter.in.rest.recepcion;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -22,6 +23,17 @@ import org.springframework.test.web.servlet.MockMvc;
 class RecepcionMedicamentoControllerTest {
   @Autowired MockMvc mvc;
   @Autowired JdbcTemplate jdbc;
+
+  @Test
+  void listaMedicamentosDisponiblesParaRecepcion() throws Exception {
+    mvc.perform(
+            get("/api/recepciones/medicamentos/disponibles")
+                .with(SecurityMockMvcRequestPostProcessors.user("admin").roles("ADMINISTRADOR")))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$[0].id").value("550e8400-e29b-41d4-a716-446655440000"))
+        .andExpect(jsonPath("$[0].nombre").value("Medicamento de prueba"))
+        .andExpect(jsonPath("$[0].unidadBase").value("MILILITRO"));
+  }
 
   @Test
   void creaEntradaNormalizada() throws Exception {

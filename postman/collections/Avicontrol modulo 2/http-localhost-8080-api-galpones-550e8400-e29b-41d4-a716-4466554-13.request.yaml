@@ -1,0 +1,18 @@
+$kind: http-request
+name: http://localhost:8080/api/galpones/550e8400-e29b-41d4-a716-446655440101/plan-nutricional/etapas/73b7e8e3-573c-44e5-a177-
+description: ""
+url: http://localhost:8080/api/galpones/550e8400-e29b-41d4-a716-446655440101/plan-nutricional/etapas/73b7e8e3-573c-44e5-a177-57614ba513cb/alimento
+method: PUT
+body:
+  type: json
+  content: "{\r
+
+    \  \"alimentoId\": \"c34e9f40-745d-4a83-9b94-848847480101\"\r
+
+    }"
+auth:
+  type: basic
+  credentials:
+    username: nutricionista
+    password: nutricionista123
+order: 56000

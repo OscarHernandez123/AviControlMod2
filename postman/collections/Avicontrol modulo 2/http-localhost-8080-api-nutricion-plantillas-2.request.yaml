@@ -1,0 +1,80 @@
+$kind: http-request
+name: http://localhost:8080/api/nutricion/plantillas
+description: ""
+url: http://localhost:8080/api/nutricion/plantillas
+method: POST
+body:
+  type: json
+  content: "{\r
+
+    \  \"nombre\": \"Plan Demo Broiler Alternativo\",\r
+
+    \  \"tipoAve\": \"BROILER\",\r
+
+    \  \"esPredeterminado\": false,\r
+
+    \  \"etapas\": [\r
+
+    \    {\r
+
+    \      \"etapaCrianza\": \"PRE_INICIO\",\r
+
+    \      \"diaInicio\": 1,\r
+
+    \      \"diaFin\": 7,\r
+
+    \      \"racionKgAveDia\": 0.025,\r
+
+    \      \"tipoAlimento\": \"PRE_INICIO\",\r
+
+    \      \"pesoNominalPorBultoKg\": 40,\r
+
+    \      \"alimentoId\": null\r
+
+    \    },\r
+
+    \    {\r
+
+    \      \"etapaCrianza\": \"INICIO\",\r
+
+    \      \"diaInicio\": 8,\r
+
+    \      \"diaFin\": 21,\r
+
+    \      \"racionKgAveDia\": 0.08,\r
+
+    \      \"tipoAlimento\": \"INICIO\",\r
+
+    \      \"pesoNominalPorBultoKg\": 40,\r
+
+    \      \"alimentoId\": \"550e8400-e29b-41d4-a716-446655440000\"\r
+
+    \    },\r
+
+    \    {\r
+
+    \      \"etapaCrianza\": \"ENGORDE\",\r
+
+    \      \"diaInicio\": 22,\r
+
+    \      \"diaFin\": 42,\r
+
+    \      \"racionKgAveDia\": 0.11,\r
+
+    \      \"tipoAlimento\": \"ENGORDE\",\r
+
+    \      \"pesoNominalPorBultoKg\": 40,\r
+
+    \      \"alimentoId\": null\r
+
+    \    }\r
+
+    \  ]\r
+
+    }"
+auth:
+  type: basic
+  credentials:
+    username: nutricionista
+    password: nutricionista123
+order: 22000

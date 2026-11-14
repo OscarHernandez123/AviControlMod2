@@ -65,6 +65,12 @@ public class DiagnosticoGalponPersistenceAdapter implements DiagnosticoGalponRep
   }
 
   @Override
+  public List<DiagnosticoGalpon> listar() {
+    return jdbc.query(
+        "SELECT * FROM diagnosticos_galpon ORDER BY fecha_diagnostico DESC, id DESC", this::mapear);
+  }
+
+  @Override
   public Optional<DiagnosticoGalpon> bloquear(UUID id) {
     return jdbc
         .query("SELECT * FROM diagnosticos_galpon WHERE id = ? FOR UPDATE", this::mapear, id)

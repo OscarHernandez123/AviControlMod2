@@ -1,0 +1,11 @@
+$kind: http-request
+name: http://localhost:8080/api/recepciones/medicamentos/0ce1aed1-dfd7-426b-8f51-363b34dbec94
+description: ""
+url: http://localhost:8080/api/recepciones/medicamentos/0ce1aed1-dfd7-426b-8f51-363b34dbec94
+method: GET
+auth:
+  type: basic
+  credentials:
+    username: admin
+    password: admin123
+order: 14000

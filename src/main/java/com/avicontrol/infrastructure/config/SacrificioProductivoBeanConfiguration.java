@@ -1,6 +1,7 @@
 package com.avicontrol.infrastructure.config;
 
 import com.avicontrol.application.sacrificio.productivo.CancelarOrdenSacrificioUseCase;
+import com.avicontrol.application.sacrificio.productivo.ConsultarOrdenesSacrificioUseCase;
 import com.avicontrol.application.sacrificio.productivo.ConsultarResumenOrdenesSacrificioUseCase;
 import com.avicontrol.application.sacrificio.productivo.EjecutarOrdenSacrificioUseCase;
 import com.avicontrol.application.sacrificio.productivo.EjecutarOrdenesSacrificioVencidasUseCase;
@@ -72,5 +73,11 @@ public class SacrificioProductivoBeanConfiguration {
   ConsultarResumenOrdenesSacrificioUseCase resumenOrdenes(
       OrdenSacrificioProductivoRepositoryPort ordenes) {
     return new ConsultarResumenOrdenesSacrificioUseCase(ordenes);
+  }
+
+  @Bean
+  ConsultarOrdenesSacrificioUseCase consultarOrdenes(
+      OrdenSacrificioProductivoRepositoryPort ordenes) {
+    return new ConsultarOrdenesSacrificioUseCase(ordenes);
   }
 }

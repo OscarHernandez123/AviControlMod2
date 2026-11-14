@@ -45,6 +45,7 @@ src/main/java/com/avicontrol/
 │   └── sanitario/medicacion/
 │       ├── EditarMedicacionCommand.java
 │       ├── EditarMedicacionUseCase.java
+│       ├── ListarMedicacionesUseCase.java
 │       ├── RegistrarMedicacionCommand.java
 │       ├── RegistrarMedicacionUseCase.java
 │       └── result/MedicacionResult.java
@@ -177,6 +178,14 @@ El medicamento debe tener saldo positivo en una recepción confirmada y vigente 
 ---
 
 ## Endpoints
+
+### Listar medicaciones
+
+| Método y ruta | Rol | Solicitud | Respuesta |
+| --- | --- | --- | --- |
+| `GET /api/medicaciones` | `ROLE_VETERINARIO` | Sin cuerpo | `200 OK` con los tratamientos registrados |
+
+La lista permite recuperar las medicaciones persistidas en la pantalla veterinaria después de recargarla.
 
 ### Registrar medicación
 

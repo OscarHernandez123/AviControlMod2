@@ -1,0 +1,14 @@
+$kind: http-request
+name: http://localhost:8080/api/ordenes-sacrificio/81acc434-235e-4126-b6c5-f4eed627a226/cancelacion
+description: ""
+url: http://localhost:8080/api/ordenes-sacrificio/81acc434-235e-4126-b6c5-f4eed627a226/cancelacion
+method: POST
+body:
+  type: json
+  content: ""
+auth:
+  type: basic
+  credentials:
+    username: admin
+    password: admin123
+order: 76000

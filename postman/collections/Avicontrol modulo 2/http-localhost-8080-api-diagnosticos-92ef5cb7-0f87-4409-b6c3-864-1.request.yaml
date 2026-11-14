@@ -1,0 +1,24 @@
+$kind: http-request
+name: http://localhost:8080/api/diagnosticos/92ef5cb7-0f87-4409-b6c3-86467c236d1d/consumos-medicamento
+description: ""
+url: http://localhost:8080/api/diagnosticos/92ef5cb7-0f87-4409-b6c3-86467c236d1d/consumos-medicamento
+method: POST
+headers:
+  Idempotency-Key: 11d4ffa8-6e52-40af-be1a-290c81d159fc
+body:
+  type: json
+  content: "{\r
+
+    \  \"cantidad\": 10,\r
+
+    \  \"unidad\": \"MILILITRO\",\r
+
+    \  \"fechaAplicacion\": \"2026-11-13\"\r
+
+    }"
+auth:
+  type: basic
+  credentials:
+    username: veterinario
+    password: veterinario123
+order: 48000

@@ -1,5 +1,6 @@
 package com.avicontrol.infrastructure.adapter.in.rest.recepcion;
 
+import com.avicontrol.application.recepcion.CatalogoRecepcionPort;
 import com.avicontrol.application.recepcion.ConsultarRecepcionesMedicamentoUseCase;
 import com.avicontrol.application.recepcion.EditarRecepcionMedicamentoUseCase;
 import com.avicontrol.application.recepcion.RegistrarRecepcionMedicamentoUseCase;
@@ -18,6 +19,7 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
 import java.net.URI;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.UUID;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
@@ -41,18 +43,28 @@ public class RecepcionMedicamentoController {
   private final EditarRecepcionMedicamentoUseCase edicion;
   private final RecepcionMedicamentoRestMapper mapper;
   private final RecepcionFiltroRestMapper filtros;
+  private final CatalogoRecepcionPort catalogo;
 
   public RecepcionMedicamentoController(
       RegistrarRecepcionMedicamentoUseCase useCase,
       ConsultarRecepcionesMedicamentoUseCase consulta,
       EditarRecepcionMedicamentoUseCase edicion,
       RecepcionMedicamentoRestMapper mapper,
-      RecepcionFiltroRestMapper filtros) {
+      RecepcionFiltroRestMapper filtros,
+      CatalogoRecepcionPort catalogo) {
     this.useCase = useCase;
     this.consulta = consulta;
     this.edicion = edicion;
     this.mapper = mapper;
     this.filtros = filtros;
+    this.catalogo = catalogo;
+  }
+
+  @GetMapping("/disponibles")
+  @PreAuthorize("hasRole('ADMINISTRADOR')")
+  @Operation(summary = "Medicamentos disponibles para registrar recepciones")
+  public List<CatalogoRecepcionPort.MedicamentoDisponible> disponibles() {
+    return catalogo.medicamentosDisponibles();
   }
 
   @PostMapping
