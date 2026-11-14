@@ -6,7 +6,8 @@ import BaseModal from '../components/BaseModal';
 import ApiMessage from '../components/ApiMessage';
 import { getDailyFoodSummary, getBarnDailyFood, registerDailySupply } from '../services/dailyFoodApi';
 import { getProductiveBarns, registerMortality } from '../services/workerApi';
-import { createIsolationRequest } from '../services/isolationApi';
+import { createIsolationRequest, getIsolatedBarns } from '../services/isolationApi';
+import { getDailyMedicationSummary, getBarnDailyMedication } from '../services/dailyMedicationApi';
 
 function WorkerDashboardPage() {
   const [workerBarns, setWorkerBarns] = useState([]);
@@ -19,6 +20,10 @@ function WorkerDashboardPage() {
   const [foodSummary, setFoodSummary] = useState(null);
   const [foodLoading, setFoodLoading] = useState(true);
   const [foodReload, setFoodReload] = useState(0);
+  const [medicationSummary, setMedicationSummary] = useState(null);
+  const [medicationLoading, setMedicationLoading] = useState(true);
+  const [medicationError, setMedicationError] = useState('');
+  const [medicationDetail, setMedicationDetail] = useState(null);
   const [supplyOpen, setSupplyOpen] = useState(false);
   const [supplyDetail, setSupplyDetail] = useState(null);
   const [supplyQuantity, setSupplyQuantity] = useState('');
@@ -38,6 +43,34 @@ function WorkerDashboardPage() {
       .finally(() => { if (!controller.signal.aborted) setFoodLoading(false); });
     return () => controller.abort();
   }, [foodReload]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    setMedicationLoading(true);
+    setMedicationError('');
+    Promise.all([
+      getProductiveBarns({ signal: controller.signal }),
+      getIsolatedBarns({ signal: controller.signal })
+    ])
+      .then(([productive, isolated]) =>
+        getDailyMedicationSummary(
+          [...new Set([...productive, ...isolated].map((barn) => barn.id))],
+          controller.signal
+        ))
+      .then(setMedicationSummary)
+      .catch((cause) => { if (cause.name !== 'AbortError') setMedicationError(cause.message); })
+      .finally(() => { if (!controller.signal.aborted) setMedicationLoading(false); });
+    return () => controller.abort();
+  }, [foodReload]);
+
+  async function openMedicationDetail(barnId) {
+    try {
+      setMedicationError('');
+      setMedicationDetail(await getBarnDailyMedication(barnId));
+    } catch (cause) {
+      setMedicationError(cause.message);
+    }
+  }
 
   useEffect(() => {
     const controller = new AbortController();
@@ -196,6 +229,7 @@ function WorkerDashboardPage() {
         <Topbar roleLabel="Trabajador" avatarSrc="/assets/admin-avatar.svg" />
         <ApiMessage message={toast} type="success" onClose={() => setToast('')} />
         <ApiMessage message={foodError} type="error" onClose={() => setFoodError('')} />
+        <ApiMessage message={medicationError} type="error" onClose={() => setMedicationError('')} />
 
         <div className="avi-dashboard-content" data-node-id="238:5842">
           {/* Encabezado de Página */}
@@ -385,9 +419,69 @@ function WorkerDashboardPage() {
               </div>}
             </div>
 
+            <div className="avi-recent-orders-panel">
+              <div className="avi-panel-header avi-panel-header-full">
+                <div className="avi-panel-icon-28"><img alt="" src="/assets/vet-syringe.svg" /></div>
+                <h2 className="avi-panel-title">Medicación diaria</h2>
+                <div className="avi-panel-spacer" />
+                <button type="button" className="avi-admin-table-btn avi-admin-table-btn-green"
+                  onClick={() => setFoodReload((value) => value + 1)}>Actualizar</button>
+              </div>
+              {medicationLoading && <p className="avi-page-subtitle">Cargando medicación diaria...</p>}
+              {!medicationLoading && medicationSummary?.cantidadTratamientos === 0 &&
+                <p className="avi-page-subtitle">No hay tratamientos activos hoy.</p>}
+              {medicationSummary?.cantidadTratamientos > 0 && <div className="avi-orders-table">
+                <div className="avi-orders-thead">
+                  <span style={{ flex: 1 }}>Galpón</span>
+                  <span style={{ flex: 1.2 }}>Medicamento</span>
+                  <span style={{ flex: 1 }}>Progreso</span>
+                  <span style={{ flex: 1.8 }}>Dosis de hoy</span>
+                  <span style={{ flex: 0.8 }}>Aplica hoy</span>
+                  <span style={{ flex: 0.8 }}>Acción</span>
+                </div>
+                {medicationSummary.galpones.flatMap((barn) =>
+                  barn.tratamientos.map((item) => <div className="avi-orders-trow"
+                    key={item.diagnosticoId}>
+                    <span style={{ flex: 1 }}>{barn.nombreGalpon}</span>
+                    <span style={{ flex: 1.2, minWidth: 0, overflowWrap: 'anywhere' }}>{item.medicamento}</span>
+                    <span style={{ flex: 1 }}>{item.progreso}</span>
+                    <span style={{ flex: 1.8, minWidth: 0, overflowWrap: 'anywhere' }}>{item.dosisHoy}</span>
+                    <span style={{ flex: 0.8 }}>{item.aplicaHoy ? 'Sí' : 'No'}</span>
+                    <span style={{ flex: 0.8 }}><button type="button"
+                      className="avi-admin-table-btn avi-admin-table-btn-green"
+                      onClick={() => openMedicationDetail(barn.galponId)}>Detalle</button></span>
+                  </div>)
+                )}
+              </div>}
+            </div>
+
           </div>
         </div>
       </div>
+
+      <BaseModal isOpen={Boolean(medicationDetail)} onClose={() => setMedicationDetail(null)} maxWidth="720px">
+        {medicationDetail && <div className="avi-figma-modal-720">
+          <div className="avi-figma-modal-header">
+            <h2 className="avi-figma-modal-title">
+              Medicación diaria · {medicationDetail.nombreGalpon}
+            </h2>
+            <button type="button" className="avi-figma-modal-close"
+              onClick={() => setMedicationDetail(null)}>×</button>
+          </div>
+          <div className="avi-figma-modal-grid">
+            {medicationDetail.tratamientos.map((item) => <div key={item.diagnosticoId}
+              style={{ gridColumn: '1 / -1' }}>
+              <p><strong>Enfermedad:</strong> {item.enfermedad}</p>
+              <p><strong>Medicamento:</strong> {item.medicamento}</p>
+              <p><strong>Principio activo:</strong> {item.principioActivo}</p>
+              <p><strong>Progreso:</strong> {item.progreso}</p>
+              <p><strong>Dosis:</strong> {item.dosisHoy}</p>
+              <p><strong>Vía o descripción:</strong> {item.viaAdministracion}</p>
+              <p><strong>Aplica hoy:</strong> {item.aplicaHoy ? 'Sí' : 'No'}</p>
+            </div>)}
+          </div>
+        </div>}
+      </BaseModal>
 
       <BaseModal isOpen={isolationOpen} onClose={() => { if (!isolationSaving) setIsolationOpen(false); }} maxWidth="720px">
         <form className="avi-figma-modal-720" onSubmit={saveIsolation}>
