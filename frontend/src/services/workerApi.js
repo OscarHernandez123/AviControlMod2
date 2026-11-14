@@ -34,3 +34,21 @@ export async function registerMortality(barnId, body, idempotencyKey) {
   }
   return data;
 }
+
+export async function reportAbnormalMortality(barnId, body, idempotencyKey) {
+  const response = await fetch(`/api/galpones/${encodeURIComponent(barnId)}/mortalidad-anormal`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Idempotency-Key': idempotencyKey
+    },
+    body: JSON.stringify(body)
+  });
+  const data = await response.json().catch(() => null);
+  if (!response.ok) {
+    const error = new Error(data?.detail || `HTTP ${response.status}`);
+    error.status = response.status;
+    throw error;
+  }
+  return data;
+}

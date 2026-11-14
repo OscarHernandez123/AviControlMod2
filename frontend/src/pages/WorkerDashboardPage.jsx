@@ -5,7 +5,7 @@ import StatCard from '../components/StatCard';
 import BaseModal from '../components/BaseModal';
 import ApiMessage from '../components/ApiMessage';
 import { getDailyFoodSummary, getBarnDailyFood, registerDailySupply } from '../services/dailyFoodApi';
-import { getProductiveBarns, registerMortality } from '../services/workerApi';
+import { getProductiveBarns, registerMortality, reportAbnormalMortality } from '../services/workerApi';
 import { createIsolationRequest, getIsolatedBarns } from '../services/isolationApi';
 import { getDailyMedicationSummary, getBarnDailyMedication } from '../services/dailyMedicationApi';
 
@@ -15,6 +15,13 @@ function WorkerDashboardPage() {
   const [mortalitySaving, setMortalitySaving] = useState(false);
   const [mortalityKey, setMortalityKey] = useState('');
   const [mortalityLocked, setMortalityLocked] = useState(false);
+  const [abnormalOpen, setAbnormalOpen] = useState(false);
+  const [abnormalSaving, setAbnormalSaving] = useState(false);
+  const [abnormalLocked, setAbnormalLocked] = useState(false);
+  const [abnormalKey, setAbnormalKey] = useState('');
+  const [abnormalForm, setAbnormalForm] = useState({
+    barnId: '', fecha: '', hora: '', cantidad: '', causaProbable: '', observaciones: ''
+  });
   const [toast, setToast] = useState('');
   const [foodError, setFoodError] = useState('');
   const [foodSummary, setFoodSummary] = useState(null);
@@ -171,6 +178,7 @@ function WorkerDashboardPage() {
 
   const selectedMortalityBarn =
     workerBarns.find((b) => b.id === mortalityForm.barnId) || workerBarns[0];
+  const selectedAbnormalBarn = workerBarns.find((b) => b.id === abnormalForm.barnId);
 
   const bajasCount = Math.max(0, parseInt(mortalityForm.cantidadBajas, 10) || 0);
   const lotePercentage = selectedMortalityBarn?.poblacionNum
@@ -214,6 +222,50 @@ function WorkerDashboardPage() {
       setFoodError(`${cause.message}. Puedes reintentar con los mismos datos; se conserva la clave del registro.`);
     } finally {
       setMortalitySaving(false);
+    }
+  };
+
+  const openAbnormalReport = (barnId) => {
+    const now = new Date();
+    setAbnormalForm({
+      barnId,
+      fecha: `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`,
+      hora: `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`,
+      cantidad: '',
+      causaProbable: '',
+      observaciones: ''
+    });
+    setAbnormalKey(crypto.randomUUID());
+    setAbnormalLocked(false);
+    setFoodError('');
+    setAbnormalOpen(true);
+  };
+
+  const saveAbnormalReport = async (event) => {
+    event.preventDefault();
+    const quantity = Number(abnormalForm.cantidad);
+    if (!selectedAbnormalBarn || !Number.isInteger(quantity) || quantity < 1
+      || quantity > selectedAbnormalBarn.poblacionNum || !abnormalForm.causaProbable.trim()) return;
+    setAbnormalSaving(true);
+    setAbnormalLocked(true);
+    setFoodError('');
+    try {
+      const result = await reportAbnormalMortality(abnormalForm.barnId, {
+        fechaHoraEvento: new Date(`${abnormalForm.fecha}T${abnormalForm.hora}:00`).toISOString(),
+        cantidad: quantity,
+        causaProbable: abnormalForm.causaProbable.trim(),
+        observaciones: abnormalForm.observaciones.trim() || null
+      }, abnormalKey);
+      setAbnormalOpen(false);
+      setToast(`Reporte anormal registrado: ${result.porcentajeMortalidad}% · severidad ${result.severidad}. Alerta ${result.alertaId} creada.`);
+    } catch (cause) {
+      if (cause.status >= 400 && cause.status < 500) {
+        setAbnormalLocked(false);
+        setAbnormalKey(crypto.randomUUID());
+      }
+      setFoodError(`${cause.message}. Puedes reintentar el reporte.`);
+    } finally {
+      setAbnormalSaving(false);
     }
   };
 
@@ -379,6 +431,11 @@ function WorkerDashboardPage() {
                       {requestedIsolationBarns.includes(barn.id) ? 'Solicitud pendiente' : 'Solicitar aislamiento'}
                     </button>
                   </div>
+                  <button type="button" className="avi-admin-table-btn avi-admin-table-btn-orange"
+                    style={{ width: '100%', marginTop: '8px' }}
+                    onClick={() => openAbnormalReport(barn.id)}>
+                    Reportar mortalidad anormal
+                  </button>
                 </div>
               ))}
             </div>
@@ -556,6 +613,69 @@ function WorkerDashboardPage() {
             <button type="submit" className="avi-figma-btn-green"
               disabled={supplySaving || !supplyDetail || Number(supplyDetail.saldoKg) <= 0 || Number(supplyDetail.disponibilidadKg) <= 0}>
               {supplySaving ? 'Guardando...' : 'Registrar suministro'}
+            </button>
+          </div>
+        </form>
+      </BaseModal>
+
+      <BaseModal isOpen={abnormalOpen}
+        onClose={() => { if (!abnormalSaving) setAbnormalOpen(false); }} maxWidth="720px">
+        <form className="avi-figma-modal-720" onSubmit={saveAbnormalReport}>
+          <div className="avi-figma-modal-header">
+            <div className="avi-figma-modal-titles">
+              <h2 className="avi-figma-modal-title">Reportar mortalidad anormal</h2>
+              <p className="avi-figma-modal-subtitle">
+                Genera una alerta veterinaria. Este reporte no descuenta aves de la población viva.
+              </p>
+            </div>
+            <button type="button" className="avi-figma-modal-close" disabled={abnormalSaving}
+              onClick={() => setAbnormalOpen(false)}>×</button>
+          </div>
+          <div className="avi-figma-modal-grid">
+            <div className="avi-figma-field" style={{ gridColumn: '1 / -1' }}>
+              <label className="avi-figma-label">Galpón y población viva</label>
+              <div className="avi-figma-readonly-box">
+                {selectedAbnormalBarn?.name} · {selectedAbnormalBarn?.poblacion} · {selectedAbnormalBarn?.lote}
+              </div>
+            </div>
+            <div className="avi-figma-field">
+              <label className="avi-figma-label" htmlFor="abnormal-date">Fecha del evento</label>
+              <input id="abnormal-date" className="avi-figma-input" type="date"
+                value={abnormalForm.fecha} disabled={abnormalLocked}
+                onChange={(event) => setAbnormalForm({ ...abnormalForm, fecha: event.target.value })} required />
+            </div>
+            <div className="avi-figma-field">
+              <label className="avi-figma-label" htmlFor="abnormal-time">Hora del evento</label>
+              <input id="abnormal-time" className="avi-figma-input" type="time"
+                value={abnormalForm.hora} disabled={abnormalLocked}
+                onChange={(event) => setAbnormalForm({ ...abnormalForm, hora: event.target.value })} required />
+            </div>
+            <div className="avi-figma-field">
+              <label className="avi-figma-label" htmlFor="abnormal-quantity">Cantidad reportada</label>
+              <input id="abnormal-quantity" className="avi-figma-input" type="number" min="1"
+                max={selectedAbnormalBarn?.poblacionNum || 0} step="1"
+                value={abnormalForm.cantidad} disabled={abnormalLocked}
+                onChange={(event) => setAbnormalForm({ ...abnormalForm, cantidad: event.target.value })} required />
+            </div>
+            <div className="avi-figma-field">
+              <label className="avi-figma-label" htmlFor="abnormal-cause">Causa probable</label>
+              <input id="abnormal-cause" className="avi-figma-input"
+                placeholder="Ej. PROBLEMAS_DIGESTIVOS" value={abnormalForm.causaProbable}
+                disabled={abnormalLocked}
+                onChange={(event) => setAbnormalForm({ ...abnormalForm, causaProbable: event.target.value })} required />
+            </div>
+            <div className="avi-figma-field" style={{ gridColumn: '1 / -1' }}>
+              <label className="avi-figma-label" htmlFor="abnormal-notes">Observaciones</label>
+              <input id="abnormal-notes" className="avi-figma-input" value={abnormalForm.observaciones}
+                disabled={abnormalLocked}
+                onChange={(event) => setAbnormalForm({ ...abnormalForm, observaciones: event.target.value })} />
+            </div>
+          </div>
+          <div className="avi-figma-modal-footer">
+            <button type="button" className="avi-figma-btn-cancel" disabled={abnormalSaving}
+              onClick={() => setAbnormalOpen(false)}>Cancelar</button>
+            <button type="submit" className="avi-figma-btn-orange" disabled={abnormalSaving}>
+              {abnormalSaving ? 'Enviando...' : abnormalLocked ? 'Reintentar reporte' : 'Generar alerta'}
             </button>
           </div>
         </form>
