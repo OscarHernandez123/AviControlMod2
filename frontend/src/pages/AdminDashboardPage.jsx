@@ -1,20 +1,38 @@
-import { useContext, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FarmContext } from '../context/FarmContext';
 import Sidebar from '../components/Sidebar';
 import Topbar from '../components/Topbar';
 import StatCard from '../components/StatCard';
+import ApiMessage from '../components/ApiMessage';
 import { getBackendHealth } from '../services/backendApi';
+import { getBarnSummary } from '../services/barnsApi';
+import { getInventory, getInventorySummary } from '../services/inventoryApi';
+import { getProductiveSlaughterSummary } from '../services/productiveSlaughterApi';
+import { listFeedReceptions } from '../services/feedReceptionsApi';
+
+const BARN_STATES = [
+  ['PRODUCTIVO', 'Productivos', '#2d9f42'],
+  ['EN_COSECHA', 'En cosecha', '#f59e0b'],
+  ['AISLAMIENTO', 'Aislados', '#dc2626'],
+  ['VACIADO_SANITARIO', 'Vaciado sanitario', '#8b5e3c'],
+  ['DISPONIBLE', 'Disponibles', '#407db8'],
+  ['MANTENIMIENTO', 'Mantenimiento', '#737373']
+];
+
+const money = (value) => new Intl.NumberFormat('es-CO', {
+  style: 'currency', currency: 'COP', maximumFractionDigits: 0
+}).format(value);
 
 function AdminDashboardPage() {
   const navigate = useNavigate();
   const [backendStatus, setBackendStatus] = useState('Comprobando conexión con el backend...');
-  const {
-    adminMetrics,
-    barnStatusSummary,
-    criticalInventory,
-    recentFeedReceptions
-  } = useContext(FarmContext);
+  const [barnSummary, setBarnSummary] = useState(null);
+  const [inventory, setInventory] = useState(null);
+  const [inventorySummary, setInventorySummary] = useState(null);
+  const [ordersSummary, setOrdersSummary] = useState(null);
+  const [receptions, setReceptions] = useState([]);
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -25,8 +43,54 @@ function AdminDashboardPage() {
           setBackendStatus(`Backend no disponible: ${error.message}`);
         }
       });
+    Promise.all([
+      getBarnSummary({ signal: controller.signal }),
+      getInventory({ signal: controller.signal }),
+      getInventorySummary({ signal: controller.signal }),
+      getProductiveSlaughterSummary(controller.signal),
+      listFeedReceptions({}, { signal: controller.signal })
+    ]).then(([barns, stock, stockSummary, orders, feed]) => {
+      setBarnSummary(barns);
+      setInventory(stock);
+      setInventorySummary(stockSummary);
+      setOrdersSummary(orders);
+      setReceptions(feed.contenido || []);
+    }).catch((cause) => {
+      if (cause.name !== 'AbortError') setError(cause.message);
+    }).finally(() => {
+      if (!controller.signal.aborted) setLoading(false);
+    });
     return () => controller.abort();
   }, []);
+
+  const counts = barnSummary?.porEstado || {};
+  const maxCount = Math.max(1, ...Object.values(counts));
+  const barnStatusSummary = BARN_STATES.map(([id, label, color]) => ({
+    id, label, color, count: counts[id] || 0,
+    widthPx: Math.round(((counts[id] || 0) / maxCount) * 190)
+  }));
+  const criticalInventory = [
+    ...(inventory?.alimentos || [])
+      .filter((item) => ['COBERTURA_PARCIAL', 'SIN_COBERTURA'].includes(item.estadoCobertura))
+      .map((item) => ({
+        id: `alimento-${item.alimentoId}`, name: `${item.alimento} · ${item.stockActualKg} kg`,
+        status: item.estadoCobertura === 'SIN_COBERTURA' ? 'Sin cobertura' : 'Cobertura parcial',
+        tileBg: '#f4eee3', icon: '/assets/admin-inv-panel.svg', badgeBg: '#ffe8ba',
+        dotIcon: '/assets/dot-orange.svg', badgeColor: '#9e4a0f'
+      })),
+    ...(inventory?.medicamentos || [])
+      .filter((item) => Number(item.stockActual) <= 0)
+      .map((item) => ({
+        id: `medicamento-${item.medicamentoId}`, name: item.medicamento,
+        status: 'Sin stock', tileBg: '#f4eee3', icon: '/assets/admin-inv-panel.svg',
+        badgeBg: '#ffe0e3', dotIcon: '/assets/dot-red.svg', badgeColor: '#dc2626'
+      }))
+  ];
+  const recentFeedReceptions = receptions.slice(0, 5).map((row) => ({
+    id: row.id, codigoLote: row.codigoLote, alimento: row.nombreAlimento,
+    bultos: row.cantidadBultos, precio: money(row.precioNetoPorBulto),
+    peso: `${row.pesoPorBultoKg} kg`, fecha: row.fechaIngreso
+  }));
 
   return (
     <div className="avi-role-layout">
@@ -34,6 +98,7 @@ function AdminDashboardPage() {
 
       <div className="avi-main-frame" data-node-id="104:23" data-name="Administrador Inicio">
         <Topbar roleLabel="Administrador" avatarSrc="/assets/admin-avatar.svg" />
+        <ApiMessage message={error} type="error" onClose={() => setError('')} />
 
         <div className="avi-dashboard-content" data-node-id="104:43">
           {/* Page heading */}
@@ -43,6 +108,7 @@ function AdminDashboardPage() {
                 Resumen general de la operación
               </p>
               <p className="avi-page-subtitle" role="status">{backendStatus}</p>
+              {loading && <p className="avi-page-subtitle">Cargando indicadores...</p>}
             </div>
           </div>
 
@@ -50,8 +116,8 @@ function AdminDashboardPage() {
           <div className="avi-metrics-row" data-node-id="104:52">
             <StatCard
               label="Galpones"
-              value={adminMetrics.galponesTotal}
-              status={`${adminMetrics.galponesEnProduccion} en producción`}
+              value={barnSummary?.totalRegistrado ?? '—'}
+              status={`${counts.PRODUCTIVO || 0} productivos · ${counts.EN_COSECHA || 0} en cosecha`}
               statusColor="#2d743b"
               icon="/assets/admin-galpon.svg"
               tileBg="#f4eee3"
@@ -59,8 +125,10 @@ function AdminDashboardPage() {
             />
             <StatCard
               label="Inventario"
-              value={`${adminMetrics.inventarioCobertura} %`}
-              status="Cobertura disponible"
+              value={inventory ? `${inventory.tarjetasAlimentoKg?.TOTAL || 0} kg` : '—'}
+              status={inventorySummary?.porcentajeOcupacion == null
+                ? 'Alimento disponible'
+                : `${inventorySummary.porcentajeOcupacion} % de ocupación`}
               statusColor="#2d743b"
               icon="/assets/admin-inventario.svg"
               tileBg="#e6f7e4"
@@ -68,8 +136,8 @@ function AdminDashboardPage() {
             />
             <StatCard
               label="Órdenes de sacrificio"
-              value={adminMetrics.ordenesSacrificio}
-              status={`${adminMetrics.ordenesPendientes} pendientes`}
+              value={ordersSummary?.totalOrdenes ?? '—'}
+              status={`${ordersSummary?.ordenesPendientes ?? 0} pendientes`}
               statusColor="#9e4a0f"
               icon="/assets/admin-orden.svg"
               tileBg="#f4eee3"
@@ -144,6 +212,7 @@ function AdminDashboardPage() {
                   </div>
                 </div>
               ))}
+              {!loading && criticalInventory.length === 0 && <p className="avi-page-subtitle">No hay productos con cobertura crítica.</p>}
             </div>
           </div>
 
@@ -181,7 +250,7 @@ function AdminDashboardPage() {
               {recentFeedReceptions.map((row) => (
                 <div key={row.id} className="avi-orders-trow">
                   <span className="avi-col-dark" style={{ flex: '1.1' }}>
-                    {row.id}
+                    {row.codigoLote}
                   </span>
                   <span className="avi-col-dark" style={{ flex: '1.4' }}>
                     {row.alimento}
@@ -200,6 +269,7 @@ function AdminDashboardPage() {
                   </span>
                 </div>
               ))}
+              {!loading && recentFeedReceptions.length === 0 && <p className="avi-page-subtitle">No hay recepciones recientes.</p>}
             </div>
           </div>
         </div>
