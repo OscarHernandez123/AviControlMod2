@@ -64,7 +64,7 @@ function VetDiagnosePage() {
 
   const selectedDisease = diseases.find((item) => item.id === form.enfermedadId);
   const compatibleMedications = medications.filter((item) => item.enfermedadId === form.enfermedadId);
-  const barnName = (id) => barns.find((item) => item.id === id)?.nombre || id;
+  const barnName = (id) => barns.find((item) => item.id === id)?.nombre || 'Galpón no disponible';
   const filtered = diagnoses.filter((item) => {
     const text = search.trim().toLowerCase();
     return (!text || item.enfermedadNombre.toLowerCase().includes(text) ||
@@ -236,7 +236,7 @@ function VetDiagnosePage() {
               onChange={(event) => setForm({ ...form, galponId: event.target.value })}>
               <option value="">Seleccionar galpón</option>
               {barns.map((item) => <option key={item.id} value={item.id}>
-                {item.nombre} · Lote {item.loteActual?.id || 'sin lote'}
+                {item.nombre} · {item.loteActual ? 'Lote activo' : 'Sin lote'}
               </option>)}
             </select>
           </label>

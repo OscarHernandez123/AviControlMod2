@@ -445,7 +445,7 @@ function NutritionistPlansPage() {
                   <strong>{LABELS[stage.etapaCrianza]}</strong>
                   <p>Días {stage.diaInicio} a {stage.diaFin} · {formatRation(stage.racionKgAveDia)}</p>
                   <p>Alimento: {stage.alimentoId
-                    ? foods[stage.tipoAlimento]?.find((food) => food.id === stage.alimentoId)?.nombre || stage.alimentoId
+                    ? foods[stage.tipoAlimento]?.find((food) => food.id === stage.alimentoId)?.nombre || 'Alimento no disponible'
                     : 'Pendiente de selección'} · Bulto de {stage.pesoNominalPorBultoKg} kg</p>
                 </div>
               ))}

@@ -4506,3 +4506,208 @@ input {
   color: #1f5929;
   white-space: nowrap;
 }
+
+/* Consistent spacing and fluid layouts across the active role pages. */
+.avi-dashboard-content {
+  padding: 28px clamp(18px, 3vw, 40px) 40px;
+  gap: 20px;
+}
+
+.avi-page-heading {
+  min-height: 0;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 0;
+}
+
+.avi-heading-copy {
+  gap: 6px;
+  min-width: 0;
+}
+
+.avi-page-title {
+  display: block;
+  color: var(--text-primary);
+  font-size: clamp(22px, 2vw, 30px);
+  line-height: 1.2;
+  font-weight: 700;
+}
+
+.avi-page-subtitle {
+  line-height: 1.45;
+}
+
+.avi-metrics-row {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.avi-receptions-metrics-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.avi-reception-kpi-card {
+  width: 100%;
+  height: auto;
+  min-height: 100px;
+}
+
+.avi-metric-card,
+.avi-barn-kpi-card {
+  min-width: 0;
+  height: auto;
+  min-height: 112px;
+}
+
+.avi-metric-label,
+.avi-metric-value,
+.avi-metric-status {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.avi-worker-barns-grid {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
+}
+
+.avi-barns-metrics-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.avi-barn-kpi-card {
+  width: 100%;
+  padding: 18px 20px;
+}
+
+.avi-recent-orders-panel,
+.avi-panel-barn-status,
+.avi-panel-critical-inv {
+  min-width: 0;
+  padding: 20px;
+  gap: 14px;
+}
+
+.avi-orders-table {
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.avi-orders-thead,
+.avi-orders-trow {
+  min-width: 620px;
+  height: auto;
+  min-height: 44px;
+  gap: 12px;
+  padding: 10px 14px;
+  align-items: center;
+}
+
+.avi-orders-thead > *,
+.avi-orders-trow > * {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.avi-orders-trow:last-child {
+  border-bottom: 0;
+}
+
+.avi-orders-trow:hover {
+  background-color: #f8faf7;
+}
+
+.avi-figma-input {
+  min-width: 0;
+}
+
+textarea.avi-figma-input {
+  height: auto;
+  min-height: 96px;
+  padding: 12px 14px;
+  resize: vertical;
+}
+
+.avi-sidebar-link {
+  width: 100%;
+  height: auto;
+  min-height: 54px;
+  gap: 14px;
+  padding: 10px 14px;
+}
+
+.avi-sidebar-label {
+  width: auto !important;
+  white-space: normal !important;
+  line-height: 1.25;
+}
+
+@media (max-width: 1180px) {
+  .avi-metrics-row,
+  .avi-receptions-metrics-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .avi-operational-panels,
+  .avi-worker-bottom-panels {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 800px) {
+  .avi-role-layout {
+    display: block;
+  }
+
+  .avi-sidebar {
+    position: relative;
+    width: 100%;
+    height: auto;
+    min-height: 0;
+  }
+
+  .avi-sidebar-brand {
+    width: 100%;
+    height: auto;
+    padding: 14px;
+  }
+
+  .avi-sidebar-nav {
+    width: 100%;
+    flex-direction: row;
+    overflow-x: auto;
+    padding: 8px 12px 12px;
+  }
+
+  .avi-sidebar-link {
+    width: auto;
+    min-width: max-content;
+  }
+
+  .avi-sidebar-spacer,
+  .avi-sidebar-footer {
+    display: none;
+  }
+
+  .avi-main-frame {
+    min-height: calc(100vh - 180px);
+  }
+
+  .avi-dashboard-content {
+    padding: 20px 16px 32px;
+  }
+
+  .avi-page-heading {
+    flex-wrap: wrap;
+  }
+
+  .avi-metrics-row,
+  .avi-receptions-metrics-row,
+  .avi-barns-metrics-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .avi-figma-modal-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

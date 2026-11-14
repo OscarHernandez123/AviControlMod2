@@ -110,7 +110,7 @@ function VetMedicinesPage() {
       (item.principioActivo || '').toLowerCase().includes(text) ||
       (disease?.nombre || '').toLowerCase().includes(text);
   });
-  const diseaseName = (id) => diseases.find((item) => item.id === id)?.nombre || id;
+  const diseaseName = (id) => diseases.find((item) => item.id === id)?.nombre || 'Enfermedad no disponible';
 
   return <div className="avi-role-layout">
     <Sidebar role="veterinario" />

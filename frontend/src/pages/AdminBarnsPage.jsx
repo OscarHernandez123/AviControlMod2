@@ -197,7 +197,7 @@ function AdminBarnsPage() {
             <div className="avi-drawer-id-card" data-node-id="216:1108">
               <div className="avi-drawer-id-top" data-node-id="216:1109">
                 <span className="avi-drawer-id-label" data-node-id="216:1110">
-                  IDENTIFICADOR
+                  ESTADO DEL GALPÓN
                 </span>
                 <span className="avi-drawer-id-pill" data-node-id="216:1111">
                   {selectedBarn.estado}
@@ -238,7 +238,7 @@ function AdminBarnsPage() {
               </div>
 
               <div className="avi-drawer-lote-banner" data-node-id="216:1129">
-                <span>{selectedBarn.loteActual?.id || 'Sin lote actual'}</span>
+                <span>{selectedBarn.loteActual ? 'Lote activo' : 'Sin lote actual'}</span>
               </div>
 
               <div className="avi-drawer-age-banner" data-node-id="216:1132">
