@@ -81,6 +81,11 @@ export default defineConfig({
         changeOrigin: true,
         headers: { Authorization: veterinarianAuthorization }
       },
+      '/api/ordenes-sacrificio-sanitario': {
+        target: backend,
+        changeOrigin: true,
+        headers: { Authorization: veterinarianAuthorization }
+      },
       '/api/solicitudes-aislamiento': {
         target: backend,
         changeOrigin: true,
@@ -90,7 +95,7 @@ export default defineConfig({
         target: backend,
         changeOrigin: true,
         configure: (proxy) => proxy.on('proxyReq', (proxyRequest, request) => {
-          proxyRequest.setHeader('Authorization', request.url.includes('/diagnosticos')
+          proxyRequest.setHeader('Authorization', request.url.includes('/diagnosticos') || request.url.includes('/ordenes-sacrificio-sanitario')
             ? veterinarianAuthorization : request.url.includes('/medicacion-diaria')
             ? workerAuthorization : request.url.includes('/plan-nutricional')
             ? nutritionistAuthorization : request.url.includes('/alimento-diario') || request.url.includes('/suministros-alimento') || request.url.includes('/mortalidad') || request.url.includes('/solicitudes-aislamiento')

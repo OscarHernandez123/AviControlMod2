@@ -1,6 +1,7 @@
 package com.avicontrol.infrastructure.adapter.in.rest.sacrificio.sanitario;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -77,6 +78,13 @@ class OrdenSacrificioSanitarioControllerTest {
         "VACIADO_SANITARIO",
         jdbc.queryForObject(
             "SELECT estado FROM modulo1_galpon_local WHERE id=?", String.class, galpon));
+    mvc.perform(get("/api/ordenes-sacrificio-sanitario").with(veterinario()))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$[0].id").value(orden.toString()))
+        .andExpect(jsonPath("$[0].estado").value("EJECUTADA"))
+        .andExpect(jsonPath("$[0].poblacionSacrificada").value(750));
+    mvc.perform(get("/api/ordenes-sacrificio-sanitario"))
+        .andExpect(status().isUnauthorized());
     mvc.perform(post("/api/ordenes-sacrificio-sanitario/{id}/ejecucion", orden).with(veterinario()))
         .andExpect(status().isConflict());
   }

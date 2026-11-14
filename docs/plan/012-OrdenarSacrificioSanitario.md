@@ -49,6 +49,7 @@ src/main/java/com/avicontrol/
 ├── application/
 │   └── sacrificio/sanitario/
 │       ├── ConfirmarEjecucionSacrificioSanitarioUseCase.java
+│       ├── ConsultarOrdenesSacrificioSanitarioUseCase.java
 │       ├── EmitirOrdenSacrificioSanitarioUseCase.java
 │       └── result/OrdenSacrificioSanitarioResult.java
 └── infrastructure/
@@ -153,6 +154,25 @@ src/test/java/com/avicontrol/
 
 ## Endpoints
 
+### Consultar órdenes
+
+| Método y ruta | Rol | Solicitud | Respuesta |
+| --- | --- | --- | --- |
+| `GET /api/ordenes-sacrificio-sanitario` | `ROLE_VETERINARIO` | Sin cuerpo | `200 OK` con órdenes persistidas, ordenadas por fecha de emisión descendente |
+
+```json
+[
+  {
+    "id": "66e81178-df4d-4c99-96ea-20c267c4e7b0",
+    "diagnosticoId": "06bf1256-80e3-4b71-8f5c-788284d68915",
+    "galponId": "550e8400-e29b-41d4-a716-446655440201",
+    "loteId": "550e8400-e29b-41d4-a716-446655440202",
+    "estado": "EJECUTADA",
+    "poblacionSacrificada": 5000
+  }
+]
+```
+
 ### Emitir orden
 
 | Método y ruta | Rol | Solicitud | Respuesta |
@@ -172,7 +192,7 @@ src/test/java/com/avicontrol/
 ## Polish & Cross-Cutting Concerns
 
 - [x] T016 Mapear `400` dato inválido, `401` no autenticado, `403` sin rol, `404` orden/diagnóstico ausente, `409` precondición, población o ejecución repetida y `503` dependencia no disponible.
-- [x] T017 Documentar consistencia, idempotencia y los dos endpoints en OpenAPI.
+- [x] T017 Documentar consistencia, idempotencia y los tres endpoints en OpenAPI.
 - [x] T018 Ejecutar pruebas y `git diff --check`.
 
 ---
