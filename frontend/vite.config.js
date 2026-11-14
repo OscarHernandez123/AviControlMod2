@@ -26,6 +26,11 @@ export default defineConfig({
         changeOrigin: true,
         headers: { Authorization: veterinarianAuthorization }
       },
+      '/api/medicaciones': {
+        target: backend,
+        changeOrigin: true,
+        headers: { Authorization: veterinarianAuthorization }
+      },
       '/api/recepciones/alimentos': {
         target: backend,
         changeOrigin: true,

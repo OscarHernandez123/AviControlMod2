@@ -5,6 +5,7 @@ import com.avicontrol.domain.port.out.sanitario.medicacion.MedicacionRepositoryP
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -40,6 +41,11 @@ public class MedicacionPersistenceAdapter implements MedicacionRepositoryPort {
   public Optional<Medicacion> buscar(UUID id) {
     return jdbc.query("SELECT * FROM medicaciones WHERE id = ?", this::mapear, id).stream()
         .findFirst();
+  }
+
+  @Override
+  public List<Medicacion> listar() {
+    return jdbc.query("SELECT * FROM medicaciones ORDER BY fecha_creacion DESC, id", this::mapear);
   }
 
   @Override

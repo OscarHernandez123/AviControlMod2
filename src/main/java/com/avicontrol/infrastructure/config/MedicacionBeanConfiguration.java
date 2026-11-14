@@ -1,6 +1,7 @@
 package com.avicontrol.infrastructure.config;
 
 import com.avicontrol.application.sanitario.medicacion.EditarMedicacionUseCase;
+import com.avicontrol.application.sanitario.medicacion.ListarMedicacionesUseCase;
 import com.avicontrol.application.sanitario.medicacion.RegistrarMedicacionUseCase;
 import com.avicontrol.domain.port.out.sanitario.medicacion.EnfermedadQueryPort;
 import com.avicontrol.domain.port.out.sanitario.medicacion.MedicacionRepositoryPort;
@@ -11,6 +12,11 @@ import org.springframework.context.annotation.Configuration;
 
 @Configuration
 public class MedicacionBeanConfiguration {
+  @Bean
+  ListarMedicacionesUseCase listarMedicaciones(MedicacionRepositoryPort repository) {
+    return new ListarMedicacionesUseCase(repository);
+  }
+
   @Bean
   RegistrarMedicacionUseCase registrarMedicacion(
       MedicacionRepositoryPort repository,

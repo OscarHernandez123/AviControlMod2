@@ -1,6 +1,7 @@
 package com.avicontrol.infrastructure.adapter.in.rest.medicacion;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -61,6 +62,13 @@ class MedicacionControllerTest {
             .getContentAsString();
     UUID medicacion = UUID.fromString(json.readTree(response).get("id").asText());
     mvc.perform(
+            get("/api/medicaciones")
+                .with(SecurityMockMvcRequestPostProcessors.user("vet").roles("VETERINARIO")))
+        .andExpect(status().isOk())
+        .andExpect(
+            jsonPath("$[?(@.id == '" + medicacion + "')].duracionDias")
+                .value(org.hamcrest.Matchers.hasItem(5)));
+    mvc.perform(
             put("/api/medicaciones/{id}", medicacion)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(body(enfermedad, MEDICAMENTO, 7))
@@ -108,6 +116,10 @@ class MedicacionControllerTest {
             post("/api/medicaciones")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(body(enfermedad, MEDICAMENTO, 5))
+                .with(SecurityMockMvcRequestPostProcessors.user("admin").roles("ADMINISTRADOR")))
+        .andExpect(status().isForbidden());
+    mvc.perform(
+            get("/api/medicaciones")
                 .with(SecurityMockMvcRequestPostProcessors.user("admin").roles("ADMINISTRADOR")))
         .andExpect(status().isForbidden());
     mvc.perform(
