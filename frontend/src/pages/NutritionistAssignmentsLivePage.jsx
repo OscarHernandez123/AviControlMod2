@@ -3,8 +3,8 @@ import Sidebar from '../components/Sidebar';
 import Topbar from '../components/Topbar';
 import ApiMessage from '../components/ApiMessage';
 import {
-  adjustBarnNutritionStage, getBarnNutritionPlan, listTemplates, localBarnId,
-  substituteBarnNutritionPlan
+  adjustBarnNutritionStage, getBarnNutritionPlan, listCompatibleFoods, listTemplates,
+  localBarnId, selectBarnNutritionStageFood, substituteBarnNutritionPlan
 } from '../services/nutritionCatalogApi';
 
 const labels = { PRE_INICIO: 'Pre-inicio', INICIO: 'Inicio', ENGORDE: 'Engorde' };
@@ -18,6 +18,10 @@ function NutritionistAssignmentsLivePage() {
   const [newEndDay, setNewEndDay] = useState('');
   const [adjustmentReason, setAdjustmentReason] = useState('BAJO_PESO');
   const [adjustmentJustification, setAdjustmentJustification] = useState('');
+  const [selectedFutureStageId, setSelectedFutureStageId] = useState('');
+  const [compatibleFoods, setCompatibleFoods] = useState([]);
+  const [selectedFoodId, setSelectedFoodId] = useState('');
+  const [foodsLoading, setFoodsLoading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -62,6 +66,42 @@ function NutritionistAssignmentsLivePage() {
 
   const active = plan?.etapas?.find((stage) => stage.estadoEtapa === 'ACTIVA');
   const future = plan?.etapas?.filter((stage) => stage.estadoEtapa === 'FUTURA') || [];
+  const selectedFutureStage = future.find((stage) => stage.id === selectedFutureStageId) || future[0];
+
+  useEffect(() => {
+    if (!selectedFutureStage) {
+      setCompatibleFoods([]);
+      setSelectedFoodId('');
+      return undefined;
+    }
+    const controller = new AbortController();
+    setFoodsLoading(true);
+    listCompatibleFoods(selectedFutureStage.etapaCrianza, { signal: controller.signal })
+      .then((foods) => {
+        setCompatibleFoods(foods);
+        setSelectedFoodId(selectedFutureStage.alimentoId || '');
+      })
+      .catch((cause) => {
+        if (cause.name !== 'AbortError') setError(cause.message);
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setFoodsLoading(false);
+      });
+    return () => controller.abort();
+  }, [selectedFutureStage?.id, selectedFutureStage?.etapaCrianza, selectedFutureStage?.alimentoId]);
+
+  const selectFood = async (event) => {
+    event.preventDefault();
+    if (!selectedFutureStage || !selectedFoodId) return;
+    setSaving(true);
+    setError('');
+    try {
+      await selectBarnNutritionStageFood(localBarnId, selectedFutureStage.id, selectedFoodId);
+      setToast('El alimento de la etapa futura se actualizó correctamente.');
+      setReloadKey((value) => value + 1);
+    } catch (cause) { setError(cause.message); }
+    finally { setSaving(false); }
+  };
 
   const adjustStage = async (event) => {
     event.preventDefault();
@@ -159,6 +199,50 @@ function NutritionistAssignmentsLivePage() {
                       {saving ? 'Guardando...' : 'Aplicar ajuste'}
                     </button>
                   </form>
+                </div>
+              )}
+              {selectedFutureStage && (
+                <div className="avi-recent-orders-panel">
+                  <div className="avi-panel-header avi-panel-header-full">
+                    <h2 className="avi-panel-title">Alimento de etapa futura</h2>
+                  </div>
+                  <p className="avi-page-subtitle">
+                    Selecciona un alimento compatible. La disponibilidad se muestra para planificar compras; no impide asignarlo.
+                  </p>
+                  <form className="avi-figma-modal-grid" onSubmit={selectFood}>
+                    <div className="avi-figma-field">
+                      <label className="avi-figma-label" htmlFor="nutrition-future-stage">Etapa</label>
+                      <select id="nutrition-future-stage" className="avi-figma-input"
+                        value={selectedFutureStage.id}
+                        onChange={(event) => setSelectedFutureStageId(event.target.value)}>
+                        {future.map((stage) => (
+                          <option key={stage.id} value={stage.id}>
+                            {labels[stage.etapaCrianza]} · días {stage.diaInicio}–{stage.diaFin}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="avi-figma-field">
+                      <label className="avi-figma-label" htmlFor="nutrition-future-food">Alimento compatible</label>
+                      <select id="nutrition-future-food" className="avi-figma-input"
+                        value={selectedFoodId} onChange={(event) => setSelectedFoodId(event.target.value)}
+                        disabled={foodsLoading} required>
+                        <option value="">Seleccionar alimento</option>
+                        {compatibleFoods.map((food) => (
+                          <option key={food.id} value={food.id}>
+                            {food.nombre} · {number(food.stockDisponibleKg)} kg · {food.estadoStock}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <button className="avi-btn-orange-cta" type="submit"
+                      disabled={saving || foodsLoading || !selectedFoodId || selectedFoodId === selectedFutureStage.alimentoId}>
+                      {saving ? 'Guardando...' : 'Asignar alimento'}
+                    </button>
+                  </form>
+                  {!foodsLoading && compatibleFoods.length === 0 && (
+                    <p className="avi-page-subtitle">No hay alimentos compatibles para esta etapa. Regístralos en Planes nutricionales.</p>
+                  )}
                 </div>
               )}
               <div className="avi-recent-orders-panel">
