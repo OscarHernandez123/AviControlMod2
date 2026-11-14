@@ -4,3 +4,10 @@ export async function getPendingHealthAlerts({ signal } = {}) {
   if (!response.ok) throw new Error(data?.detail || `HTTP ${response.status}`);
   return data;
 }
+
+export async function getHealthAlert(id, { signal } = {}) {
+  const response = await fetch(`/api/alertas-sanitarias/${encodeURIComponent(id)}`, { signal });
+  const data = await response.json().catch(() => null);
+  if (!response.ok) throw new Error(data?.detail || `HTTP ${response.status}`);
+  return data;
+}

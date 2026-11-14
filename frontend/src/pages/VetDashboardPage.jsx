@@ -5,13 +5,15 @@ import Topbar from '../components/Topbar';
 import StatCard from '../components/StatCard';
 import BaseModal from '../components/BaseModal';
 import ApiMessage from '../components/ApiMessage';
-import { getPendingHealthAlerts } from '../services/healthAlertsApi';
+import { getPendingHealthAlerts, getHealthAlert } from '../services/healthAlertsApi';
 import { getPendingIsolationRequests, getIsolationRequest, validateIsolationRequest, getIsolatedBarns } from '../services/isolationApi';
 import { listDiagnoses } from '../services/diagnosesApi';
 
 function VetDashboardPage() {
   const navigate = useNavigate();
   const [healthAlerts, setHealthAlerts] = useState(null);
+  const [selectedAlert, setSelectedAlert] = useState(null);
+  const [alertsReload, setAlertsReload] = useState(0);
   const [alertsError, setAlertsError] = useState('');
   const [pendingRequests, setPendingRequests] = useState([]);
   const [isolatedBarns, setIsolatedBarns] = useState([]);
@@ -80,7 +82,16 @@ function VetDashboardPage() {
       .then(setHealthAlerts)
       .catch((cause) => { if (cause.name !== 'AbortError') setAlertsError(cause.message); });
     return () => controller.abort();
-  }, []);
+  }, [alertsReload]);
+
+  const openAlert = async (id) => {
+    setAlertsError('');
+    try {
+      setSelectedAlert(await getHealthAlert(id));
+    } catch (cause) {
+      setAlertsError(cause.message);
+    }
+  };
 
   return (
     <div className="avi-role-layout">
@@ -131,6 +142,9 @@ function VetDashboardPage() {
             <div className="avi-panel-header avi-panel-header-full">
               <div className="avi-panel-icon-28"><img alt="" src="/assets/vet-bell.svg" /></div>
               <h2 className="avi-panel-title">Alertas de mortalidad pendientes</h2>
+              <div className="avi-panel-spacer" />
+              <button type="button" className="avi-admin-table-btn avi-admin-table-btn-green"
+                onClick={() => setAlertsReload((value) => value + 1)}>Actualizar</button>
             </div>
             {!healthAlerts && !alertsError && <p className="avi-page-subtitle">Cargando alertas...</p>}
             {healthAlerts?.elementos?.length === 0 && <p className="avi-page-subtitle">No hay alertas pendientes.</p>}
@@ -141,6 +155,7 @@ function VetDashboardPage() {
                 <span style={{ flex: 1 }}>Porcentaje</span>
                 <span style={{ flex: 1 }}>Causa</span>
                 <span style={{ flex: 1 }}>Prioridad</span>
+                <span style={{ flex: 1 }}>Acción</span>
               </div>
               {healthAlerts.elementos.map((alert) => <div className="avi-orders-trow" key={alert.id}>
                 <span style={{ flex: 1 }}>{alert.nombreGalpon}</span>
@@ -148,6 +163,9 @@ function VetDashboardPage() {
                 <span style={{ flex: 1 }}>{alert.porcentajeMortalidad}%</span>
                 <span style={{ flex: 1 }}>{alert.causaProbable}</span>
                 <span style={{ flex: 1 }}>{alert.prioridad}</span>
+                <span style={{ flex: 1 }}><button type="button"
+                  className="avi-admin-table-btn avi-admin-table-btn-green"
+                  onClick={() => openAlert(alert.id)}>Ver detalle</button></span>
               </div>)}
             </div>}
           </div>
@@ -254,6 +272,34 @@ function VetDashboardPage() {
           </div>
         </div>
       </div>
+      <BaseModal isOpen={Boolean(selectedAlert)}
+        onClose={() => setSelectedAlert(null)} maxWidth="720px">
+        {selectedAlert && <div className="avi-figma-modal-720">
+          <div className="avi-figma-modal-header">
+            <div className="avi-figma-modal-titles">
+              <h2 className="avi-figma-modal-title">Alerta sanitaria · {selectedAlert.nombreGalpon}</h2>
+              <p className="avi-figma-modal-subtitle">{selectedAlert.id}</p>
+            </div>
+            <button type="button" className="avi-figma-modal-close"
+              onClick={() => setSelectedAlert(null)}>×</button>
+          </div>
+          <div className="avi-figma-modal-grid">
+            <p><strong>Prioridad:</strong> {selectedAlert.prioridad}</p>
+            <p><strong>Estado:</strong> {selectedAlert.estado}</p>
+            <p><strong>Galpón:</strong> {selectedAlert.nombreGalpon}</p>
+            <p><strong>Estado del galpón:</strong> {selectedAlert.estadoGalpon}</p>
+            <p><strong>Muertes:</strong> {selectedAlert.cantidadMuertes}</p>
+            <p><strong>Mortalidad:</strong> {selectedAlert.porcentajeMortalidad}%</p>
+            <p><strong>Población actual:</strong> {Number(selectedAlert.poblacionActual).toLocaleString('es-CO')}</p>
+            <p><strong>Edad:</strong> {selectedAlert.edadDias} días</p>
+            <p><strong>Causa probable:</strong> {selectedAlert.causaProbable}</p>
+            <p><strong>Responsable:</strong> {selectedAlert.responsable}</p>
+            <p style={{ gridColumn: '1 / -1' }}>
+              <strong>Observaciones:</strong> {selectedAlert.observaciones || 'Sin observaciones'}
+            </p>
+          </div>
+        </div>}
+      </BaseModal>
       <BaseModal isOpen={Boolean(selectedRequest)}
         onClose={() => { if (!decisionSaving) setSelectedRequest(null); }} maxWidth="720px">
         {selectedRequest && <form className="avi-figma-modal-720" onSubmit={saveDecision}>
