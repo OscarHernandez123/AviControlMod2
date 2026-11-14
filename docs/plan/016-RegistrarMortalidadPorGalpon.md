@@ -29,58 +29,37 @@ docs/
 ### Source Code (repository root)
 
 ```text
-src/main/java/com/avicontrol/
-├── domain/
-│   ├── model/mortalidad/
-│   │   ├── CausaMortalidad.java
-│   │   ├── ClasificacionMortalidad.java
-│   │   └── RegistroMortalidad.java
-│   ├── exception/mortalidad/
-│   │   ├── CantidadMortalidadInvalidaException.java
-│   │   ├── FechaMortalidadInvalidaException.java
-│   │   └── LoteActivoNoEncontradoException.java
-│   └── port/out/mortalidad/
-│       ├── ActualizarInventarioVivoPort.java
-│       ├── RegistroMortalidadRepositoryPort.java
-│       └── UmbralMortalidadQueryPort.java
-├── application/
-│   └── mortalidad/
-│       ├── RegistrarMortalidadCommand.java
-│       ├── RegistrarMortalidadUseCase.java
-│       └── result/RegistroMortalidadResult.java
-└── infrastructure/
-    ├── adapter/in/rest/mortalidad/
-    │   ├── MortalidadController.java
-    │   ├── dto/
-    │   │   ├── RegistrarMortalidadRequest.java
-    │   │   └── RegistroMortalidadResponse.java
-    │   └── mapper/MortalidadRestMapper.java
-    ├── adapter/out/persistence/mortalidad/RegistroMortalidadPersistenceAdapter.java
-    └── config/MortalidadBeanConfiguration.java
-
-src/main/resources/db/migration/
-└── V__crear_registros_mortalidad.sql
-
-src/test/java/com/avicontrol/
-├── domain/model/mortalidad/RegistroMortalidadTest.java
-├── application/mortalidad/RegistrarMortalidadUseCaseTest.java
-└── infrastructure/adapter/in/rest/mortalidad/MortalidadControllerTest.java
+src/main/java/com/avicontrol/application/mortalidad/RegistrarMortalidadCommand.java
+src/main/java/com/avicontrol/application/mortalidad/RegistrarMortalidadUseCase.java
+src/main/java/com/avicontrol/application/mortalidad/result/RegistroMortalidadResult.java
+src/main/java/com/avicontrol/domain/model/mortalidad/CausaMortalidad.java
+src/main/java/com/avicontrol/domain/model/mortalidad/ClasificacionMortalidad.java
+src/main/java/com/avicontrol/domain/model/mortalidad/RegistroMortalidad.java
+src/main/java/com/avicontrol/domain/port/out/mortalidad/RegistroMortalidadRepositoryPort.java
+src/main/java/com/avicontrol/infrastructure/adapter/in/rest/mortalidad/dto/RegistrarMortalidadRequest.java
+src/main/java/com/avicontrol/infrastructure/adapter/in/rest/mortalidad/dto/RegistroMortalidadResponse.java
+src/main/java/com/avicontrol/infrastructure/adapter/in/rest/mortalidad/mapper/MortalidadRestMapper.java
+src/main/java/com/avicontrol/infrastructure/adapter/in/rest/mortalidad/MortalidadController.java
+src/main/java/com/avicontrol/infrastructure/adapter/out/persistence/mortalidad/RegistroMortalidadPersistenceAdapter.java
+src/main/java/com/avicontrol/infrastructure/config/MortalidadBeanConfiguration.java
+src/main/resources/db/migration/V20__crear_inventario_vivo_y_mortalidad.sql
+src/test/java/com/avicontrol/infrastructure/adapter/in/rest/mortalidad/MortalidadAlertaIntegrationTest.java
 ```
 
 **Structure Decision**: el evento de mortalidad es evidencia local inmutable. El lote y su población son propiedad del Módulo 1 y se actualizan a través de un puerto; la clasificación anormal sólo genera un evento o puerto de extensión, no implementa la alerta aquí.
 
 ## Phase 1: Setup (Shared Infrastructure)
 
-- [ ] T001 Confirmar el puerto del Plan 019 para disminuir población con control de concurrencia.
-- [ ] T002 Acordar umbral diario y contrato de extensión hacia los Planes 017/018.
-- [ ] T003 Crear migración de eventos inmutables con usuario, lote, galpón, fecha de evento y clasificación.
+- [x] T001 Confirmar el puerto del Plan 019 para disminuir población con control de concurrencia.
+- [x] T002 Acordar umbral diario y contrato de extensión hacia los Planes 017/018.
+- [x] T003 Crear migración de eventos inmutables con usuario, lote, galpón, fecha de evento y clasificación.
 
 ## Phase 2: Foundational (Blocking Prerequisites)
 
-- [ ] T004 Crear `RegistroMortalidad` y validar cantidad, fecha/hora, causa y observaciones.
-- [ ] T005 Consultar el lote activo más reciente y validar cantidad contra población vigente.
-- [ ] T006 Calcular clasificación normal/anormal según el umbral sobre población viva.
-- [ ] T007 Definir la operación atómica o compensable entre guardar evento y disminuir población.
+- [x] T004 Crear `RegistroMortalidad` y validar cantidad, fecha/hora, causa y observaciones.
+- [x] T005 Consultar el lote activo más reciente y validar cantidad contra población vigente.
+- [x] T006 Calcular clasificación normal/anormal según el umbral sobre población viva.
+- [x] T007 Definir la operación atómica o compensable entre guardar evento y disminuir población.
 
 **Checkpoint**: ningún evento inválido o parcialmente confirmado altera la población.
 
@@ -90,8 +69,8 @@ src/test/java/com/avicontrol/
 
 **Independent Test**: registrar cuatro muertes para población 7.960 crea el evento y deja 7.956; cantidad superior, fecha futura o sin lote no crean ni actualizan nada.
 
-- [ ] T008 [P] [US1] Probar cantidad, fechas, población igual a cantidad, lote ausente e idempotencia.
-- [ ] T009 [US1] Implementar `RegistrarMortalidadUseCase`, persistencia y actualización de inventario vivo.
+- [x] T008 [P] [US1] Probar cantidad, fechas, población igual a cantidad, lote ausente e idempotencia.
+- [x] T009 [US1] Implementar `RegistrarMortalidadUseCase`, persistencia y actualización de inventario vivo.
 
 ## Phase 4: User Story 2 - Detectar mortalidad anormal (Priority: P2)
 
@@ -99,8 +78,8 @@ src/test/java/com/avicontrol/
 
 **Independent Test**: mortalidad igual al 100 % queda registrada como anormal y se emite una única extensión sanitaria; un evento normal no la emite.
 
-- [ ] T010 [P] [US2] Probar umbral, múltiples eventos del día y publicación sólo después de confirmación.
-- [ ] T011 [US2] Publicar el evento de mortalidad anormal para consumo del Plan 017/018.
+- [x] T010 [P] [US2] Probar umbral, múltiples eventos del día y publicación sólo después de confirmación.
+- [x] T011 [US2] Publicar el evento de mortalidad anormal para consumo del Plan 017/018.
 
 ## Endpoints
 
@@ -131,9 +110,9 @@ src/test/java/com/avicontrol/
 
 ## Polish & Cross-Cutting Concerns
 
-- [ ] T012 Documentar inmutabilidad, umbral y enlace con mortalidad anormal.
-- [ ] T013 Añadir métricas de eventos anormales y fallos de actualización de población.
-- [ ] T014 Ejecutar pruebas y `git diff --check`.
+- [x] T012 Documentar inmutabilidad, umbral y enlace con mortalidad anormal.
+- [x] T013 Añadir métricas de eventos anormales y fallos de actualización de población.
+- [x] T014 Ejecutar pruebas y `git diff --check`.
 
 ## Dependencies & Execution Order
 
@@ -142,6 +121,10 @@ src/test/java/com/avicontrol/
 - **US1** confirma el evento; **US2** actúa sólo después de esa confirmación.
 
 ## Notes
+
+- El descuento, el evento y su extensión anormal comparten una transacción local. La clasificación diaria se calcula después de bloquear y descontar la población para incluir eventos concurrentes ya confirmados.
+- Los contadores `avicontrol.mortalidad.eventos_anormales` y `avicontrol.mortalidad.fallos_actualizacion_poblacion` registran eventos confirmados y fallos de descuento, respectivamente.
+- Verificado el 12/11/2026 con clasificación diaria concurrente, descuento de población y publicación de alerta en H2 y PostgreSQL.
 
 - Registros confirmados no se editan ni eliminan; las correcciones requieren un procedimiento compensatorio futuro.
 - El Plan 017 define la gestión de la extensión sanitaria y el Plan 019 la implementación detallada de inventario vivo.

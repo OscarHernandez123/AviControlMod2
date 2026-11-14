@@ -29,57 +29,37 @@ docs/
 ### Source Code (repository root)
 
 ```text
-src/main/java/com/avicontrol/
-├── domain/
-│   ├── model/alerta/
-│   │   ├── AlertaSanitaria.java
-│   │   ├── EstadoAlertaSanitaria.java
-│   │   └── PrioridadAlerta.java
-│   ├── exception/alerta/RegistroMortalidadAnormalInvalidoException.java
-│   └── port/out/alerta/
-│       ├── AlertaSanitariaRepositoryPort.java
-│       ├── ContextoAlertaSanitariaQueryPort.java
-│       └── MortalidadAnormalQueryPort.java
-├── application/alerta/
-│   ├── ConsultarAlertasSanitariasUseCase.java
-│   ├── ConsultarDetalleAlertaSanitariaUseCase.java
-│   ├── GenerarAlertaSanitariaUseCase.java
-│   └── result/
-│       ├── AlertaSanitariaDetalleResult.java
-│       └── AlertaSanitariaResult.java
-└── infrastructure/
-    ├── adapter/in/rest/alerta/
-    │   ├── AlertaSanitariaController.java
-    │   ├── dto/
-    │   │   ├── AlertaSanitariaDetalleResponse.java
-    │   │   └── AlertaSanitariaPageResponse.java
-    │   └── mapper/AlertaSanitariaRestMapper.java
-    ├── adapter/out/persistence/alerta/AlertaSanitariaPersistenceAdapter.java
-    └── config/AlertaSanitariaBeanConfiguration.java
-
-src/main/resources/db/migration/
-└── V__crear_alertas_sanitarias.sql
-
-src/test/java/com/avicontrol/
-├── domain/model/alerta/AlertaSanitariaTest.java
-├── application/alerta/GenerarAlertaSanitariaUseCaseTest.java
-└── infrastructure/adapter/in/rest/alerta/AlertaSanitariaControllerTest.java
+src/main/java/com/avicontrol/application/alerta/ConsultarAlertasSanitariasUseCase.java
+src/main/java/com/avicontrol/application/alerta/GenerarAlertaSanitariaUseCase.java
+src/main/java/com/avicontrol/application/alerta/result/AlertaSanitariaResult.java
+src/main/java/com/avicontrol/domain/model/alerta/AlertaSanitaria.java
+src/main/java/com/avicontrol/domain/port/out/alerta/AlertaSanitariaQueryPort.java
+src/main/java/com/avicontrol/domain/port/out/alerta/AlertaSanitariaRepositoryPort.java
+src/main/java/com/avicontrol/infrastructure/adapter/in/rest/alerta/AlertaSanitariaController.java
+src/main/java/com/avicontrol/infrastructure/adapter/in/rest/alerta/dto/AlertaSanitariaResponse.java
+src/main/java/com/avicontrol/infrastructure/adapter/out/persistence/alerta/AlertaSanitariaPersistenceAdapter.java
+src/main/java/com/avicontrol/infrastructure/adapter/out/persistence/alerta/AlertaSanitariaQueryAdapter.java
+src/main/java/com/avicontrol/infrastructure/config/MortalidadBeanConfiguration.java
+src/main/resources/db/migration/V21__crear_mortalidad_anormal_y_alertas.sql
+src/test/java/com/avicontrol/infrastructure/adapter/in/rest/mortalidad/MortalidadAlertaIntegrationTest.java
+src/test/java/com/avicontrol/application/mortalidad/MortalidadAlertaRollbackTest.java
+src/test/java/com/avicontrol/domain/model/mortalidad/RegistroMortalidadAnormalTest.java
 ```
 
 **Structure Decision**: alerta es un agregado local inmutable. El reporte anormal es la fuente obligatoria y sus datos se conservan como contexto; galpón/lote se consultan sólo para complementar la vista veterinaria.
 
 ## Phase 1: Setup (Shared Infrastructure)
 
-- [ ] T001 Acordar con el Plan 017 el comando interno idempotente de generación.
-- [ ] T002 Crear migración con unicidad por reporte de mortalidad anormal y referencias de lote y galpón.
-- [ ] T003 Definir rangos de prioridad alta, crítica y emergencia sanitaria.
+- [x] T001 Acordar con el Plan 017 el comando interno idempotente de generación.
+- [x] T002 Crear migración con unicidad por reporte de mortalidad anormal y referencias de lote y galpón.
+- [x] T003 Definir rangos de prioridad alta, crítica y emergencia sanitaria.
 
 ## Phase 2: Foundational (Blocking Prerequisites)
 
-- [ ] T004 Crear `AlertaSanitaria` con estado inicial `PENDIENTE_ATENCION_VETERINARIA` e inmutabilidad.
-- [ ] T005 Derivar prioridad desde porcentaje y severidad, elevando a emergencia la mortalidad total.
-- [ ] T006 Definir repositorio, consulta de reporte y contexto de galpón/lote.
-- [ ] T007 Implementar idempotencia por identificador del reporte y transacción/outbox con Plan 017.
+- [x] T004 Crear `AlertaSanitaria` con estado inicial `PENDIENTE_ATENCION_VETERINARIA` e inmutabilidad.
+- [x] T005 Derivar prioridad desde porcentaje y severidad, elevando a emergencia la mortalidad total.
+- [x] T006 Definir repositorio, consulta de reporte y contexto de galpón/lote.
+- [x] T007 Implementar idempotencia por identificador del reporte y transacción/outbox con Plan 017.
 
 **Checkpoint**: una repetición del mismo reporte devuelve la misma alerta; reportes distintos generan alertas distintas.
 
@@ -89,8 +69,8 @@ src/test/java/com/avicontrol/
 
 **Independent Test**: un reporte confirmado crea una alerta asociada; un reintento no duplica, y un reporte inexistente no crea ninguna.
 
-- [ ] T008 [P] [US1] Probar idempotencia, prioridad, mortalidad total y reversión ante fallo.
-- [ ] T009 [US1] Implementar `GenerarAlertaSanitariaUseCase` como puerto de aplicación sin controlador público de creación.
+- [x] T008 [P] [US1] Probar idempotencia, prioridad, mortalidad total y reversión ante fallo.
+- [x] T009 [US1] Implementar `GenerarAlertaSanitariaUseCase` como puerto de aplicación sin controlador público de creación.
 
 ## Phase 4: User Story 2 - Consultar contexto de alerta (Priority: P2)
 
@@ -98,8 +78,8 @@ src/test/java/com/avicontrol/
 
 **Independent Test**: una alerta pendiente muestra nombre/aforo/estado, lote con edad y población, y causa, observaciones, cantidad y porcentaje del reporte.
 
-- [ ] T010 [P] [US2] Probar página vacía, detalle, contexto no disponible y autorización.
-- [ ] T011 [US2] Implementar casos de uso de listado y detalle con DTO y mapper REST.
+- [x] T010 [P] [US2] Probar página vacía, detalle, contexto no disponible y autorización.
+- [x] T011 [US2] Implementar casos de uso de listado y detalle con DTO y mapper REST.
 
 ## Endpoints
 
@@ -124,9 +104,9 @@ src/test/java/com/avicontrol/
 
 ## Polish & Cross-Cutting Concerns
 
-- [ ] T012 Documentar que la creación es interna y que la alerta no se cierra ni elimina aquí.
-- [ ] T013 Añadir auditoría de generación y métricas de prioridad.
-- [ ] T014 Ejecutar pruebas y `git diff --check`.
+- [x] T012 Documentar que la creación es interna y que la alerta no se cierra ni elimina aquí.
+- [x] T013 Añadir auditoría de generación y métricas de prioridad.
+- [x] T014 Ejecutar pruebas y `git diff --check`.
 
 ## Dependencies & Execution Order
 
@@ -135,6 +115,10 @@ src/test/java/com/avicontrol/
 - **US1** genera contexto base; **US2** lo presenta de sólo lectura.
 
 ## Notes
+
+- No hay endpoint público de creación. El reporte y la alerta comparten transacción; el índice único por `reporte_id` evita más de una alerta para el mismo reporte.
+- La auditoría conserva fecha de emisión, identificador del reporte y responsable mediante la referencia al reporte inmutable. El contador `avicontrol.alertas_sanitarias.generadas` se incrementa por prioridad después de confirmar la transacción.
+- Verificado el 12/11/2026 con generación única, página vacía, detalle, autorización, contexto no disponible y OpenAPI; `git diff --check` limpio.
 
 - No hay endpoint público para crear alertas manualmente.
 - Múltiples reportes del mismo galpón pueden generar alertas independientes y conservar su historial.

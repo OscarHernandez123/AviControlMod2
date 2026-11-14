@@ -30,51 +30,33 @@ docs/
 
 ```text
 src/main/java/com/avicontrol/
-├── domain/model/alimentacion/
-│   ├── BalanceAbastecimientoAlimento.java
-│   ├── HistorialAjusteProyeccion.java
-│   └── ProyeccionAlimentoEtapa.java
-├── domain/port/out/alimentacion/
-│   ├── CostoReferenciaAlimentoQueryPort.java
-│   ├── ProyeccionAlimentoRepositoryPort.java
-│   └── StockAlimentoQueryPort.java
-├── application/alimentacion/
-│   ├── ActualizarProyeccionPorProrrogaUseCase.java
-│   ├── CompletarCostoReferenciaUseCase.java
-│   ├── ConsultarBalanceAbastecimientoUseCase.java
-│   ├── ConsultarRequerimientoLoteFinanzasUseCase.java
-│   └── RegistrarProyeccionEtapaUseCase.java
-└── infrastructure/adapter/in/rest/alimentacion/
-    ├── BalanceAbastecimientoController.java
-    ├── ProyeccionAlimentoLoteController.java
-    ├── dto/
-    │   ├── BalanceAbastecimientoResponse.java
-    │   └── RequerimientoAlimentoLoteResponse.java
-    └── mapper/ProyeccionAlimentoRestMapper.java
+├── application/alimentacion/ProyeccionAlimentoUseCase.java
+├── application/alimentacion/port/ProyeccionAlimentoRepositoryPort.java
+├── infrastructure/adapter/in/rest/alimentacion/ProyeccionAlimentoController.java
+├── infrastructure/adapter/out/persistence/alimentacion/ProyeccionAlimentoPersistenceAdapter.java
+└── infrastructure/adapter/out/integration/inventario/DemandaAlimentoQueryAdapter.java
 
 src/main/resources/db/migration/
-└── V__crear_proyecciones_alimento_lote.sql
+└── V7__crear_planes_y_proyecciones_alimento.sql
 
 src/test/java/com/avicontrol/
-├── domain/model/alimentacion/ProyeccionAlimentoEtapaTest.java
-├── application/alimentacion/ConsultarRequerimientoLoteFinanzasUseCaseTest.java
-└── infrastructure/adapter/in/rest/alimentacion/ProyeccionAlimentoLoteControllerTest.java
+└── application/alimentacion/NutricionInventarioIntegrationTest.java
 ```
 
 **Structure Decision**: cada proyección pertenece a una etapa y lote, nunca al galpón como unidad financiera. Inventario sólo proporciona stock y costo de referencia de lectura; el costo real sigue siendo responsabilidad del Módulo 3 a partir de consumos reales.
 
 ## Phase 1: Setup (Shared Infrastructure)
 
-- [ ] T001 Confirmar eventos de activación y prórroga del Plan 021.
-- [ ] T002 Definir consulta de promedio ponderado de saldos elegibles a la fecha de activación.
-- [ ] T003 Crear migración para proyección, estado, costo nullable y historial de ajustes.
+- [x] T001 Confirmar eventos de activación y prórroga del Plan 021.
+- [x] T002 Definir consulta de promedio ponderado de saldos elegibles a la fecha de activación.
+- [x] T003 Crear migración para proyección, estado, costo nullable y historial de ajustes.
 
 ## Phase 2: Foundational (Blocking Prerequisites)
 
-- [ ] T004 Crear `ProyeccionAlimentoEtapa` con fórmula población × cuota × días efectivos.
-- [ ] T005 Capturar alimento, población, cuota, presentación y costo como snapshot inmutable al activar etapa.
-- [ ] T006 Calcular promedio ponderado half-up a dos decimales; si no hay stock elegible guardar `null` y advertencia.
-- [ ] T007 Implementar historial append-only y bloqueo de etapas completadas.
+- [x] T004 Crear `ProyeccionAlimentoEtapa` con fórmula población × cuota × días efectivos.
+- [x] T005 Capturar alimento, población, cuota, presentación y costo como snapshot inmutable al activar etapa.
+- [x] T006 Calcular promedio ponderado half-up a dos decimales; si no hay stock elegible guardar `null` y advertencia.
+- [x] T007 Implementar historial append-only y bloqueo de etapas completadas.
 
 **Checkpoint**: proyecciones de distintas etapas permanecen separadas y los cambios futuros de precio no alteran snapshots.
 
@@ -84,8 +66,8 @@ src/test/java/com/avicontrol/
 
 **Independent Test**: un lote cerrado devuelve Pre-inicio, Inicio y Engorde con kg y costos de referencia separados.
 
-- [ ] T008 [P] [US1] Probar fórmula, etapa activa/finalizada, costo nulo y respuestas por etapa.
-- [ ] T009 [US1] Implementar consulta de requerimiento y DTO financiero.
+- [x] T008 [P] [US1] Probar fórmula, etapa activa/finalizada, costo nulo y respuestas por etapa.
+- [x] T009 [US1] Implementar consulta de requerimiento y DTO financiero.
 
 ## Phase 4: User Story 2 - Generar y ajustar proyección (Priority: P2)
 
@@ -93,18 +75,18 @@ src/test/java/com/avicontrol/
 
 **Independent Test**: una prórroga de cuatro días cambia 14 a 18 días y conserva alimento, población y costo, agregando historial.
 
-- [ ] T010 [P] [US2] Probar transición de etapa, costo capturado, prórrogas sucesivas e inmutabilidad completada.
-- [ ] T011 [US2] Implementar casos de uso internos de registro y ajuste desde Plan 021.
-- [ ] T012 [US2] Permitir completar una vez el costo nulo mientras la etapa sigue activa y con auditoría de administrador.
+- [x] T010 [P] [US2] Probar transición de etapa, costo capturado, prórrogas sucesivas e inmutabilidad completada.
+- [x] T011 [US2] Implementar casos de uso internos de registro y ajuste desde Plan 021.
+- [x] T012 [US2] Permitir completar una vez el costo nulo mientras la etapa sigue activa y con auditoría de administrador.
 
 ## Phase 5: User Story 3 - Consultar balance de abastecimiento (Priority: P2)
 
 **Goal**: agrupar demanda de etapas activas por alimento/presentación y compararla con stock vigente.
 
-**Independent Test**: demanda de 11.942.50 kg frente a stock 8.000 kg devuelve déficit 3.942.50 kg y bultos sugeridos, sin escribir en inventario.
+**Independent Test**: demanda de 11.942,50 kg frente a stock de 8.000 kg devuelve déficit de 3.942,50 kg y bultos sugeridos, sin escribir en inventario.
 
-- [ ] T013 [P] [US3] Probar agrupación, déficit, stock vencido excluido y consulta de sólo lectura.
-- [ ] T014 [US3] Implementar `ConsultarBalanceAbastecimientoUseCase`.
+- [x] T013 [P] [US3] Probar agrupación, déficit, stock vencido excluido y consulta de sólo lectura.
+- [x] T014 [US3] Implementar la consulta de balance en `ProyeccionAlimentoUseCase`.
 
 ## Endpoints
 
@@ -116,14 +98,67 @@ src/test/java/com/avicontrol/
 
 ```json
 {
+  "codigoLote": "LDP-005",
   "loteId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+  "galponId": "cdb7993a-e208-4ea8-9f90-a611e3e82a4c",
+  "estadoCiclo": "EN_PROGRESO",
+  "fechaConsulta": "2026-11-05T10:30:00-05:00",
   "etapas": [
     {
-      "etapa": "INICIO",
-      "kilogramosProyectados": 6142.50,
+      "etapaCrianza": "INICIO",
+      "tipoAlimento": "INICIO",
+      "alimentoComercial": "Alimento Inicio Broiler",
+      "pesoNominalPorBultoKg": 40,
+      "poblacionInicioEtapa": 10000,
+      "cuotaKgAveDia": 0.0430,
+      "estadoEtapa": "ACTIVA",
+      "kilogramosProyectados": 6020.00,
       "costoUnitarioKg": 1650.00,
+      "fuenteCosto": "PROMEDIO_PONDERADO_STOCK",
+      "fechaCapturaCosto": "2026-11-05T08:00:00-05:00",
+      "advertenciaCosto": null,
       "diasBase": 14,
-      "diasProrroga": 0
+      "diasProrroga": 0,
+      "diasEfectivos": 14,
+      "motivoProrroga": null,
+      "justificacion": null,
+      "historialAjustes": []
+    }
+  ]
+}
+```
+
+Solicitud y respuesta de `completar-costo` (solo una vez en etapa activa):
+
+```json
+{
+  "costoUnitarioKg": 1650.00,
+  "justificacion": "Precio histórico de las recepciones vigentes al activar la etapa"
+}
+```
+
+```json
+{
+  "proyeccionId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+  "costoUnitarioKg": 1650.00,
+  "fuenteCosto": "COMPLETADO_MANUALMENTE",
+  "costoCompletadoManualmente": true
+}
+```
+
+Respuesta de `balance-abastecimiento`:
+
+```json
+{
+  "alimentos": [
+    {
+      "alimentoId": "550e8400-e29b-41d4-a716-446655440000",
+      "pesoNominalPorBultoKg": 40,
+      "demandaConsolidadaKg": 11942.50,
+      "existenciaDisponibleKg": 8000,
+      "balanceKg": -3942.50,
+      "estado": "REABASTECIMIENTO_NECESARIO",
+      "bultosSugeridos": 99
     }
   ]
 }
@@ -133,8 +168,8 @@ src/test/java/com/avicontrol/
 
 ## Polish & Cross-Cutting Concerns
 
-- [ ] T015 Documentar costo de referencia frente a costo real y la ausencia de reservas.
-- [ ] T016 Ejecutar pruebas de eventos, concurrencia, HTTP y `git diff --check`.
+- [x] T015 Documentar costo de referencia frente a costo real y la ausencia de reservas.
+- [x] T016 Ejecutar pruebas de eventos, concurrencia, HTTP y `git diff --check`.
 
 ## Dependencies & Execution Order
 
@@ -143,5 +178,7 @@ src/test/java/com/avicontrol/
 
 ## Notes
 
+- `costoUnitarioKg` es una referencia capturada de saldos elegibles al activar la etapa; el costo real se obtiene de suministros y precios históricos en Finanzas. Consultar el balance no reserva existencias.
 - La finalización de etapa fija su costo `null` o capturado para siempre.
 - La liquidación final y costo real corresponden al Módulo 3.
+- Si una etapa transcurrió completamente durante una caída y no se capturó el precio al activarse, la recuperación la registra con `costoUnitarioKg = null` y advertencia. No usa el precio vigente como si fuera histórico; una etapa ya cerrada no admite completar ese costo.

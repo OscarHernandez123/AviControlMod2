@@ -29,38 +29,32 @@ docs/
 ### Source Code (repository root)
 
 ```text
-src/main/java/com/avicontrol/
-├── domain/
-│   ├── exception/modulo1/
-│   │   ├── PoblacionVivaInsuficienteException.java
-│   │   └── ReferenciaLoteInconsistenteException.java
-│   └── port/out/modulo1/ActualizarInventarioVivoPort.java
-├── application/modulo1/
-│   ├── ActualizarInventarioVivoCommand.java
-│   ├── ActualizarInventarioVivoUseCase.java
-│   └── result/InventarioVivoActualizadoResult.java
-└── infrastructure/
-    ├── adapter/out/integration/modulo1/InventarioVivoModulo1Adapter.java
-    └── config/InventarioVivoBeanConfiguration.java
-
-src/test/java/com/avicontrol/
-├── application/modulo1/ActualizarInventarioVivoUseCaseTest.java
-└── infrastructure/adapter/out/integration/modulo1/InventarioVivoModulo1AdapterTest.java
+src/main/java/com/avicontrol/application/modulo1/ActualizarInventarioVivoCommand.java
+src/main/java/com/avicontrol/application/modulo1/ActualizarInventarioVivoUseCase.java
+src/main/java/com/avicontrol/application/modulo1/result/InventarioVivoActualizadoResult.java
+src/main/java/com/avicontrol/domain/exception/modulo1/PoblacionVivaInsuficienteException.java
+src/main/java/com/avicontrol/domain/exception/modulo1/ReferenciaLoteInconsistenteException.java
+src/main/java/com/avicontrol/domain/port/out/modulo1/ActualizarInventarioVivoPort.java
+src/main/java/com/avicontrol/infrastructure/adapter/out/integration/modulo1/InventarioVivoModulo1Adapter.java
+src/main/java/com/avicontrol/infrastructure/adapter/out/integration/modulo1/InventarioVivoNoDisponibleAdapter.java
+src/main/java/com/avicontrol/infrastructure/config/InventarioVivoBeanConfiguration.java
+src/main/resources/db/migration/V20__crear_inventario_vivo_y_mortalidad.sql
+src/test/java/com/avicontrol/infrastructure/adapter/in/rest/mortalidad/MortalidadAlertaIntegrationTest.java
 ```
 
-**Structure Decision**: se usa un puerto de actualización del Módulo 1 y no hay entidad, repositorio ni migración local para `Lote`. El adaptador transmite versión e idempotency key para que el propietario proteja la concurrencia.
+**Structure Decision**: se usa un puerto de actualización del Módulo 1 y no hay entidad ni repositorio local para `Lote`. Mientras no esté disponible la integración real, el perfil local/test usa una migración de soporte y un adaptador transaccional con bloqueo del registro, versión y clave de idempotencia. Fuera de ese perfil, el adaptador responde que el Módulo 1 no está disponible.
 
 ## Phase 1: Setup (Shared Infrastructure)
 
-- [ ] T001 Acordar con el Módulo 1 un comando de descuento que reciba lote, galpón, bajas, causa, actor, versión y clave de idempotencia.
-- [ ] T002 Confirmar que el contrato mantiene inmutable `poblacionInicial` y devuelve población anterior y resultante.
-- [ ] T003 Preparar pruebas de saldo total, saldo insuficiente, reintento y versión obsoleta.
+- [x] T001 Definir el contrato del puerto hacia el Módulo 1 con lote, galpón, bajas, causa, actor, versión y clave de idempotencia; la conexión real se hará cuando esté disponible.
+- [x] T002 Confirmar que el adaptador local sólo modifica población actual y devuelve población anterior y resultante; `poblacionInicial` pertenece al Módulo 1.
+- [x] T003 Preparar pruebas de saldo total, saldo insuficiente, reintento y versión obsoleta.
 
 ## Phase 2: Foundational (Blocking Prerequisites)
 
-- [ ] T004 Crear `ActualizarInventarioVivoCommand` con causa trazable e idempotency key obligatoria.
-- [ ] T005 Validar cantidad positiva, lote/galpón presentes y coherencia de referencias.
-- [ ] T006 Implementar el puerto y adaptador con actualización condicional o bloqueo a nivel del lote.
+- [x] T004 Crear `ActualizarInventarioVivoCommand` con causa trazable e idempotency key obligatoria.
+- [x] T005 Validar cantidad positiva, lote/galpón presentes y coherencia de referencias.
+- [x] T006 Implementar el puerto y adaptador con actualización condicional o bloqueo a nivel del lote.
 
 **Checkpoint**: una misma causa confirmada no se descuenta dos veces y nunca deja población negativa.
 
@@ -70,9 +64,9 @@ src/test/java/com/avicontrol/
 
 **Independent Test**: sobre 8.000 aves, 40 bajas dejan 7.960; sobre 25, 25 dejan cero; 60 sobre 50 se rechaza sin modificar nada.
 
-- [ ] T007 [P] [US1] Probar cálculo, cero, saldo negativo, idempotencia y concurrencia.
-- [ ] T008 [US1] Implementar `ActualizarInventarioVivoUseCase` y adaptador de integración.
-- [ ] T009 [US1] Integrar el caso de uso con el Plan 016 después de confirmar el registro de mortalidad.
+- [x] T007 [P] [US1] Probar cálculo, cero, saldo negativo, idempotencia y concurrencia.
+- [x] T008 [US1] Implementar `ActualizarInventarioVivoUseCase` y adaptador de integración.
+- [x] T009 [US1] Integrar el caso de uso con el Plan 016 después de confirmar el registro de mortalidad.
 
 ## Endpoints
 
@@ -86,6 +80,8 @@ No expone endpoints HTTP públicos: es un contrato interno de aplicación invoca
   "galponId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
   "cantidadBajas": 4,
   "causa": "MORTALIDAD",
+  "actor": "operario",
+  "versionEsperada": 0,
   "idempotencyKey": "b07f5fd4-3b77-4e9a-a4eb-5d54f907c8a4"
 }
 ```
@@ -104,8 +100,8 @@ No expone endpoints HTTP públicos: es un contrato interno de aplicación invoca
 
 ## Polish & Cross-Cutting Concerns
 
-- [ ] T010 Añadir métricas de reintentos, conflictos de versión y descuentos aplicados.
-- [ ] T011 Documentar consumidores permitidos y ejecutar pruebas más `git diff --check`.
+- [x] T010 Añadir métricas de reintentos, conflictos de versión y descuentos aplicados.
+- [x] T011 Documentar consumidores permitidos y ejecutar pruebas más `git diff --check`.
 
 ## Dependencies & Execution Order
 
@@ -117,3 +113,7 @@ No expone endpoints HTTP públicos: es un contrato interno de aplicación invoca
 
 - `poblacionActual` puede llegar a cero, nunca ser negativa.
 - La actualización por sacrificio tiene reglas propias; no debe reutilizar este caso de uso sin un contrato explícito.
+- Consumidor autorizado: `RegistrarMortalidadUseCase` del Plan 016. El puerto valida lote y galpón, cantidad positiva, versión y clave de idempotencia; el adaptador local sólo actualiza `poblacion_viva` y conserva el resto de los datos del galpón.
+- Los contadores `avicontrol.inventario_vivo.reintentos`, `avicontrol.inventario_vivo.conflictos_version` y `avicontrol.inventario_vivo.descuentos_aplicados` cubren reintentos, versión obsoleta y descuentos confirmados.
+- La conexión con el Módulo 1 real sigue pendiente; fuera de `local` y `test`, el adaptador responde `503` y no simula descuentos.
+- Verificado el 12/11/2026 con saldo cero, saldo insuficiente, versión obsoleta, reintento y descuentos concurrentes en H2 y PostgreSQL.
