@@ -8,8 +8,14 @@ import { getIsolatedBarns } from '../services/isolationApi';
 import { listDiseases } from '../services/diseasesApi';
 import { listMedications } from '../services/medicationsApi';
 import { createDiagnosis, getDiagnosis, listDiagnoses } from '../services/diagnosesApi';
+import {
+  createMedicineConsumption, getLotMedicineConsumptions, getMedicineConsumption
+} from '../services/medicineConsumptionsApi';
 
 const blank = { galponId: '', enfermedadId: '', medicacionId: '', observaciones: '' };
+const todayInColombia = () => new Intl.DateTimeFormat('sv-SE', {
+  timeZone: 'America/Bogota', year: 'numeric', month: '2-digit', day: '2-digit'
+}).format(new Date());
 
 function VetDiagnosePage() {
   const [diagnoses, setDiagnoses] = useState([]);
@@ -24,6 +30,14 @@ function VetDiagnosePage() {
   const [message, setMessage] = useState('');
   const [messageType, setMessageType] = useState('info');
   const [saving, setSaving] = useState(false);
+  const [consumptions, setConsumptions] = useState([]);
+  const [consumptionDetail, setConsumptionDetail] = useState(null);
+  const [consumptionQuantity, setConsumptionQuantity] = useState('');
+  const [consumptionUnit, setConsumptionUnit] = useState('MILILITRO');
+  const [consumptionDate, setConsumptionDate] = useState(todayInColombia);
+  const [consumptionKey, setConsumptionKey] = useState(() => crypto.randomUUID());
+  const [consumptionSaving, setConsumptionSaving] = useState(false);
+  const [consumptionUncertain, setConsumptionUncertain] = useState(false);
 
   async function refresh(signal) {
     try {
@@ -83,7 +97,51 @@ function VetDiagnosePage() {
 
   async function showDetail(id) {
     try {
-      setDetail(await getDiagnosis(id));
+      const diagnosis = await getDiagnosis(id);
+      const history = await getLotMedicineConsumptions(diagnosis.loteId);
+      setDetail(diagnosis);
+      setConsumptions(history);
+      setConsumptionDetail(null);
+      setConsumptionQuantity('');
+      setConsumptionUnit('MILILITRO');
+      setConsumptionDate(todayInColombia());
+      setConsumptionKey(crypto.randomUUID());
+      setConsumptionUncertain(false);
+    } catch (error) {
+      setMessageType('error');
+      setMessage(error.message);
+    }
+  }
+
+  async function saveConsumption(event) {
+    event.preventDefault();
+    if (!detail || !(Number(consumptionQuantity) > 0)) return;
+    setConsumptionSaving(true);
+    try {
+      const saved = await createMedicineConsumption(detail.id, {
+        cantidad: Number(consumptionQuantity),
+        unidad: consumptionUnit,
+        fechaAplicacion: consumptionDate
+      }, consumptionKey);
+      setConsumptions((previous) => [saved, ...previous.filter((item) => item.id !== saved.id)]);
+      setConsumptionDetail(saved);
+      setConsumptionQuantity('');
+      setConsumptionKey(crypto.randomUUID());
+      setConsumptionUncertain(false);
+      setMessageType('success');
+      setMessage('Consumo de medicamento registrado.');
+    } catch (error) {
+      setConsumptionUncertain(!error.status || error.status >= 500);
+      setMessageType('error');
+      setMessage(error.message);
+    } finally {
+      setConsumptionSaving(false);
+    }
+  }
+
+  async function showConsumption(id) {
+    try {
+      setConsumptionDetail(await getMedicineConsumption(id));
     } catch (error) {
       setMessageType('error');
       setMessage(error.message);
@@ -243,6 +301,61 @@ function VetDiagnosePage() {
           <p><strong>Reintegro previsto:</strong> {detail.fechaReintegro || 'No aplica'}</p>
           <p><strong>Sacrificio sanitario:</strong> {detail.requiereSacrificioSanitario ? 'Sí' : 'No'}</p>
           <p style={{ gridColumn: '1 / -1' }}><strong>Observaciones:</strong> {detail.observaciones}</p>
+        </div>
+        {detail.estado === 'ACTIVO' && detail.medicamentoId &&
+          <form onSubmit={saveConsumption} className="avi-figma-modal-grid">
+            <h3 style={{ gridColumn: '1 / -1' }}>Registrar consumo de medicamento</h3>
+            <label className="avi-figma-field">
+              <span className="avi-figma-label">Cantidad aplicada</span>
+              <input type="number" min="0.0001" step="0.0001" required
+                className="avi-figma-input" value={consumptionQuantity}
+                disabled={consumptionSaving || consumptionUncertain}
+                onChange={(event) => setConsumptionQuantity(event.target.value)} />
+            </label>
+            <label className="avi-figma-field">
+              <span className="avi-figma-label">Unidad</span>
+              <select className="avi-figma-input" value={consumptionUnit}
+                disabled={consumptionSaving || consumptionUncertain}
+                onChange={(event) => setConsumptionUnit(event.target.value)}>
+                {['MILILITRO', 'GRAMO', 'MILIGRAMO', 'UNIDAD'].map((unit) =>
+                  <option key={unit} value={unit}>{unit}</option>)}
+              </select>
+            </label>
+            <label className="avi-figma-field">
+              <span className="avi-figma-label">Fecha de aplicación</span>
+              <input type="date" className="avi-figma-input" value={consumptionDate}
+                min={detail.fechaDiagnostico} max={todayInColombia()} required
+                disabled={consumptionSaving || consumptionUncertain}
+                onChange={(event) => setConsumptionDate(event.target.value)} />
+            </label>
+            <div className="avi-figma-field" style={{ alignSelf: 'end' }}>
+              <button type="submit" className="avi-figma-btn-green"
+                disabled={consumptionSaving || !consumptionQuantity}>
+                {consumptionSaving ? 'Guardando…'
+                  : consumptionUncertain ? 'Reintentar mismo envío' : 'Registrar consumo'}
+              </button>
+            </div>
+            {consumptionUncertain && <p style={{ gridColumn: '1 / -1' }}>
+              No se confirmó la respuesta. Reintenta sin cambiar los datos: se conserva la misma clave.
+            </p>}
+          </form>}
+        <div className="avi-figma-modal-grid">
+          <h3 style={{ gridColumn: '1 / -1' }}>Consumos del lote</h3>
+          {consumptions.length === 0 && <p>No hay consumos registrados para este lote.</p>}
+          {consumptions.map((item) => <div key={item.id}
+            style={{ gridColumn: '1 / -1', display: 'flex', justifyContent: 'space-between', gap: 12 }}>
+            <span>{item.fechaAplicacion} · {item.cantidadIngresada} {item.unidadIngresada}</span>
+            <span>{item.actor}</span>
+            <button type="button" className="avi-admin-table-btn avi-admin-table-btn-green"
+              onClick={() => showConsumption(item.id)}>Ver costo</button>
+          </div>)}
+          {consumptionDetail && <div style={{ gridColumn: '1 / -1' }}>
+            <h4>Detalle del consumo · {consumptionDetail.id}</h4>
+            {consumptionDetail.detallesInventario.map((item) => <p key={item.recepcionId}>
+              Recepción {item.recepcionId}: {item.cantidadUnidadBase} {consumptionDetail.unidadBase}
+              {' · '}{item.precioNetoHistoricoUnidadBase} {item.moneda} por unidad
+            </p>)}
+          </div>}
         </div>
       </div>}
     </BaseModal>

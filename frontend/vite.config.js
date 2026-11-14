@@ -36,6 +36,11 @@ export default defineConfig({
         changeOrigin: true,
         headers: { Authorization: veterinarianAuthorization }
       },
+      '/api/consumos-medicamento': {
+        target: backend,
+        changeOrigin: true,
+        headers: { Authorization: veterinarianAuthorization }
+      },
       '/api/medicacion-diaria': {
         target: backend,
         changeOrigin: true,
@@ -95,7 +100,10 @@ export default defineConfig({
       '/api/lotes': {
         target: backend,
         changeOrigin: true,
-        headers: { Authorization: nutritionistAuthorization }
+        configure: (proxy) => proxy.on('proxyReq', (proxyRequest, request) => {
+          proxyRequest.setHeader('Authorization', request.url.includes('/consumos-medicamento')
+            ? veterinarianAuthorization : nutritionistAuthorization);
+        })
       },
       '/api/administracion/balance-abastecimiento': {
         target: backend,
