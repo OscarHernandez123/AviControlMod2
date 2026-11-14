@@ -36,6 +36,10 @@ export const substituteBarnNutritionPlan = (barnId, data) =>
   request(`/api/galpones/${encodeURIComponent(barnId)}/plan-nutricional/sustituir`, {
     method: 'PUT', body: JSON.stringify(data)
   });
+export const adjustBarnNutritionStage = (barnId, stageId, data) =>
+  request(`/api/galpones/${encodeURIComponent(barnId)}/plan-nutricional/etapas/${encodeURIComponent(stageId)}/ajuste-duracion`, {
+    method: 'PUT', body: JSON.stringify(data)
+  });
 
 export const localLotId = import.meta.env.VITE_AVICONTROL_LOTE_ID || '550e8400-e29b-41d4-a716-446655440102';
 export const getLotFoodRequirement = (lotId = localLotId, { signal } = {}) =>

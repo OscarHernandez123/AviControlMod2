@@ -3,7 +3,8 @@ import Sidebar from '../components/Sidebar';
 import Topbar from '../components/Topbar';
 import ApiMessage from '../components/ApiMessage';
 import {
-  getBarnNutritionPlan, listTemplates, localBarnId, substituteBarnNutritionPlan
+  adjustBarnNutritionStage, getBarnNutritionPlan, listTemplates, localBarnId,
+  substituteBarnNutritionPlan
 } from '../services/nutritionCatalogApi';
 
 const labels = { PRE_INICIO: 'Pre-inicio', INICIO: 'Inicio', ENGORDE: 'Engorde' };
@@ -14,6 +15,9 @@ function NutritionistAssignmentsLivePage() {
   const [templates, setTemplates] = useState([]);
   const [selectedTemplateId, setSelectedTemplateId] = useState('');
   const [justification, setJustification] = useState('');
+  const [newEndDay, setNewEndDay] = useState('');
+  const [adjustmentReason, setAdjustmentReason] = useState('BAJO_PESO');
+  const [adjustmentJustification, setAdjustmentJustification] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -59,6 +63,27 @@ function NutritionistAssignmentsLivePage() {
   const active = plan?.etapas?.find((stage) => stage.estadoEtapa === 'ACTIVA');
   const future = plan?.etapas?.filter((stage) => stage.estadoEtapa === 'FUTURA') || [];
 
+  const adjustStage = async (event) => {
+    event.preventDefault();
+    const parsedEndDay = Number(newEndDay);
+    if (!active || !Number.isInteger(parsedEndDay) || parsedEndDay <= active.diaFin
+      || !adjustmentJustification.trim()) return;
+    setSaving(true);
+    setError('');
+    try {
+      await adjustBarnNutritionStage(localBarnId, active.id, {
+        nuevoDiaFin: parsedEndDay,
+        motivo: adjustmentReason,
+        justificacion: adjustmentJustification.trim()
+      });
+      setNewEndDay('');
+      setAdjustmentJustification('');
+      setToast('La duración se ajustó y la proyección se recalculó.');
+      setReloadKey((value) => value + 1);
+    } catch (cause) { setError(cause.message); }
+    finally { setSaving(false); }
+  };
+
   return (
     <div className="avi-role-layout">
       <Sidebar role="nutricionista" />
@@ -100,9 +125,45 @@ function NutritionistAssignmentsLivePage() {
                   ))}
                 </div>
               </div>
+              {active && (
+                <div className="avi-recent-orders-panel">
+                  <div className="avi-panel-header avi-panel-header-full">
+                    <h2 className="avi-panel-title">Extender etapa activa · {labels[active.etapaCrianza]}</h2>
+                  </div>
+                  <p className="avi-page-subtitle">
+                    Termina actualmente el día {active.diaFin}. Las etapas futuras y la salida proyectada se desplazarán según el ajuste.
+                  </p>
+                  <form className="avi-figma-modal-grid" onSubmit={adjustStage}>
+                    <div className="avi-figma-field">
+                      <label className="avi-figma-label" htmlFor="nutrition-new-end-day">Nuevo día final</label>
+                      <input id="nutrition-new-end-day" className="avi-figma-input" type="number"
+                        min={active.diaFin + 1} step="1" value={newEndDay}
+                        onChange={(event) => setNewEndDay(event.target.value)}
+                        placeholder={String(active.diaFin + 1)} required />
+                    </div>
+                    <div className="avi-figma-field">
+                      <label className="avi-figma-label" htmlFor="nutrition-adjustment-reason">Motivo</label>
+                      <select id="nutrition-adjustment-reason" className="avi-figma-input"
+                        value={adjustmentReason} onChange={(event) => setAdjustmentReason(event.target.value)}>
+                        <option value="BAJO_PESO">Bajo peso</option>
+                        <option value="CUARENTENA_SANITARIA">Cuarentena sanitaria</option>
+                      </select>
+                    </div>
+                    <div className="avi-figma-field">
+                      <label className="avi-figma-label" htmlFor="nutrition-adjustment-justification">Justificación técnica</label>
+                      <input id="nutrition-adjustment-justification" className="avi-figma-input"
+                        value={adjustmentJustification}
+                        onChange={(event) => setAdjustmentJustification(event.target.value)} required />
+                    </div>
+                    <button className="avi-btn-orange-cta" type="submit" disabled={saving}>
+                      {saving ? 'Guardando...' : 'Aplicar ajuste'}
+                    </button>
+                  </form>
+                </div>
+              )}
               <div className="avi-recent-orders-panel">
                 <div className="avi-panel-header avi-panel-header-full"><h2 className="avi-panel-title">Sustituir etapas futuras</h2></div>
-                <p className="avi-page-subtitle">{future.length} etapa(s) futura(s). La etapa activa conserva sus valores.</p>
+                <p className="avi-page-subtitle">{future.length} etapa(s) futura(s). Al sustituir la plantilla, la etapa activa conserva sus valores.</p>
                 <form className="avi-figma-modal-grid" onSubmit={substitute}>
                   <div className="avi-figma-field">
                     <label className="avi-figma-label">Nueva plantilla</label>
