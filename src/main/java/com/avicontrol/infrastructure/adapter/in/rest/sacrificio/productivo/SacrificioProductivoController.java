@@ -1,6 +1,7 @@
 package com.avicontrol.infrastructure.adapter.in.rest.sacrificio.productivo;
 
 import com.avicontrol.application.sacrificio.productivo.CancelarOrdenSacrificioUseCase;
+import com.avicontrol.application.sacrificio.productivo.ConsultarOrdenesSacrificioUseCase;
 import com.avicontrol.application.sacrificio.productivo.ConsultarResumenOrdenesSacrificioUseCase;
 import com.avicontrol.application.sacrificio.productivo.ProgramarOrdenSacrificioUseCase;
 import com.avicontrol.application.sacrificio.productivo.ReprogramarOrdenSacrificioUseCase;
@@ -14,6 +15,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
+import java.util.List;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -32,6 +34,7 @@ public class SacrificioProductivoController {
   private final ReprogramarOrdenSacrificioUseCase reprogramacion;
   private final CancelarOrdenSacrificioUseCase cancelacion;
   private final ConsultarResumenOrdenesSacrificioUseCase resumen;
+  private final ConsultarOrdenesSacrificioUseCase consulta;
   private final SacrificioProductivoRestMapper mapper;
 
   public SacrificioProductivoController(
@@ -39,12 +42,21 @@ public class SacrificioProductivoController {
       ReprogramarOrdenSacrificioUseCase reprogramacion,
       CancelarOrdenSacrificioUseCase cancelacion,
       ConsultarResumenOrdenesSacrificioUseCase resumen,
+      ConsultarOrdenesSacrificioUseCase consulta,
       SacrificioProductivoRestMapper mapper) {
     this.programacion = programacion;
     this.reprogramacion = reprogramacion;
     this.cancelacion = cancelacion;
     this.resumen = resumen;
+    this.consulta = consulta;
     this.mapper = mapper;
+  }
+
+  @GetMapping("/api/ordenes-sacrificio")
+  @PreAuthorize("hasRole('ADMINISTRADOR')")
+  @Operation(summary = "Consultar órdenes de sacrificio productivo")
+  public List<OrdenSacrificioResponse> listar() {
+    return consulta.listar().stream().map(mapper::response).toList();
   }
 
   @PostMapping("/api/galpones/{galponId}/ordenes-sacrificio")

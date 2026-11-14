@@ -61,6 +61,11 @@ class SacrificioProductivoControllerTest {
   void programaReprogramaCancelaYResume() throws Exception {
     UUID galpon = galpon("EN_COSECHA", UUID.randomUUID());
     UUID orden = programar(galpon);
+    mvc.perform(get("/api/ordenes-sacrificio").with(admin()))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$[0].id").value(orden.toString()))
+        .andExpect(jsonPath("$[0].estado").value("PROGRAMADA"));
+    mvc.perform(get("/api/ordenes-sacrificio")).andExpect(status().isUnauthorized());
     mvc.perform(get("/api/ordenes-sacrificio/resumen").with(admin()))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.totalOrdenes").value(1))
@@ -75,6 +80,8 @@ class SacrificioProductivoControllerTest {
     mvc.perform(post("/api/ordenes-sacrificio/{id}/cancelacion", orden).with(admin()))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.estado").value("CANCELADA"));
+    mvc.perform(get("/api/ordenes-sacrificio").with(admin()))
+        .andExpect(jsonPath("$[0].estado").value("CANCELADA"));
     mvc.perform(get("/api/ordenes-sacrificio/resumen").with(admin()))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.ordenesPendientes").value(0));

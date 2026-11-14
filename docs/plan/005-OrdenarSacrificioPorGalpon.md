@@ -48,6 +48,7 @@ src/main/java/com/avicontrol/
 ├── application/
 │   └── sacrificio/productivo/
 │       ├── CancelarOrdenSacrificioUseCase.java
+│       ├── ConsultarOrdenesSacrificioUseCase.java
 │       ├── ConsultarResumenOrdenesSacrificioUseCase.java
 │       ├── EjecutarOrdenSacrificioUseCase.java
 │       ├── EjecutarOrdenesSacrificioVencidasUseCase.java
@@ -151,6 +152,24 @@ src/test/java/com/avicontrol/
 | Método y ruta | Rol | Solicitud | Respuesta |
 | --- | --- | --- | --- |
 | `GET /api/ordenes-sacrificio/resumen` | `ROLE_ADMINISTRADOR` | Sin cuerpo | `200 OK` con total y pendientes |
+
+### Consultar órdenes
+
+| Método y ruta | Rol | Solicitud | Respuesta |
+| --- | --- | --- | --- |
+| `GET /api/ordenes-sacrificio` | `ROLE_ADMINISTRADOR` | Sin cuerpo | `200 OK` con órdenes persistidas, ordenadas por fecha de creación descendente |
+
+```json
+[
+  {
+    "id": "a0670abf-572d-4132-8a26-9f97f6770157",
+    "galponId": "550e8400-e29b-41d4-a716-446655440301",
+    "loteId": "550e8400-e29b-41d4-a716-446655440302",
+    "estado": "EJECUTADA",
+    "fechaHoraProgramada": "2026-11-13T22:16:48-05:00"
+  }
+]
+```
 
 **Errores**: `400` fecha u UUID inválidos; `401` no autenticado; `403` sin rol; `404` orden o galpón ausente; `409` orden no modificable o precondición incumplida; `503` Módulo 1 no disponible.
 

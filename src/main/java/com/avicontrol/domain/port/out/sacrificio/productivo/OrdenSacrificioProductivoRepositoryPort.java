@@ -19,6 +19,8 @@ public interface OrdenSacrificioProductivoRepositoryPort {
 
   List<UUID> vencidas(Instant ahora);
 
+  List<OrdenSacrificioProductivo> listar();
+
   Resumen resumen();
 
   record Resumen(long totalOrdenes, long ordenesPendientes) {}

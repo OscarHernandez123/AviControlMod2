@@ -86,6 +86,11 @@ export default defineConfig({
         changeOrigin: true,
         headers: { Authorization: veterinarianAuthorization }
       },
+      '/api/ordenes-sacrificio': {
+        target: backend,
+        changeOrigin: true,
+        headers: { Authorization: adminAuthorization }
+      },
       '/api/solicitudes-aislamiento': {
         target: backend,
         changeOrigin: true,

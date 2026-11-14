@@ -92,6 +92,13 @@ public class OrdenSacrificioProductivoPersistenceAdapter
   }
 
   @Override
+  public List<OrdenSacrificioProductivo> listar() {
+    return jdbc.query(
+        "SELECT * FROM ordenes_sacrificio_productivo ORDER BY fecha_creacion DESC, id DESC",
+        (rs, row) -> map(rs));
+  }
+
+  @Override
   public Resumen resumen() {
     return jdbc.queryForObject(
         "SELECT COUNT(*) AS total,COALESCE(SUM(CASE WHEN estado IN ('PROGRAMADA','REPROGRAMADA') THEN 1 ELSE 0 END),0) AS pendientes FROM ordenes_sacrificio_productivo",

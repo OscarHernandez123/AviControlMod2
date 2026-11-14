@@ -1,646 +1,209 @@
-import { useContext, useState } from 'react';
-import { FarmContext } from '../context/FarmContext';
+import { useCallback, useEffect, useState } from 'react';
 import Sidebar from '../components/Sidebar';
 import Topbar from '../components/Topbar';
 import BaseModal from '../components/BaseModal';
 import ApiMessage from '../components/ApiMessage';
+import { getBarn, listBarns } from '../services/barnsApi';
+import {
+  listProductiveSlaughterOrders, getProductiveSlaughterSummary, validateSlaughterFitness,
+  scheduleSlaughter, rescheduleSlaughter, cancelSlaughter, getSlaughterResult, saveSlaughterResult
+} from '../services/productiveSlaughterApi';
+
+function localDateTime(date) {
+  const value = new Date(date);
+  const pad = (number) => String(number).padStart(2, '0');
+  return `${value.getFullYear()}-${pad(value.getMonth() + 1)}-${pad(value.getDate())}T${pad(value.getHours())}:${pad(value.getMinutes())}`;
+}
+
+async function allBarns(signal) {
+  const items = [];
+  let page = 0;
+  let pages = 1;
+  while (page < pages) {
+    const result = await listBarns(page, { signal });
+    items.push(...(result.elementos || []));
+    pages = result.totalPaginas || 0;
+    page += 1;
+  }
+  return items;
+}
 
 function AdminSlaughterOrdersPage() {
-  const {
-    slaughterOrders,
-    evaluableBarnsForSlaughter,
-    validateBarnForSlaughter,
-    scheduleSlaughterOrder,
-    cancelSlaughterOrder,
-    saveSlaughterResults
-  } = useContext(FarmContext);
+  const [orders, setOrders] = useState([]);
+  const [summary, setSummary] = useState({ totalOrdenes: 0, ordenesPendientes: 0 });
+  const [barns, setBarns] = useState([]);
+  const [activeBarns, setActiveBarns] = useState([]);
+  const [results, setResults] = useState({});
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState(null);
+  const [search, setSearch] = useState('');
+  const [status, setStatus] = useState('TODOS');
+  const [modal, setModal] = useState(null);
+  const [barnId, setBarnId] = useState('');
+  const [scheduledAt, setScheduledAt] = useState(localDateTime(Date.now() + 3600000));
+  const [birds, setBirds] = useState('');
+  const [weight, setWeight] = useState('');
 
-  const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState('Todos');
-  const [dateFilter, setDateFilter] = useState('30d');
-  const [toastMsg, setToastMsg] = useState('');
+  const load = useCallback(async (signal) => {
+    setLoading(true);
+    try {
+      const [nextOrders, nextSummary, nextBarns] = await Promise.all([
+        listProductiveSlaughterOrders(signal), getProductiveSlaughterSummary(signal), allBarns(signal)
+      ]);
+      setOrders(nextOrders);
+      setSummary(nextSummary);
+      setBarns(nextBarns);
+      const candidates = nextBarns.filter((barn) => ['PRODUCTIVO', 'EN_COSECHA'].includes(barn.estado));
+      const details = await Promise.allSettled(candidates.map((barn) => getBarn(barn.id, { signal })));
+      setActiveBarns(details.flatMap((result) => result.status === 'fulfilled' ? [result.value] : []));
+      const executed = nextOrders.filter((order) => order.estado === 'EJECUTADA');
+      const fetched = await Promise.allSettled(executed.map((order) => getSlaughterResult(order.id, signal)));
+      setResults(Object.fromEntries(fetched.flatMap((result, index) =>
+        result.status === 'fulfilled' ? [[executed[index].id, result.value]] : [])));
+    } catch (error) {
+      if (error.name !== 'AbortError') setMessage({ type: 'error', text: error.message });
+    } finally {
+      if (!signal?.aborted) setLoading(false);
+    }
+  }, []);
 
-  // Modal 1: Validar Aptitud para Sacrificio
-  const [isValidateOpen, setIsValidateOpen] = useState(false);
-  const [selectedEvalId, setSelectedEvalId] = useState(
-    evaluableBarnsForSlaughter[0]?.id || 'eval-3'
-  );
+  useEffect(() => {
+    const controller = new AbortController();
+    load(controller.signal);
+    return () => controller.abort();
+  }, [load]);
 
-  // Modal 2: Programar / Reprogramar Orden de Sacrificio
-  const [schedulingOrder, setSchedulingOrder] = useState(null);
-  const [scheduleForm, setScheduleForm] = useState({
-    fechaIso: '2026-09-22T06:00',
-    plantaDestino: 'Planta Central Avícola - Turno Mañana',
-    observaciones: 'Transporte programado con jaulas limpias y desinfectadas a las 05:30 AM.'
+  const readyToValidate = activeBarns.filter((barn) => barn.estado === 'PRODUCTIVO' && barn.loteActual);
+  const readyToSchedule = activeBarns.filter((barn) => barn.estado === 'EN_COSECHA' && barn.loteActual &&
+    !orders.some((order) => order.galponId === barn.id && order.loteId === barn.loteActual.id));
+  const eligible = modal?.kind === 'validate' ? readyToValidate : readyToSchedule;
+  const filtered = orders.filter((order) => {
+    const barnName = barns.find((barn) => barn.id === order.galponId)?.nombre;
+    const terms = [order.id, order.galponId, order.loteId, barnName].join(' ').toLowerCase();
+    return terms.includes(search.trim().toLowerCase()) && (status === 'TODOS' || order.estado === status);
   });
 
-  // Modal 3: Resultados Finales de Sacrificio
-  const [weighingOrder, setWeighingOrder] = useState(null);
-  const [resultsForm, setResultsForm] = useState({
-    cantidadFinal: '4.180',
-    pesoTotalKg: '10.450,00'
-  });
+  function open(kind, order = null) {
+    setMessage(null);
+    setBarnId('');
+    setScheduledAt(localDateTime(Math.max(Date.now() + 3600000, order ? Date.parse(order.fechaHoraProgramada) : 0)));
+    const result = order && results[order.id];
+    setBirds(result ? String(result.cantidadFinalPollos) : '');
+    setWeight(result ? String(result.pesoTotalKg) : '');
+    setModal({ kind, order });
+  }
 
-  const selectedEvalBarn =
-    evaluableBarnsForSlaughter.find((b) => b.id === selectedEvalId) ||
-    evaluableBarnsForSlaughter[0];
-
-  const filteredOrders = slaughterOrders.filter((row) => {
-    const matchesSearch =
-      !searchTerm.trim() ||
-      row.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      row.galpon.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      row.lote.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === 'Todos' || row.estado === statusFilter;
-    return matchesSearch && matchesStatus;
-  });
-
-  const enCosechaCount = slaughterOrders.filter((o) => o.estado === 'En Cosecha').length || 2;
-  const ordenesActivasCount =
-    slaughterOrders.filter((o) => o.estado === 'Programada' || o.estado === 'Ejecutada').length || 3;
-
-  const handleOpenSchedule = (order) => {
-    setScheduleForm({
-      fechaIso: order.fechaIso || '2026-09-22T06:00',
-      plantaDestino: order.plantaDestino || 'Planta Central Avícola - Turno Mañana',
-      observaciones:
-        order.observaciones ||
-        'Transporte programado con jaulas limpias y desinfectadas a las 05:30 AM.'
-    });
-    setSchedulingOrder(order);
-  };
-
-  const handleOpenWeigh = (order) => {
-    setResultsForm({
-      cantidadFinal: order.cantidadFinal || '4.180',
-      pesoTotalKg: order.pesoTotalKg || '10.450,00'
-    });
-    setWeighingOrder(order);
-  };
-
-  const handleConfirmValidation = (e) => {
-    e.preventDefault();
-    if (!selectedEvalBarn) return;
-    validateBarnForSlaughter(selectedEvalBarn);
-    setIsValidateOpen(false);
-    setToastMsg(`${selectedEvalBarn.galpon} validado y pasado a estado En Cosecha.`);
-  };
-
-  const handleSaveSchedule = (e) => {
-    e.preventDefault();
-    if (!schedulingOrder) return;
-    const raw = scheduleForm.fechaIso || '2026-09-22T06:00';
-    const [datePart, timePart = '06:00'] = raw.split('T');
-    const [, month, day] = datePart.split('-');
-    const months = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
-    const monthLabel = months[(parseInt(month, 10) || 9) - 1] || 'Sep';
-    const fechaFormateada = `${day || '22'} ${monthLabel} 2026, ${timePart}`;
-
-    scheduleSlaughterOrder({
-      galpon: schedulingOrder.galpon,
-      fechaIso: scheduleForm.fechaIso,
-      fechaFormateada,
-      plantaDestino: scheduleForm.plantaDestino,
-      observaciones: scheduleForm.observaciones
-    });
-    setSchedulingOrder(null);
-    setToastMsg(`Orden de sacrificio para ${schedulingOrder.galpon} programada (${fechaFormateada}).`);
-  };
-
-  const handleSaveResults = (e) => {
-    e.preventDefault();
-    if (!weighingOrder) return;
-    saveSlaughterResults({
-      galpon: weighingOrder.galpon,
-      cantidadFinal: resultsForm.cantidadFinal,
-      pesoTotalKg: resultsForm.pesoTotalKg
-    });
-    setWeighingOrder(null);
-    setToastMsg(`Resultados finales de ${weighingOrder.galpon} registrados correctamente.`);
-  };
-
-  const computeAvgWeight = () => {
-    const birds =
-      parseFloat(String(resultsForm.cantidadFinal).replace(/\./g, '').replace(',', '.')) || 0;
-    const weight =
-      parseFloat(String(resultsForm.pesoTotalKg).replace(/\./g, '').replace(',', '.')) || 0;
-    if (birds <= 0) return '0,00 kg';
-    return `${(weight / birds).toFixed(2).replace('.', ',')} kg`;
-  };
-
-  const getStatusBadgeStyle = (estado) => {
-    if (estado === 'En Cosecha') {
-      return { bg: '#d6f0d1', color: '#1f5929', dot: '#2d9f42' };
+  async function submit(event) {
+    event.preventDefault();
+    if (!modal) return;
+    setBusy(true);
+    try {
+      let result;
+      if (modal.kind === 'validate') result = await validateSlaughterFitness(barnId);
+      if (modal.kind === 'schedule') result = await scheduleSlaughter(barnId, new Date(scheduledAt).toISOString());
+      if (modal.kind === 'reschedule') result = await rescheduleSlaughter(modal.order.id, new Date(scheduledAt).toISOString());
+      if (modal.kind === 'cancel') result = await cancelSlaughter(modal.order.id);
+      if (modal.kind === 'result') result = await saveSlaughterResult(modal.order.id, {
+        cantidadFinalPollos: Number(birds), pesoTotalKg: Number(weight)
+      }, Boolean(results[modal.order.id]));
+      setModal(null);
+      await load();
+      const feedback = modal.kind === 'validate'
+        ? result.apto ? 'Galpón apto; pasó a En cosecha.' : result.motivosNoAptitud.join(' · ')
+        : modal.kind === 'result' ? 'Resultado de sacrificio guardado.' : `Orden ${result.estado.toLowerCase()} correctamente.`;
+      setMessage({ type: modal.kind === 'validate' && !result.apto ? 'error' : 'success', text: feedback });
+    } catch (error) {
+      setMessage({ type: 'error', text: error.message });
+    } finally {
+      setBusy(false);
     }
-    if (estado === 'Programada') {
-      return { bg: '#d1ebf0', color: '#1f3659', dot: '#2c5282' };
-    }
-    if (estado === 'Ejecutada') {
-      return { bg: '#ffe8ba', color: '#bf5400', dot: '#f59e0b' };
-    }
-    return { bg: '#dbdbdb', color: '#5a5a5a', dot: '#737373' };
+  }
+
+  const title = {
+    validate: 'Validar aptitud para sacrificio', schedule: 'Programar orden de sacrificio',
+    reschedule: 'Reprogramar orden', cancel: 'Cancelar orden', result: 'Resultado final de sacrificio'
   };
 
-  return (
-    <div className="avi-role-layout">
-      <Sidebar role="administrador" />
-
-      <div className="avi-main-frame" data-node-id="232:3892" data-name="Administrador Ordenes Sacrificio">
-        <Topbar roleLabel="Administrador" avatarSrc="/assets/admin-avatar.svg" />
-        <ApiMessage message={toastMsg} type="success" onClose={() => setToastMsg('')} />
-
-        <div className="avi-dashboard-content">
-          {/* Page heading matching Recepciones de Alimento / Medicamento */}
-          <div className="avi-page-heading">
-            <div className="avi-heading-copy">
-              <h1 className="avi-page-title avi-title-lg">
-                Órdenes de sacrificio
-              </h1>
-              <p className="avi-page-subtitle">
-                Gestión, validación de aptitud y programación de sacrificio comercial
-              </p>
-            </div>
-
-            <button
-              type="button"
-              className="avi-btn-orange-cta"
-              onClick={() => setIsValidateOpen(true)}
-            >
-              <span>＋  Validar aptitud de galpón</span>
-            </button>
+  return <div className="avi-role-layout">
+    <Sidebar role="administrador" />
+    <div className="avi-main-frame">
+      <Topbar roleLabel="Administrador" avatarSrc="/assets/admin-avatar.svg" />
+      <ApiMessage message={message?.text} type={message?.type} onClose={() => setMessage(null)} />
+      <div className="avi-dashboard-content">
+        <div className="avi-page-heading">
+          <div><h1 className="avi-page-title avi-title-lg">Órdenes de sacrificio</h1>
+            <p className="avi-page-subtitle">Aptitud, programación y resultados del sacrificio productivo</p></div>
+          <button type="button" className="avi-btn-orange-cta" onClick={() => open('validate')}>Validar aptitud de galpón</button>
+        </div>
+        <div className="avi-receptions-metrics-row">
+          <div className="avi-reception-kpi-card"><span className="avi-reception-kpi-label">Galpones en cosecha</span><strong className="avi-reception-kpi-value">{activeBarns.filter((barn) => barn.estado === 'EN_COSECHA').length}</strong></div>
+          <div className="avi-reception-kpi-card"><span className="avi-reception-kpi-label">Órdenes totales</span><strong className="avi-reception-kpi-value">{summary.totalOrdenes}</strong></div>
+          <div className="avi-reception-kpi-card"><span className="avi-reception-kpi-label">Órdenes pendientes</span><strong className="avi-reception-kpi-value">{summary.ordenesPendientes}</strong></div>
+        </div>
+        <div className="avi-receptions-filter-bar">
+          <input className="avi-receptions-search-input" placeholder="Buscar por orden, galpón o lote" value={search} onChange={(event) => setSearch(event.target.value)} />
+          <select className="avi-receptions-select" value={status} onChange={(event) => setStatus(event.target.value)}>
+            <option value="TODOS">Todos los estados</option><option value="PROGRAMADA">Programada</option><option value="REPROGRAMADA">Reprogramada</option><option value="EJECUTADA">Ejecutada</option><option value="CANCELADA">Cancelada</option>
+          </select>
+          <button type="button" className="avi-receptions-filter-btn" onClick={() => load()}>Actualizar</button>
+          <button type="button" className="avi-btn-orange-cta" onClick={() => open('schedule')}>Programar orden</button>
+        </div>
+        <div className="avi-recent-orders-panel">
+          <div className="avi-panel-header avi-panel-header-full"><h2 className="avi-panel-title">Órdenes registradas</h2></div>
+          <div className="avi-orders-table avi-productive-orders-table">
+            <div className="avi-orders-thead"><span style={{ flex: 1.3 }}>Orden</span><span style={{ flex: 1 }}>Galpón</span><span style={{ flex: 0.9 }}>Fecha</span><span style={{ flex: 0.8 }}>Estado</span><span style={{ flex: 1 }}>Resultado</span><span style={{ flex: 1.6 }}>Acciones</span></div>
+            {loading && <p>Cargando órdenes...</p>}
+            {!loading && filtered.length === 0 && <p>No hay órdenes para mostrar.</p>}
+            {filtered.map((order) => {
+              const result = results[order.id];
+              const beforeDate = Date.parse(order.fechaHoraProgramada) > Date.now();
+              const pending = ['PROGRAMADA', 'REPROGRAMADA'].includes(order.estado) && beforeDate;
+              return <div key={order.id} className="avi-orders-trow">
+                <span style={{ flex: 1.3, overflowWrap: 'anywhere' }}>{order.id}</span>
+                <span style={{ flex: 1 }}>{barns.find((barn) => barn.id === order.galponId)?.nombre || order.galponId}</span>
+                <span style={{ flex: 0.9 }}>{new Date(order.fechaHoraProgramada).toLocaleString('es-CO')}</span>
+                <span style={{ flex: 0.8 }}>{order.estado}</span>
+                <span style={{ flex: 1 }}>{result ? `${result.cantidadFinalPollos} aves · ${result.pesoTotalKg} kg` : '—'}</span>
+                <span style={{ flex: 1.6, display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                  {pending && <button type="button" className="avi-admin-table-btn avi-admin-table-btn-orange" onClick={() => open('reschedule', order)}>Reprogramar</button>}
+                  {pending && <button type="button" className="avi-admin-table-btn avi-admin-table-btn-green" onClick={() => open('cancel', order)}>Cancelar</button>}
+                  {order.estado === 'EJECUTADA' && <button type="button" className="avi-admin-table-btn avi-admin-table-btn-green" onClick={() => open('result', order)}>{result ? 'Ver / corregir' : 'Registrar resultado'}</button>}
+                </span>
+              </div>;
+            })}
           </div>
-
-          {/* 3 Metric cards matching Recepciones / Inventario */}
-          <div className="avi-receptions-metrics-row">
-            <div className="avi-reception-kpi-card">
-              <span className="avi-reception-kpi-label">Galpones en cosecha</span>
-              <strong className="avi-reception-kpi-value" style={{ color: '#2d743b' }}>
-                {enCosechaCount}
-              </strong>
-            </div>
-
-            <div className="avi-reception-kpi-card">
-              <span className="avi-reception-kpi-label">Órdenes activas</span>
-              <strong className="avi-reception-kpi-value" style={{ color: '#407db8' }}>
-                {ordenesActivasCount}
-              </strong>
-            </div>
-
-            <div className="avi-reception-kpi-card">
-              <span className="avi-reception-kpi-label">Total aves este mes</span>
-              <strong className="avi-reception-kpi-value" style={{ color: '#2d743b' }}>
-                18,500 aves
-              </strong>
-            </div>
-          </div>
-
-          {/* Search & Filter Bar matching Recepciones */}
-          <div className="avi-receptions-filter-bar">
-            <input
-              type="text"
-              className="avi-receptions-search-input"
-              placeholder="Buscar por orden, galpón o lote"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-
-            <select
-              className="avi-receptions-select"
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-            >
-              <option value="Todos">Todos los estados  ▾</option>
-              <option value="Programada">Programada</option>
-              <option value="Ejecutada">Ejecutada</option>
-              <option value="En Cosecha">En Cosecha</option>
-              <option value="Cancelada">Cancelada</option>
-            </select>
-
-            <select
-              className="avi-receptions-select"
-              value={dateFilter}
-              onChange={(e) => setDateFilter(e.target.value)}
-            >
-              <option value="30d">Últimos 30 días  ▾</option>
-              <option value="7d">Últimos 7 días</option>
-              <option value="90d">Últimos 90 días</option>
-            </select>
-
-            <button
-              type="button"
-              className="avi-receptions-filter-btn"
-              onClick={() => setToastMsg('Filtros aplicados al listado de órdenes de sacrificio.')}
-            >
-              Filtrar
-            </button>
-          </div>
-
-          {/* Table Panel matching Galpones & Recepciones */}
-          <div className="avi-recent-orders-panel">
-            <div className="avi-panel-header avi-panel-header-full">
-              <div className="avi-panel-icon-28">
-                <img alt="" src="/assets/admin-orders-icon.svg" />
-              </div>
-              <h2 className="avi-panel-title">
-                Órdenes de Sacrificio Registradas
-              </h2>
-            </div>
-
-            <div className="avi-orders-table">
-              <div className="avi-orders-thead">
-                <span style={{ flex: '0.9' }}>Orden</span>
-                <span style={{ flex: '1' }}>Galpón</span>
-                <span style={{ flex: '0.9' }}>Lote</span>
-                <span style={{ flex: '0.9', textAlign: 'center' }}>Edad lote</span>
-                <span style={{ flex: '1', textAlign: 'center' }}>Población</span>
-                <span style={{ flex: '1.3', textAlign: 'center' }}>Fecha sacrificio</span>
-                <span style={{ flex: '1.1', textAlign: 'center' }}>Estado</span>
-                <span style={{ flex: '1.4', textAlign: 'center' }}>Acciones</span>
-              </div>
-
-              {filteredOrders.map((row) => {
-                const badge = getStatusBadgeStyle(row.estado);
-                return (
-                  <div key={row.galpon} className="avi-orders-trow">
-                    <span className="avi-col-dark" style={{ flex: '0.9' }}>
-                      {row.id}
-                    </span>
-                    <span className="avi-col-dark" style={{ flex: '1' }}>
-                      {row.galpon}
-                    </span>
-                    <span className="avi-col-dark" style={{ flex: '0.9' }}>
-                      {row.lote}
-                    </span>
-                    <span className="avi-col-muted" style={{ flex: '0.9', textAlign: 'center' }}>
-                      {row.edadDias} días
-                    </span>
-                    <span className="avi-col-muted" style={{ flex: '1', textAlign: 'center' }}>
-                      {row.poblacion}
-                    </span>
-                    <span className="avi-col-muted" style={{ flex: '1.3', textAlign: 'center' }}>
-                      {row.fechaSacrificio}
-                    </span>
-                    <div style={{ flex: '1.1', display: 'flex', justifyContent: 'center' }}>
-                      <span
-                        className="avi-barn-status-pill"
-                        style={{
-                          backgroundColor: badge.bg,
-                          color: badge.color
-                        }}
-                      >
-                        <span
-                          className="avi-barn-status-dot"
-                          style={{ backgroundColor: badge.dot }}
-                        />
-                        {row.estado}
-                      </span>
-                    </div>
-                    <div
-                      style={{
-                        flex: '1.4',
-                        display: 'flex',
-                        justifyContent: 'center',
-                        alignItems: 'center',
-                        gap: '8px'
-                      }}
-                    >
-                      {row.estado === 'Programada' && (
-                        <>
-                          <button
-                            type="button"
-                            className="avi-admin-table-btn avi-admin-table-btn-green"
-                            onClick={() => handleOpenSchedule(row)}
-                          >
-                            Reprogramar
-                          </button>
-                          <button
-                            type="button"
-                            className="avi-admin-table-btn avi-admin-table-btn-danger"
-                            onClick={() => {
-                              cancelSlaughterOrder(row.galpon);
-                              setToastMsg(`Orden de ${row.galpon} cancelada.`);
-                            }}
-                          >
-                            Cancelar
-                          </button>
-                        </>
-                      )}
-
-                      {row.estado === 'Ejecutada' && (
-                        <button
-                          type="button"
-                          className="avi-admin-table-btn avi-admin-table-btn-green"
-                          onClick={() => handleOpenWeigh(row)}
-                        >
-                          Registrar peso
-                        </button>
-                      )}
-
-                      {row.estado === 'En Cosecha' && (
-                        <button
-                          type="button"
-                          className="avi-admin-table-btn avi-admin-table-btn-orange"
-                          onClick={() => handleOpenSchedule(row)}
-                        >
-                          Programar
-                        </button>
-                      )}
-
-                      {row.estado === 'Cancelada' && (
-                        <span className="avi-col-muted">Sin acciones</span>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
+          <p className="avi-page-subtitle">Las órdenes se ejecutan automáticamente al llegar la fecha programada. Pulsa Actualizar para ver el nuevo estado.</p>
         </div>
       </div>
-
-      {/* Modal 1: Validar aptitud para sacrificio (720px Admin Modal style) */}
-      <BaseModal
-        isOpen={isValidateOpen}
-        onClose={() => setIsValidateOpen(false)}
-        maxWidth="720px"
-      >
-        <form className="avi-figma-modal-720" onSubmit={handleConfirmValidation}>
-          <div className="avi-figma-modal-header">
-            <div className="avi-figma-modal-titles">
-              <h2 className="avi-figma-modal-title">Validar aptitud para sacrificio</h2>
-              <p className="avi-figma-modal-subtitle">
-                Evaluación de edad y estado operativo del galpón
-              </p>
-            </div>
-            <button
-              type="button"
-              className="avi-figma-modal-close"
-              onClick={() => setIsValidateOpen(false)}
-            >
-              ×
-            </button>
-          </div>
-
-          <div className="avi-figma-modal-grid">
-            <div className="avi-figma-field" style={{ gridColumn: '1 / -1' }}>
-              <label className="avi-figma-label">Galpón a evaluar</label>
-              <select
-                className="avi-figma-input"
-                value={selectedEvalId}
-                onChange={(e) => setSelectedEvalId(e.target.value)}
-              >
-                {evaluableBarnsForSlaughter.map((b) => (
-                  <option key={b.id} value={b.id}>
-                    {b.galpon} — Lote {b.lote} ({b.edadDias} días · {b.estadoOperativo})
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {selectedEvalBarn && (
-              <>
-                <div className="avi-figma-field">
-                  <label className="avi-figma-label">Lote alojado</label>
-                  <div className="avi-figma-readonly-box">{selectedEvalBarn.lote}</div>
-                </div>
-
-                <div className="avi-figma-field">
-                  <label className="avi-figma-label">Población actual</label>
-                  <div className="avi-figma-readonly-box">{selectedEvalBarn.poblacion}</div>
-                </div>
-
-                <div className="avi-figma-field">
-                  <label className="avi-figma-label">Edad del lote (mínimo 45 días)</label>
-                  <div className="avi-figma-readonly-box">{selectedEvalBarn.edadDias} días</div>
-                </div>
-
-                <div className="avi-figma-field">
-                  <label className="avi-figma-label">Resultado de validación</label>
-                  <div
-                    className={
-                      selectedEvalBarn.apto
-                        ? 'avi-figma-valid-box'
-                        : 'avi-figma-demand-box'
-                    }
-                  >
-                    {selectedEvalBarn.apto
-                      ? 'Cumple (Apto para pasar a En Cosecha)'
-                      : 'No cumple edad mínima requerida'}
-                  </div>
-                </div>
-              </>
-            )}
-          </div>
-
-          <div className="avi-figma-modal-footer">
-            <button
-              type="button"
-              className="avi-figma-btn-cancel"
-              onClick={() => setIsValidateOpen(false)}
-            >
-              Cancelar
-            </button>
-            <button type="submit" className="avi-figma-btn-orange">
-              Confirmar cosecha
-            </button>
-          </div>
-        </form>
-      </BaseModal>
-
-      {/* Modal 2: Programar orden de sacrificio (720px Admin Modal style) */}
-      <BaseModal
-        isOpen={Boolean(schedulingOrder)}
-        onClose={() => setSchedulingOrder(null)}
-        maxWidth="720px"
-      >
-        {schedulingOrder && (
-          <form className="avi-figma-modal-720" onSubmit={handleSaveSchedule}>
-            <div className="avi-figma-modal-header">
-              <div className="avi-figma-modal-titles">
-                <h2 className="avi-figma-modal-title">Programar orden de sacrificio</h2>
-                <p className="avi-figma-modal-subtitle">
-                  Asignación de fecha y logística comercial de salida
-                </p>
-              </div>
-              <button
-                type="button"
-                className="avi-figma-modal-close"
-                onClick={() => setSchedulingOrder(null)}
-              >
-                ×
-              </button>
-            </div>
-
-            <div className="avi-figma-modal-grid">
-              <div className="avi-figma-field">
-                <label className="avi-figma-label">Galpón</label>
-                <div className="avi-figma-readonly-box">{schedulingOrder.galpon}</div>
-              </div>
-
-              <div className="avi-figma-field">
-                <label className="avi-figma-label">Código del lote</label>
-                <div className="avi-figma-readonly-box">{schedulingOrder.lote}</div>
-              </div>
-
-              <div className="avi-figma-field">
-                <label className="avi-figma-label">Población a sacrificar</label>
-                <div className="avi-figma-readonly-box">{schedulingOrder.poblacion}</div>
-              </div>
-
-              <div className="avi-figma-field">
-                <label className="avi-figma-label">Fecha y hora programada</label>
-                <input
-                  type="datetime-local"
-                  className="avi-figma-input"
-                  value={scheduleForm.fechaIso}
-                  onChange={(e) =>
-                    setScheduleForm({ ...scheduleForm, fechaIso: e.target.value })
-                  }
-                  required
-                />
-              </div>
-
-              <div className="avi-figma-field" style={{ gridColumn: '1 / -1' }}>
-                <label className="avi-figma-label">Planta de faenado / Destino</label>
-                <input
-                  type="text"
-                  className="avi-figma-input"
-                  value={scheduleForm.plantaDestino}
-                  onChange={(e) =>
-                    setScheduleForm({ ...scheduleForm, plantaDestino: e.target.value })
-                  }
-                  required
-                />
-              </div>
-
-              <div className="avi-figma-field" style={{ gridColumn: '1 / -1' }}>
-                <label className="avi-figma-label">Observaciones de cosecha</label>
-                <input
-                  type="text"
-                  className="avi-figma-input"
-                  value={scheduleForm.observaciones}
-                  onChange={(e) =>
-                    setScheduleForm({ ...scheduleForm, observaciones: e.target.value })
-                  }
-                />
-              </div>
-            </div>
-
-            <div className="avi-figma-modal-footer">
-              <button
-                type="button"
-                className="avi-figma-btn-cancel"
-                onClick={() => setSchedulingOrder(null)}
-              >
-                Cancelar
-              </button>
-              <button type="submit" className="avi-figma-btn-green">
-                Guardar programación
-              </button>
-            </div>
-          </form>
-        )}
-      </BaseModal>
-
-      {/* Modal 3: Resultados finales de sacrificio (720px Admin Modal style) */}
-      <BaseModal
-        isOpen={Boolean(weighingOrder)}
-        onClose={() => setWeighingOrder(null)}
-        maxWidth="720px"
-      >
-        {weighingOrder && (
-          <form className="avi-figma-modal-720" onSubmit={handleSaveResults}>
-            <div className="avi-figma-modal-header">
-              <div className="avi-figma-modal-titles">
-                <h2 className="avi-figma-modal-title">Resultados finales de sacrificio</h2>
-                <p className="avi-figma-modal-subtitle">
-                  Captura de peso real y conteo final de aves en planta
-                </p>
-              </div>
-              <button
-                type="button"
-                className="avi-figma-modal-close"
-                onClick={() => setWeighingOrder(null)}
-              >
-                ×
-              </button>
-            </div>
-
-            <div className="avi-figma-modal-grid">
-              <div className="avi-figma-field">
-                <label className="avi-figma-label">Galpón</label>
-                <div className="avi-figma-readonly-box">{weighingOrder.galpon}</div>
-              </div>
-
-              <div className="avi-figma-field">
-                <label className="avi-figma-label">Código del lote</label>
-                <div className="avi-figma-readonly-box">{weighingOrder.lote}</div>
-              </div>
-
-              <div className="avi-figma-field">
-                <label className="avi-figma-label">Población inicial</label>
-                <div className="avi-figma-readonly-box">{weighingOrder.poblacion}</div>
-              </div>
-
-              <div className="avi-figma-field">
-                <label className="avi-figma-label">Fecha de sacrificio</label>
-                <div className="avi-figma-readonly-box">{weighingOrder.fechaSacrificio}</div>
-              </div>
-
-              <div className="avi-figma-field">
-                <label className="avi-figma-label">Cantidad final de aves</label>
-                <input
-                  type="text"
-                  className="avi-figma-input"
-                  value={resultsForm.cantidadFinal}
-                  onChange={(e) =>
-                    setResultsForm({ ...resultsForm, cantidadFinal: e.target.value })
-                  }
-                  required
-                />
-              </div>
-
-              <div className="avi-figma-field">
-                <label className="avi-figma-label">Peso total en planta (kg)</label>
-                <input
-                  type="text"
-                  className="avi-figma-input"
-                  value={resultsForm.pesoTotalKg}
-                  onChange={(e) =>
-                    setResultsForm({ ...resultsForm, pesoTotalKg: e.target.value })
-                  }
-                  required
-                />
-              </div>
-
-              <div className="avi-figma-field">
-                <label className="avi-figma-label">Peso promedio por ave</label>
-                <div className="avi-figma-valid-box">{computeAvgWeight()}</div>
-              </div>
-
-              <div className="avi-figma-field">
-                <label className="avi-figma-label">Estado de liquidación</label>
-                <div className="avi-figma-demand-box">Editable (Pendiente de liquidación)</div>
-              </div>
-            </div>
-
-            <div className="avi-figma-modal-footer">
-              <button
-                type="button"
-                className="avi-figma-btn-cancel"
-                onClick={() => setWeighingOrder(null)}
-              >
-                Cancelar
-              </button>
-              <button type="submit" className="avi-figma-btn-green">
-                Guardar resultados
-              </button>
-            </div>
-          </form>
-        )}
-      </BaseModal>
     </div>
-  );
+    <BaseModal isOpen={Boolean(modal)} onClose={() => setModal(null)} maxWidth="680px">
+      {modal && <form className="avi-figma-modal-720" onSubmit={submit}>
+        <div className="avi-figma-modal-header"><h2 className="avi-figma-modal-title">{title[modal.kind]}</h2></div>
+        {['validate', 'schedule'].includes(modal.kind) && <div className="avi-figma-field">
+          <label className="avi-figma-label">Galpón</label>
+          <select className="avi-figma-input avi-figma-select" required value={barnId} onChange={(event) => setBarnId(event.target.value)}>
+            <option value="">Seleccionar galpón</option>
+            {eligible.map((barn) => <option key={barn.id} value={barn.id}>{barn.nombre} · {barn.loteActual?.edad?.diasTotales} días · {barn.loteActual?.poblacionActual} aves</option>)}
+          </select>
+          {eligible.length === 0 && <p>No hay galpones elegibles para esta operación.</p>}
+        </div>}
+        {['schedule', 'reschedule'].includes(modal.kind) && <div className="avi-figma-field">
+          <label className="avi-figma-label">Fecha y hora futura</label>
+          <input type="datetime-local" className="avi-figma-input" required min={localDateTime(Date.now() + 60000)} value={scheduledAt} onChange={(event) => setScheduledAt(event.target.value)} />
+        </div>}
+        {modal.kind === 'cancel' && <p>¿Cancelar la orden {modal.order.id}? No podrá programarse otra para el mismo lote.</p>}
+        {modal.kind === 'result' && <div className="avi-figma-modal-grid">
+          <div className="avi-figma-field"><label className="avi-figma-label">Cantidad final de pollos</label><input type="number" min="1" step="1" className="avi-figma-input" required value={birds} onChange={(event) => setBirds(event.target.value)} /></div>
+          <div className="avi-figma-field"><label className="avi-figma-label">Peso total (kg)</label><input type="number" min="0.01" step="0.01" className="avi-figma-input" required value={weight} onChange={(event) => setWeight(event.target.value)} /></div>
+          {results[modal.order.id]?.estado !== 'DISPONIBLE' && results[modal.order.id] && <p>Este resultado ya fue utilizado y no admite correcciones.</p>}
+        </div>}
+        <div className="avi-figma-modal-footer"><button type="button" className="avi-figma-btn-cancel" onClick={() => setModal(null)}>Cerrar</button>
+          <button type="submit" className="avi-figma-btn-green" disabled={busy || (['validate', 'schedule'].includes(modal.kind) && !barnId) || (modal.kind === 'result' && results[modal.order.id]?.estado !== 'DISPONIBLE' && Boolean(results[modal.order.id]))}>Confirmar</button>
+        </div>
+      </form>}
+    </BaseModal>
+  </div>;
 }
 
 export default AdminSlaughterOrdersPage;
