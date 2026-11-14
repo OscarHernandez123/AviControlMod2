@@ -1,0 +1,26 @@
+$kind: http-request
+name: http://localhost:8080/api/galpones/550e8400-e29b-41d4-a716-446655440201/mortalidad-anormal
+description: ""
+url: http://localhost:8080/api/galpones/550e8400-e29b-41d4-a716-446655440201/mortalidad-anormal
+method: POST
+headers:
+  Idempotency-Key: 6d20c86f-37d7-47e1-9235-7bd2c013e174
+body:
+  type: json
+  content: "{\r
+
+    \  \"fechaHoraEvento\": \"2026-11-13T08:00:00-05:00\",\r
+
+    \  \"cantidad\": 18,\r
+
+    \  \"causaProbable\": \"PROBLEMAS_DIGESTIVOS\",\r
+
+    \  \"observaciones\": \"Reporte de prueba de mortalidad anormal\"\r
+
+    }"
+auth:
+  type: basic
+  credentials:
+    username: trabajador
+    password: trabajador123
+order: 57000

@@ -1,0 +1,11 @@
+$kind: http-request
+name: http://localhost:8080/api/ordenes-sacrificio-sanitario
+description: ""
+url: http://localhost:8080/api/ordenes-sacrificio-sanitario
+method: GET
+auth:
+  type: basic
+  credentials:
+    username: veterinario
+    password: veterinario123
+order: 64000

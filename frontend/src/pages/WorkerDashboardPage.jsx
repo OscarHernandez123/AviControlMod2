@@ -86,7 +86,7 @@ function WorkerDashboardPage() {
       .then((barns) => setWorkerBarns(barns.map((barn) => ({
         id: barn.id,
         name: barn.nombre,
-        lote: `Lote ${foodSummary?.galpones?.find((row) => row.galponId === barn.id)?.loteCodigo || barn.loteActual.id}`,
+        lote: foodSummary?.galpones?.find((row) => row.galponId === barn.id)?.loteCodigo || 'Lote activo',
         status: 'Productivo',
         poblacionNum: barn.loteActual.poblacionActual,
         poblacion: `${Number(barn.loteActual.poblacionActual).toLocaleString('es-CO')} aves`,
@@ -163,7 +163,7 @@ function WorkerDashboardPage() {
       });
       setRequestedIsolationBarns((ids) => [...ids, result.galponId]);
       setIsolationOpen(false);
-      setToast(`Solicitud ${result.id} enviada al veterinario. Estado: ${result.estado}.`);
+      setToast(`Solicitud enviada al veterinario. Estado: ${result.estado}.`);
     } catch (cause) {
       setFoodError(cause.message);
     } finally {

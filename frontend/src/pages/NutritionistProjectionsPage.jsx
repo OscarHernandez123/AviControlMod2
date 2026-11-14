@@ -4,6 +4,7 @@ import Topbar from '../components/Topbar';
 import StatCard from '../components/StatCard';
 import ApiMessage from '../components/ApiMessage';
 import { getLotFoodRequirement, getSupplyBalance } from '../services/nutritionCatalogApi';
+import { useNutritionBarns } from '../hooks/useNutritionBarns';
 
 const format = (value) => new Intl.NumberFormat('es-CO', { maximumFractionDigits: 2 }).format(Number(value || 0));
 const money = (value) => value == null ? 'Pendiente' : new Intl.NumberFormat('es-CO', {
@@ -11,6 +12,7 @@ const money = (value) => value == null ? 'Pendiente' : new Intl.NumberFormat('es
 }).format(Number(value));
 
 function NutritionistProjectionsPage() {
+  const { barns, selectedBarnId, setSelectedBarnId, selectedBarn, loading: barnsLoading, error: barnsError } = useNutritionBarns();
   const [requirement, setRequirement] = useState(null);
   const [balance, setBalance] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -18,11 +20,16 @@ function NutritionistProjectionsPage() {
   const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
+    if (!selectedBarn?.plan?.loteId) {
+      setRequirement(null);
+      setLoading(false);
+      return undefined;
+    }
     const controller = new AbortController();
     setLoading(true);
     setError('');
     Promise.all([
-      getLotFoodRequirement(undefined, { signal: controller.signal }),
+      getLotFoodRequirement(selectedBarn.plan.loteId, { signal: controller.signal }),
       getSupplyBalance({ signal: controller.signal })
     ]).then(([lot, supply]) => {
       setRequirement(lot);
@@ -33,7 +40,7 @@ function NutritionistProjectionsPage() {
       if (!controller.signal.aborted) setLoading(false);
     });
     return () => controller.abort();
-  }, [reloadKey]);
+  }, [reloadKey, selectedBarn?.plan?.loteId]);
 
   const projectedKg = requirement?.etapas?.reduce((sum, item) => sum + Number(item.kilogramosProyectados || 0), 0) || 0;
   const missingKg = balance?.alimentos?.reduce((sum, item) => sum + Math.max(0, -Number(item.balanceKg || 0)), 0) || 0;
@@ -44,7 +51,7 @@ function NutritionistProjectionsPage() {
       <Sidebar role="nutricionista" />
       <div className="avi-main-frame">
         <Topbar roleLabel="Nutricionista" avatarSrc="/assets/admin-avatar.svg" />
-        <ApiMessage message={error} type="error" onClose={() => setError('')} />
+        <ApiMessage message={error || barnsError} type="error" onClose={() => setError('')} />
         <div className="avi-dashboard-content">
           <div className="avi-page-heading">
             <div className="avi-heading-copy">
@@ -55,6 +62,13 @@ function NutritionistProjectionsPage() {
               Actualizar
             </button>
           </div>
+          <label className="avi-figma-label" htmlFor="projection-barn">Galpón</label>
+          <select id="projection-barn" className="avi-figma-input" style={{ maxWidth: 360, marginBottom: 16 }} value={selectedBarnId}
+            onChange={(event) => setSelectedBarnId(event.target.value)}>
+            {barns.length === 0 && <option value="">No hay galpones</option>}
+            {barns.map((item) => <option key={item.id} value={item.id}>{item.nombre}</option>)}
+          </select>
+          {!barnsLoading && selectedBarn && !selectedBarn.plan && <p className="avi-page-subtitle">Este galpón no tiene un plan nutricional asignado.</p>}
           {loading && <p className="avi-page-subtitle">Cargando proyecciones...</p>}
           {requirement && balance && (
             <>
@@ -62,10 +76,10 @@ function NutritionistProjectionsPage() {
                 <StatCard label="Proyección activa" value={`${format(projectedKg)} kg`}
                   status={`Lote ${requirement.codigoLote}`} statusColor="#2d743b"
                   icon="/assets/admin-feed.svg" tileBg="#e6f7e4" width="437px" />
-                <StatCard label="Faltante" value={`${format(missingKg)} kg`}
-                  status="Demanda menos existencia disponible" statusColor="#9e4a0f"
+                <StatCard label="Faltante global" value={`${format(missingKg)} kg`}
+                  status="Demanda consolidada de todos los lotes" statusColor="#9e4a0f"
                   icon="/assets/admin-inventario.svg" tileBg="#f4eee3" width="437px" />
-                <StatCard label="Bultos sugeridos" value={format(suggestedSacks)}
+                <StatCard label="Bultos sugeridos globales" value={format(suggestedSacks)}
                   status="Redondeados al bulto completo" statusColor="#9e4a0f"
                   icon="/assets/admin-orden.svg" tileBg="#f4eee3" width="437px" />
               </div>

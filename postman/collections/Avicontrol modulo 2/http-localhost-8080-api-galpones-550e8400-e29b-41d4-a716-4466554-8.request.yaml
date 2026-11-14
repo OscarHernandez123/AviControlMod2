@@ -1,0 +1,26 @@
+$kind: http-request
+name: http://localhost:8080/api/galpones/550e8400-e29b-41d4-a716-446655440101/mortalidad
+description: ""
+url: http://localhost:8080/api/galpones/550e8400-e29b-41d4-a716-446655440101/mortalidad
+method: POST
+headers:
+  Idempotency-Key: 8a3f8d61-4d82-4d15-9b0a-0e9c4c713a21
+body:
+  type: json
+  content: "{\r
+
+    \  \"fechaHoraEvento\": \"2026-11-13T09:00:00-05:00\",\r
+
+    \  \"cantidad\": 7,\r
+
+    \  \"causa\": \"DESCONOCIDA\",\r
+
+    \  \"observaciones\": \"Prueba de mortalidad anormal\"\r
+
+    }"
+auth:
+  type: basic
+  credentials:
+    username: trabajador
+    password: trabajador123
+order: 34000

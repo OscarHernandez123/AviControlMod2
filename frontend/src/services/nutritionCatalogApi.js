@@ -29,8 +29,7 @@ export const createCommercialFood = (data) => request('/api/nutricion/alimentos'
   method: 'POST', body: JSON.stringify(data)
 });
 
-export const localBarnId = import.meta.env.VITE_AVICONTROL_GALPON_ID || '550e8400-e29b-41d4-a716-446655440101';
-export const getBarnNutritionPlan = (barnId = localBarnId, { signal } = {}) =>
+export const getBarnNutritionPlan = (barnId, { signal } = {}) =>
   request(`/api/galpones/${encodeURIComponent(barnId)}/plan-nutricional`, { signal });
 export const substituteBarnNutritionPlan = (barnId, data) =>
   request(`/api/galpones/${encodeURIComponent(barnId)}/plan-nutricional/sustituir`, {
@@ -45,8 +44,7 @@ export const selectBarnNutritionStageFood = (barnId, stageId, alimentoId) =>
     method: 'PUT', body: JSON.stringify({ alimentoId })
   });
 
-export const localLotId = import.meta.env.VITE_AVICONTROL_LOTE_ID || '550e8400-e29b-41d4-a716-446655440102';
-export const getLotFoodRequirement = (lotId = localLotId, { signal } = {}) =>
+export const getLotFoodRequirement = (lotId, { signal } = {}) =>
   request(`/api/lotes/${encodeURIComponent(lotId)}/alimento-requerido`, { signal });
 export const getSupplyBalance = ({ signal } = {}) =>
   request('/api/administracion/balance-abastecimiento', { signal });

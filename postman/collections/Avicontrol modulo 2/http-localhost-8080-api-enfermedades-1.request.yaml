@@ -1,0 +1,26 @@
+$kind: http-request
+name: http://localhost:8080/api/enfermedades
+description: ""
+url: http://localhost:8080/api/enfermedades
+method: POST
+body:
+  type: json
+  content: "{\r
+
+    \  \"nombre\": \"Enfermedad ficticia para prueba sanitaria\",\r
+
+    \  \"nivelRiesgo\": \"CRITICO\",\r
+
+    \  \"tipo\": \"OTRA\",\r
+
+    \  \"descripcionClinica\": \"Registro ficticio para validar el flujo de sacrificio sanitario\",\r
+
+    \  \"requiereSacrificioSanitario\": true\r
+
+    }"
+auth:
+  type: basic
+  credentials:
+    username: veterinario
+    password: veterinario123
+order: 58000

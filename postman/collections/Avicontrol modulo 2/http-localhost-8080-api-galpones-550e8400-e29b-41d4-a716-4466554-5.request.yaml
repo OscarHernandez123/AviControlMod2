@@ -1,0 +1,13 @@
+$kind: http-request
+name: http://localhost:8080/api/galpones/550e8400-e29b-41d4-a716-446655440101/alimento-diario
+description: ""
+url: http://localhost:8080/api/galpones/550e8400-e29b-41d4-a716-446655440101/alimento-diario?fecha=2026-11-13
+method: GET
+queryParams:
+  fecha: 2026-11-13
+auth:
+  type: basic
+  credentials:
+    username: trabajador
+    password: trabajador123
+order: 30000

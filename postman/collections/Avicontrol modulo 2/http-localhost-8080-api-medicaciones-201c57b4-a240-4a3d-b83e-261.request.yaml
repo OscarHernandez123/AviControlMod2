@@ -1,0 +1,32 @@
+$kind: http-request
+name: http://localhost:8080/api/medicaciones/201c57b4-a240-4a3d-b83e-261243b04bc7
+description: ""
+url: http://localhost:8080/api/medicaciones/201c57b4-a240-4a3d-b83e-261243b04bc7
+method: PUT
+body:
+  type: json
+  content: "{\r
+
+    \  \"enfermedadId\": \"85cd728f-1ba6-4a95-a08b-dd772cd87114\",\r
+
+    \  \"medicamentoId\": \"550e8400-e29b-41d4-a716-446655440000\",\r
+
+    \  \"dosis\": \"Dosis de demostración ajustada, sin uso clínico\",\r
+
+    \  \"duracionDias\": 3,\r
+
+    \  \"descripcion\": \"Tratamiento de prueba actualizado\",\r
+
+    \  \"nombreMedicamento\": \"Medicamento de prueba\",\r
+
+    \  \"principioActivo\": \"Principio activo de prueba\",\r
+
+    \  \"diasAplicacion\": [1, 2, 3]\r
+
+    }"
+auth:
+  type: basic
+  credentials:
+    username: veterinario
+    password: veterinario123
+order: 43000

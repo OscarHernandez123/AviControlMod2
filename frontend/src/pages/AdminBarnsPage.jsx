@@ -252,10 +252,6 @@ function AdminBarnsPage() {
                 </div>
               </div>
 
-              <div className="avi-drawer-date-row" data-node-id="216:1139">
-                <span className="avi-drawer-date-label">Identificador del galpón</span>
-                <strong className="avi-drawer-date-value">{selectedBarn.id}</strong>
-              </div>
             </div>
           </aside>
         </div>

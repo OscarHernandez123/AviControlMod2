@@ -1,0 +1,13 @@
+$kind: http-request
+name: http://localhost:8080/api/nutricion/alimentos-compatibles
+description: ""
+url: http://localhost:8080/api/nutricion/alimentos-compatibles?tipoAlimento=ENGORDE
+method: GET
+queryParams:
+  tipoAlimento: ENGORDE
+auth:
+  type: basic
+  credentials:
+    username: nutricionista
+    password: nutricionista123
+order: 54000

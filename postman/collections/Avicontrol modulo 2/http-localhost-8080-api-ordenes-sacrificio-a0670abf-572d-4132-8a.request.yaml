@@ -1,0 +1,18 @@
+$kind: http-request
+name: http://localhost:8080/api/ordenes-sacrificio/a0670abf-572d-4132-8a26-9f97f6770157/reprogramacion
+description: ""
+url: http://localhost:8080/api/ordenes-sacrificio/a0670abf-572d-4132-8a26-9f97f6770157/reprogramacion
+method: PUT
+body:
+  type: json
+  content: "{\r
+
+    \  \"fechaHoraProgramada\": \"2026-11-13T22:16:48-05:00\"\r
+
+    }"
+auth:
+  type: basic
+  credentials:
+    username: admin
+    password: admin123
+order: 69000

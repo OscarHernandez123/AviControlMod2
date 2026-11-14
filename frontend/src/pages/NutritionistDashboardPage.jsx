@@ -4,8 +4,8 @@ import Sidebar from '../components/Sidebar';
 import Topbar from '../components/Topbar';
 import StatCard from '../components/StatCard';
 import ApiMessage from '../components/ApiMessage';
-import { getBarn } from '../services/barnsApi';
-import { getBarnNutritionPlan, listTemplates, localBarnId } from '../services/nutritionCatalogApi';
+import { listTemplates } from '../services/nutritionCatalogApi';
+import { useNutritionBarns } from '../hooks/useNutritionBarns';
 
 const STAGES = [
   ['PRE_INICIO', 'Pre-inicio', '#407db8'],
@@ -15,22 +15,17 @@ const STAGES = [
 
 function NutritionistDashboardPage() {
   const navigate = useNavigate();
+  const { barns, selectedBarnId, setSelectedBarnId, selectedBarn, loading: barnsLoading, error: barnsError } = useNutritionBarns();
   const [templates, setTemplates] = useState([]);
-  const [plan, setPlan] = useState(null);
-  const [barn, setBarn] = useState(null);
+  const plan = selectedBarn?.plan;
+  const barn = selectedBarn;
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
   useEffect(() => {
     const controller = new AbortController();
-    Promise.all([
-      listTemplates({ signal: controller.signal }),
-      getBarnNutritionPlan(localBarnId, { signal: controller.signal }),
-      getBarn(localBarnId, { signal: controller.signal })
-    ]).then(([loadedTemplates, loadedPlan, loadedBarn]) => {
+    listTemplates({ signal: controller.signal }).then((loadedTemplates) => {
       setTemplates(loadedTemplates);
-      setPlan(loadedPlan);
-      setBarn(loadedBarn);
     }).catch((cause) => {
       if (cause.name !== 'AbortError') setError(cause.message);
     }).finally(() => {
@@ -56,7 +51,8 @@ function NutritionistDashboardPage() {
   const extended = currentStage && templateStage && currentStage.diaFin > templateStage.diaFin;
   const stageCounts = STAGES.map(([id, label, color]) => ({
     id, label, color,
-    count: plan?.estado === 'ACTIVO' && currentStage?.etapaCrianza === id ? 1 : 0
+    count: barns.filter((item) => item.plan?.estado === 'ACTIVO'
+      && item.plan.etapas?.some((stage) => stage.estadoEtapa === 'ACTIVA' && stage.etapaCrianza === id)).length
   }));
 
   return (
@@ -64,20 +60,25 @@ function NutritionistDashboardPage() {
       <Sidebar role="nutricionista" />
       <div className="avi-main-frame">
         <Topbar roleLabel="Nutricionista" avatarSrc="/assets/admin-avatar.svg" />
-        <ApiMessage message={error} type="error" onClose={() => setError('')} />
+        <ApiMessage message={error || barnsError} type="error" onClose={() => setError('')} />
         <div className="avi-dashboard-content">
           <div className="avi-page-heading">
             <p className="avi-page-subtitle">
               Resumen general de etapas nutricionales, alertas de transición y movimientos recientes
             </p>
-            {loading && <p className="avi-page-subtitle">Cargando indicadores...</p>}
+            {(loading || barnsLoading) && <p className="avi-page-subtitle">Cargando indicadores...</p>}
+            <select className="avi-figma-input" style={{ maxWidth: 360, marginTop: 12 }} aria-label="Galpón" value={selectedBarnId}
+              onChange={(event) => setSelectedBarnId(event.target.value)}>
+              {barns.length === 0 && <option value="">No hay galpones</option>}
+              {barns.map((item) => <option key={item.id} value={item.id}>{item.nombre}</option>)}
+            </select>
           </div>
 
           <div className="avi-metrics-row">
             <StatCard label="Planes disponibles" value={loading ? '—' : `${activeTemplates.length} planes`}
               status={`Catálogo activo (${templates.length} total)`} icon="/assets/admin-orden.svg"
               tileBg="#f4eee3" width="437px" />
-            <StatCard label="Galpones con plan" value={loading ? '—' : plan?.estado === 'ACTIVO' ? '1 galpón' : '0 galpones'}
+            <StatCard label="Galpones con plan" value={barnsLoading ? '—' : `${barns.filter((item) => item.plan?.estado === 'ACTIVO').length} galpones`}
               status={plan?.estado === 'ACTIVO' ? barn?.nombre || 'Plan activo' : 'Sin plan activo'}
               icon="/assets/admin-galpon.svg" tileBg="#e6f7e4" width="437px" />
           </div>
@@ -130,7 +131,7 @@ function NutritionistDashboardPage() {
               <div className="avi-panel-icon-28"><img alt="" src="/assets/admin-orders-icon.svg" /></div>
               <h2 className="avi-panel-title">Asignaciones y ajustes nutricionales recientes</h2>
               <div className="avi-panel-spacer" />
-              <button type="button" className="avi-panel-chevron" title="Ir a asignaciones"
+              <button type="button" className="avi-panel-chevron" style={{ border: 0, background: 'transparent', cursor: 'pointer' }} title="Ir a asignaciones"
                 onClick={() => navigate('/nutricionista/asignaciones')}>
                 <img alt="" src="/assets/admin-chevron.svg" />
               </button>

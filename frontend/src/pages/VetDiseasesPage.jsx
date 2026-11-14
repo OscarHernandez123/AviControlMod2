@@ -204,7 +204,6 @@ function VetDiseasesPage() {
             onClick={() => setDetail(null)}>×</button>
         </div>
         <div className="avi-figma-modal-grid">
-          <p><strong>ID:</strong> {detail.id}</p>
           <p><strong>Tipo:</strong> {detail.tipo}</p>
           <p><strong>Riesgo:</strong> {detail.nivelRiesgo}</p>
           <p><strong>Sacrificio sanitario:</strong> {detail.requiereSacrificioSanitario ? 'Sí' : 'No'}</p>

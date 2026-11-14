@@ -3,15 +3,18 @@ import Sidebar from '../components/Sidebar';
 import Topbar from '../components/Topbar';
 import ApiMessage from '../components/ApiMessage';
 import {
-  adjustBarnNutritionStage, getBarnNutritionPlan, listCompatibleFoods, listTemplates,
-  localBarnId, selectBarnNutritionStageFood, substituteBarnNutritionPlan
+  adjustBarnNutritionStage, listCompatibleFoods, listTemplates,
+  selectBarnNutritionStageFood, substituteBarnNutritionPlan
 } from '../services/nutritionCatalogApi';
+import { useNutritionBarns } from '../hooks/useNutritionBarns';
 
 const labels = { PRE_INICIO: 'Pre-inicio', INICIO: 'Inicio', ENGORDE: 'Engorde' };
 const number = (value) => new Intl.NumberFormat('es-CO', { maximumFractionDigits: 2 }).format(Number(value || 0));
 
 function NutritionistAssignmentsLivePage() {
-  const [plan, setPlan] = useState(null);
+  const { barns, selectedBarnId, setSelectedBarnId, selectedBarn, loading: barnsLoading,
+    error: barnsError, refresh } = useNutritionBarns();
+  const plan = selectedBarn?.plan;
   const [templates, setTemplates] = useState([]);
   const [selectedTemplateId, setSelectedTemplateId] = useState('');
   const [justification, setJustification] = useState('');
@@ -32,11 +35,7 @@ function NutritionistAssignmentsLivePage() {
     const controller = new AbortController();
     setLoading(true);
     setError('');
-    Promise.all([
-      getBarnNutritionPlan(localBarnId, { signal: controller.signal }),
-      listTemplates({ signal: controller.signal })
-    ]).then(([loadedPlan, loadedTemplates]) => {
-      setPlan(loadedPlan);
+    listTemplates({ signal: controller.signal }).then((loadedTemplates) => {
       setTemplates(loadedTemplates.filter((item) => item.activo));
     }).catch((cause) => {
       if (cause.name !== 'AbortError') setError(cause.message);
@@ -52,7 +51,7 @@ function NutritionistAssignmentsLivePage() {
     setSaving(true);
     setError('');
     try {
-      await substituteBarnNutritionPlan(localBarnId, {
+      await substituteBarnNutritionPlan(selectedBarnId, {
         plantillaId: selectedTemplateId,
         justificacion: justification.trim()
       });
@@ -60,6 +59,7 @@ function NutritionistAssignmentsLivePage() {
       setJustification('');
       setToast('El plan del galpón se actualizó correctamente.');
       setReloadKey((value) => value + 1);
+      refresh();
     } catch (cause) { setError(cause.message); }
     finally { setSaving(false); }
   };
@@ -96,9 +96,10 @@ function NutritionistAssignmentsLivePage() {
     setSaving(true);
     setError('');
     try {
-      await selectBarnNutritionStageFood(localBarnId, selectedFutureStage.id, selectedFoodId);
+      await selectBarnNutritionStageFood(selectedBarnId, selectedFutureStage.id, selectedFoodId);
       setToast('El alimento de la etapa futura se actualizó correctamente.');
       setReloadKey((value) => value + 1);
+      refresh();
     } catch (cause) { setError(cause.message); }
     finally { setSaving(false); }
   };
@@ -111,7 +112,7 @@ function NutritionistAssignmentsLivePage() {
     setSaving(true);
     setError('');
     try {
-      await adjustBarnNutritionStage(localBarnId, active.id, {
+      await adjustBarnNutritionStage(selectedBarnId, active.id, {
         nuevoDiaFin: parsedEndDay,
         motivo: adjustmentReason,
         justificacion: adjustmentJustification.trim()
@@ -120,6 +121,7 @@ function NutritionistAssignmentsLivePage() {
       setAdjustmentJustification('');
       setToast('La duración se ajustó y la proyección se recalculó.');
       setReloadKey((value) => value + 1);
+      refresh();
     } catch (cause) { setError(cause.message); }
     finally { setSaving(false); }
   };
@@ -130,7 +132,7 @@ function NutritionistAssignmentsLivePage() {
       <div className="avi-main-frame">
         <Topbar roleLabel="Nutricionista" avatarSrc="/assets/admin-avatar.svg" />
         <ApiMessage message={toast} type="success" onClose={() => setToast('')} />
-        <ApiMessage message={error} type="error" onClose={() => setError('')} />
+        <ApiMessage message={error || barnsError} type="error" onClose={() => setError('')} />
         <div className="avi-dashboard-content">
           <div className="avi-page-heading">
             <div className="avi-heading-copy">
@@ -138,12 +140,19 @@ function NutritionistAssignmentsLivePage() {
               <p className="avi-page-subtitle">Consulta la etapa vigente y sustituye las etapas futuras del lote.</p>
             </div>
           </div>
-          {loading && <p className="avi-page-subtitle">Cargando plan nutricional...</p>}
+          <label className="avi-figma-label" htmlFor="nutrition-barn">Galpón</label>
+          <select id="nutrition-barn" className="avi-figma-input" style={{ maxWidth: 360, marginBottom: 16 }} value={selectedBarnId}
+            onChange={(event) => setSelectedBarnId(event.target.value)}>
+            {barns.length === 0 && <option value="">No hay galpones</option>}
+            {barns.map((item) => <option key={item.id} value={item.id}>{item.nombre}</option>)}
+          </select>
+          {(loading || barnsLoading) && <p className="avi-page-subtitle">Cargando plan nutricional...</p>}
+          {!barnsLoading && selectedBarn && !plan && <p className="avi-page-subtitle">Este galpón no tiene un plan nutricional asignado.</p>}
           {plan && (
             <>
               <div className="avi-recent-orders-panel">
                 <div className="avi-panel-header avi-panel-header-full">
-                  <h2 className="avi-panel-title">Lote {plan.loteId} · {plan.estado}</h2>
+                  <h2 className="avi-panel-title">{selectedBarn?.nombre} · {plan.estado}</h2>
                 </div>
                 <p className="avi-page-subtitle">Salida proyectada: {plan.fechaSalidaProyectada}</p>
                 <p className="avi-page-subtitle">Etapa activa: {active ? `${labels[active.etapaCrianza]} · ${number(active.demandaDiariaKg)} kg/día` : 'Ninguna'}</p>

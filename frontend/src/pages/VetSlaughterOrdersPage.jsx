@@ -118,12 +118,12 @@ function VetSlaughterOrdersPage() {
             </div>
             {loading && <p>Cargando órdenes...</p>}
             {!loading && filtered.length === 0 && <p>No hay órdenes para mostrar.</p>}
-            {filtered.map((order) => {
+            {filtered.map((order, index) => {
               const diagnosis = diagnoses.find((item) => item.id === order.diagnosticoId);
               return <div className="avi-orders-trow" key={order.id}>
-                <span style={{ flex: 1.4, overflowWrap: 'anywhere' }}>{order.id}</span>
-                <span style={{ flex: 1 }}>{barnNames[order.galponId] || order.galponId}</span>
-                <span style={{ flex: 1.4 }}>{diagnosis?.enfermedadNombre || order.diagnosticoId}</span>
+                <span style={{ flex: 1.4 }}>Orden sanitaria {index + 1}</span>
+                <span style={{ flex: 1 }}>{barnNames[order.galponId] || 'Galpón no disponible'}</span>
+                <span style={{ flex: 1.4 }}>{diagnosis?.enfermedadNombre || 'Diagnóstico no disponible'}</span>
                 <span style={{ flex: 0.8 }}>{order.estado}</span>
                 <span style={{ flex: 0.9 }}>{order.poblacionSacrificada ?? '—'}</span>
                 <span style={{ flex: 0.9 }}>{order.estado === 'PENDIENTE' && <button type="button" className="avi-admin-table-btn avi-admin-table-btn-orange" onClick={() => setModal({ kind: 'execute', order })}>Confirmar ejecución</button>}</span>
@@ -139,7 +139,7 @@ function VetSlaughterOrdersPage() {
         <p>Selecciona un diagnóstico activo que requiera sacrificio sanitario en un galpón aislado.</p>
         <select className="avi-figma-input avi-figma-select" required value={diagnosisId} onChange={(event) => setDiagnosisId(event.target.value)}>
           <option value="">Seleccionar diagnóstico</option>
-          {eligible.map((diagnosis) => <option key={diagnosis.id} value={diagnosis.id}>{isolatedBarns.find((barn) => barn.id === diagnosis.galponId)?.nombre || diagnosis.galponId} · {diagnosis.enfermedadNombre}</option>)}
+          {eligible.map((diagnosis) => <option key={diagnosis.id} value={diagnosis.id}>{isolatedBarns.find((barn) => barn.id === diagnosis.galponId)?.nombre || 'Galpón no disponible'} · {diagnosis.enfermedadNombre}</option>)}
         </select>
         {eligible.length === 0 && <p>No hay diagnósticos elegibles sin orden.</p>}
         <div className="avi-figma-modal-footer"><button type="button" className="avi-figma-btn-cancel" onClick={() => setModal(null)}>Cancelar</button><button type="submit" className="avi-figma-btn-green" disabled={busy || !selectedDiagnosis}>Emitir orden</button></div>

@@ -1,0 +1,30 @@
+$kind: http-request
+name: http://localhost:8080/api/nutricion/alimentos
+description: ""
+url: http://localhost:8080/api/nutricion/alimentos
+method: POST
+body:
+  type: json
+  content: "{\r
+
+    \  \"id\": \"c34e9f40-745d-4a83-9b94-848847480101\",\r
+
+    \  \"nombre\": \"Alimento Engorde Broiler de prueba\",\r
+
+    \  \"tipoAlimento\": \"ENGORDE\",\r
+
+    \  \"pesoNominalPorBultoKg\": 40,\r
+
+    \  \"proteinaPorcentaje\": 19,\r
+
+    \  \"energiaKcalKg\": 3200,\r
+
+    \  \"duracionRecomendadaEtapaDias\": 21\r
+
+    }"
+auth:
+  type: basic
+  credentials:
+    username: nutricionista
+    password: nutricionista123
+order: 55000

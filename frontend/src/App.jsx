@@ -1,7 +1,6 @@
 import './index.css';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
-import { FarmProvider } from './context/FarmContext';
 import LoginPage from './pages/LoginPage';
 import RoleSelectionPage from './pages/RoleSelectionPage';
 import AdminDashboardPage from './pages/AdminDashboardPage';
@@ -25,7 +24,6 @@ function App() {
   return (
     <Router>
       <AuthProvider>
-        <FarmProvider>
           <div className="avi-app-shell">
             <main className="avi-app-viewport">
               <Routes>
@@ -56,7 +54,6 @@ function App() {
               </Routes>
             </main>
           </div>
-        </FarmProvider>
       </AuthProvider>
     </Router>
   );

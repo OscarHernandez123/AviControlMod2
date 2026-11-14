@@ -155,13 +155,13 @@ function AdminSlaughterOrdersPage() {
             <div className="avi-orders-thead"><span style={{ flex: 1.3 }}>Orden</span><span style={{ flex: 1 }}>Galpón</span><span style={{ flex: 0.9 }}>Fecha</span><span style={{ flex: 0.8 }}>Estado</span><span style={{ flex: 1 }}>Resultado</span><span style={{ flex: 1.6 }}>Acciones</span></div>
             {loading && <p>Cargando órdenes...</p>}
             {!loading && filtered.length === 0 && <p>No hay órdenes para mostrar.</p>}
-            {filtered.map((order) => {
+            {filtered.map((order, index) => {
               const result = results[order.id];
               const beforeDate = Date.parse(order.fechaHoraProgramada) > Date.now();
               const pending = ['PROGRAMADA', 'REPROGRAMADA'].includes(order.estado) && beforeDate;
               return <div key={order.id} className="avi-orders-trow">
-                <span style={{ flex: 1.3, overflowWrap: 'anywhere' }}>{order.id}</span>
-                <span style={{ flex: 1 }}>{barns.find((barn) => barn.id === order.galponId)?.nombre || order.galponId}</span>
+                <span style={{ flex: 1.3 }}>Orden {index + 1}</span>
+                <span style={{ flex: 1 }}>{barns.find((barn) => barn.id === order.galponId)?.nombre || 'Galpón no disponible'}</span>
                 <span style={{ flex: 0.9 }}>{new Date(order.fechaHoraProgramada).toLocaleString('es-CO')}</span>
                 <span style={{ flex: 0.8 }}>{order.estado}</span>
                 <span style={{ flex: 1 }}>{result ? `${result.cantidadFinalPollos} aves · ${result.pesoTotalKg} kg` : '—'}</span>
@@ -192,7 +192,7 @@ function AdminSlaughterOrdersPage() {
           <label className="avi-figma-label">Fecha y hora futura</label>
           <input type="datetime-local" className="avi-figma-input" required min={localDateTime(Date.now() + 60000)} value={scheduledAt} onChange={(event) => setScheduledAt(event.target.value)} />
         </div>}
-        {modal.kind === 'cancel' && <p>¿Cancelar la orden {modal.order.id}? No podrá programarse otra para el mismo lote.</p>}
+        {modal.kind === 'cancel' && <p>¿Cancelar la orden de este galpón? No podrá programarse otra para el mismo lote.</p>}
         {modal.kind === 'result' && <div className="avi-figma-modal-grid">
           <div className="avi-figma-field"><label className="avi-figma-label">Cantidad final de pollos</label><input type="number" min="1" step="1" className="avi-figma-input" required value={birds} onChange={(event) => setBirds(event.target.value)} /></div>
           <div className="avi-figma-field"><label className="avi-figma-label">Peso total (kg)</label><input type="number" min="0.01" step="0.01" className="avi-figma-input" required value={weight} onChange={(event) => setWeight(event.target.value)} /></div>

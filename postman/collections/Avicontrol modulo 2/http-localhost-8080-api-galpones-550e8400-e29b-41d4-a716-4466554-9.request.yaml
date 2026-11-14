@@ -1,0 +1,20 @@
+$kind: http-request
+name: http://localhost:8080/api/galpones/550e8400-e29b-41d4-a716-446655440101/solicitudes-aislamiento
+description: ""
+url: http://localhost:8080/api/galpones/550e8400-e29b-41d4-a716-446655440101/solicitudes-aislamiento
+method: POST
+body:
+  type: json
+  content: "{\r
+
+    \  \"motivo\": \"Mortalidad anormal registrada hoy\",\r
+
+    \  \"signosClinicos\": \"Sin signos clínicos adicionales reportados\"\r
+
+    }"
+auth:
+  type: basic
+  credentials:
+    username: trabajador
+    password: trabajador123
+order: 36000

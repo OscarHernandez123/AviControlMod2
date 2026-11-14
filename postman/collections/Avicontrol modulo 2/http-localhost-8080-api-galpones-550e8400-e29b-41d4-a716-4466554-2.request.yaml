@@ -1,0 +1,20 @@
+$kind: http-request
+name: http://localhost:8080/api/galpones/550e8400-e29b-41d4-a716-446655440101/plan-nutricional/sustituir
+description: ""
+url: http://localhost:8080/api/galpones/550e8400-e29b-41d4-a716-446655440101/plan-nutricional/sustituir
+method: PUT
+body:
+  type: json
+  content: "{\r
+
+    \  \"plantillaId\": \"fbe0f893-8f19-4dc0-a954-96520dd50f9c\",\r
+
+    \  \"justificacion\": \"Ajustar la etapa futura de engorde\"\r
+
+    }"
+auth:
+  type: basic
+  credentials:
+    username: nutricionista
+    password: nutricionista123
+order: 23000

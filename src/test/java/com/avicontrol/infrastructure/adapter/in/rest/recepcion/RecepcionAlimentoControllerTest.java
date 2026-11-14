@@ -6,6 +6,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.avicontrol.AviControlModulo2Application;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -22,6 +23,38 @@ import org.springframework.test.web.servlet.MockMvc;
 class RecepcionAlimentoControllerTest {
   @Autowired MockMvc mvc;
   @Autowired JdbcTemplate jdbc;
+
+  @Test
+  void registraAlimentoComercialPorSuIdSinConfiguracionLocal() throws Exception {
+    UUID alimentoId = UUID.randomUUID();
+    String producto =
+        """
+        {"id":"%s","nombre":"Alimento Engorde Real","tipoAlimento":"ENGORDE",
+        "pesoNominalPorBultoKg":40,"proteinaPorcentaje":18,"energiaKcalKg":3200}
+        """
+            .formatted(alimentoId);
+    mvc.perform(
+            post("/api/nutricion/alimentos")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(producto)
+                .with(SecurityMockMvcRequestPostProcessors.user("nutri").roles("NUTRICIONISTA")))
+        .andExpect(status().isCreated());
+
+    String recepcion =
+        """
+        {"alimentoId":"%s","tipoAlimento":"ENGORDE","codigoLote":"LOTE-%s",
+        "fechaIngreso":"2026-11-05","fechaVencimiento":"2027-03-05","cantidadBultos":2,
+        "pesoPorBultoKg":40,"precioNetoPorBulto":60000,"impuestoPorcentaje":19}
+        """
+            .formatted(alimentoId, alimentoId);
+    mvc.perform(
+            post("/api/recepciones/alimentos")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(recepcion)
+                .with(SecurityMockMvcRequestPostProcessors.user("admin").roles("ADMINISTRADOR")))
+        .andExpect(status().isCreated())
+        .andExpect(jsonPath("$.nombreAlimento").value("Alimento Engorde Real"));
+  }
 
   @Test
   void creaEntradaYRestringeRol() throws Exception {

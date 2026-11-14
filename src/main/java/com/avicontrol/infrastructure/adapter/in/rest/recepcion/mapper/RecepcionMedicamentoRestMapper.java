@@ -94,6 +94,7 @@ public class RecepcionMedicamentoRestMapper {
                         r.fechaIngreso(),
                         r.cantidadPresentaciones(),
                         r.contenidoPorPresentacion(),
+                        r.unidadContenido(),
                         r.precioNetoPorPresentacion()))
             .toList(),
         pagina.total(),

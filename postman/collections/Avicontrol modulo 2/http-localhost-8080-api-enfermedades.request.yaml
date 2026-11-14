@@ -1,0 +1,26 @@
+$kind: http-request
+name: http://localhost:8080/api/enfermedades
+description: ""
+url: http://localhost:8080/api/enfermedades
+method: POST
+body:
+  type: json
+  content: "{\r
+
+    \  \"nombre\": \"Enfermedad de prueba para diagnóstico\",\r
+
+    \  \"nivelRiesgo\": \"MODERADO\",\r
+
+    \  \"tipo\": \"OTRA\",\r
+
+    \  \"descripcionClinica\": \"Registro de demostración para probar el flujo de diagnóstico\",\r
+
+    \  \"requiereSacrificioSanitario\": false\r
+
+    }"
+auth:
+  type: basic
+  credentials:
+    username: veterinario
+    password: veterinario123
+order: 40000

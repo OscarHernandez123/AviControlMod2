@@ -288,7 +288,6 @@ function VetDiagnosePage() {
             onClick={() => setDetail(null)}>×</button>
         </div>
         <div className="avi-figma-modal-grid">
-          <p><strong>ID:</strong> {detail.id}</p>
           <p><strong>Estado:</strong> {detail.estado}</p>
           <p><strong>Enfermedad:</strong> {detail.enfermedadNombre}</p>
           <p><strong>Fecha:</strong> {detail.fechaDiagnostico}</p>
@@ -350,9 +349,9 @@ function VetDiagnosePage() {
               onClick={() => showConsumption(item.id)}>Ver costo</button>
           </div>)}
           {consumptionDetail && <div style={{ gridColumn: '1 / -1' }}>
-            <h4>Detalle del consumo · {consumptionDetail.id}</h4>
+            <h4>Detalle del consumo</h4>
             {consumptionDetail.detallesInventario.map((item) => <p key={item.recepcionId}>
-              Recepción {item.recepcionId}: {item.cantidadUnidadBase} {consumptionDetail.unidadBase}
+              {item.cantidadUnidadBase} {consumptionDetail.unidadBase}
               {' · '}{item.precioNetoHistoricoUnidadBase} {item.moneda} por unidad
             </p>)}
           </div>}

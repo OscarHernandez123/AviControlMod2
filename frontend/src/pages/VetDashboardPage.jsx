@@ -211,7 +211,7 @@ function VetDashboardPage() {
                 >
                   <div className="avi-crit-item-left">
                     <span className="avi-crit-item-name">
-                      {isolatedBarns.find((barn) => barn.id === item.galponId)?.nombre || item.galponId}
+                      {isolatedBarns.find((barn) => barn.id === item.galponId)?.nombre || 'Galpón no disponible'}
                     </span>
                   </div>
                   <div
@@ -260,8 +260,8 @@ function VetDashboardPage() {
 
               {pendingRequests.map((req) => (
                 <div key={req.id} className="avi-orders-trow">
-                  <span className="avi-col-dark" style={{ flex: 1 }}>{req.id.slice(0, 8)}</span>
-                  <span className="avi-col-dark" style={{ flex: 1 }}>{req.galponId.slice(0, 8)}</span>
+                  <span className="avi-col-dark" style={{ flex: 1 }}>Revisión sanitaria</span>
+                  <span className="avi-col-dark" style={{ flex: 1 }}>{isolatedBarns.find((barn) => barn.id === req.galponId)?.nombre || 'Galpón'}</span>
                   <span className="avi-col-muted" style={{ flex: 2 }}>{req.motivo}</span>
                   <span className="avi-col-dark" style={{ flex: 1 }}>{Number(req.poblacionVivaReportada).toLocaleString('es-CO')}</span>
                   <span style={{ flex: 1 }}><button type="button" className="avi-admin-table-btn avi-admin-table-btn-green"
@@ -278,7 +278,6 @@ function VetDashboardPage() {
           <div className="avi-figma-modal-header">
             <div className="avi-figma-modal-titles">
               <h2 className="avi-figma-modal-title">Alerta sanitaria · {selectedAlert.nombreGalpon}</h2>
-              <p className="avi-figma-modal-subtitle">{selectedAlert.id}</p>
             </div>
             <button type="button" className="avi-figma-modal-close"
               onClick={() => setSelectedAlert(null)}>×</button>
@@ -306,7 +305,6 @@ function VetDashboardPage() {
           <div className="avi-figma-modal-header">
             <div className="avi-figma-modal-titles">
               <h2 className="avi-figma-modal-title">Validar aislamiento</h2>
-              <p className="avi-figma-modal-subtitle">Solicitud {selectedRequest.id}</p>
             </div>
             <button type="button" className="avi-figma-modal-close" disabled={decisionSaving}
               onClick={() => setSelectedRequest(null)}>×</button>
@@ -314,7 +312,7 @@ function VetDashboardPage() {
           <div className="avi-figma-modal-grid">
             <div className="avi-figma-field">
               <label className="avi-figma-label">Galpón</label>
-              <div className="avi-figma-readonly-box">{selectedRequest.galponId}</div>
+              <div className="avi-figma-readonly-box">{isolatedBarns.find((barn) => barn.id === selectedRequest.galponId)?.nombre || 'Galpón'}</div>
             </div>
             <div className="avi-figma-field">
               <label className="avi-figma-label">Población reportada</label>
