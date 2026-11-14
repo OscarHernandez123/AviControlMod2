@@ -58,6 +58,17 @@ class DiagnosticoControllerTest {
             .getContentAsString();
     UUID diagnostico = UUID.fromString(json.readTree(response).get("id").asText());
     mvc.perform(
+            get("/api/diagnosticos")
+                .with(SecurityMockMvcRequestPostProcessors.user("vet").roles("VETERINARIO")))
+        .andExpect(status().isOk())
+        .andExpect(
+            jsonPath("$[?(@.id == '" + diagnostico + "')].estado")
+                .value(org.hamcrest.Matchers.hasItem("ACTIVO")));
+    mvc.perform(
+            get("/api/diagnosticos")
+                .with(SecurityMockMvcRequestPostProcessors.user("admin").roles("ADMINISTRADOR")))
+        .andExpect(status().isForbidden());
+    mvc.perform(
             post("/api/galpones/{id}/diagnosticos", GALPON)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(body(enfermedad, medicacion))

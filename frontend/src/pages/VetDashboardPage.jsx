@@ -1,6 +1,5 @@
-import { useContext, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FarmContext } from '../context/FarmContext';
 import Sidebar from '../components/Sidebar';
 import Topbar from '../components/Topbar';
 import StatCard from '../components/StatCard';
@@ -8,15 +7,15 @@ import BaseModal from '../components/BaseModal';
 import ApiMessage from '../components/ApiMessage';
 import { getPendingHealthAlerts } from '../services/healthAlertsApi';
 import { getPendingIsolationRequests, getIsolationRequest, validateIsolationRequest, getIsolatedBarns } from '../services/isolationApi';
+import { listDiagnoses } from '../services/diagnosesApi';
 
 function VetDashboardPage() {
-  const { vetDiagnosedBarns, vetDiagnoses } =
-    useContext(FarmContext);
   const navigate = useNavigate();
   const [healthAlerts, setHealthAlerts] = useState(null);
   const [alertsError, setAlertsError] = useState('');
   const [pendingRequests, setPendingRequests] = useState([]);
   const [isolatedBarns, setIsolatedBarns] = useState([]);
+  const [diagnoses, setDiagnoses] = useState([]);
   const [requestsLoading, setRequestsLoading] = useState(true);
   const [requestsReload, setRequestsReload] = useState(0);
   const [selectedRequest, setSelectedRequest] = useState(null);
@@ -30,11 +29,13 @@ function VetDashboardPage() {
     setRequestsLoading(true);
     Promise.all([
       getPendingIsolationRequests({ signal: controller.signal }),
-      getIsolatedBarns({ signal: controller.signal })
+      getIsolatedBarns({ signal: controller.signal }),
+      listDiagnoses(controller.signal)
     ])
-      .then(([requests, barns]) => {
+      .then(([requests, barns, diagnosisList]) => {
         setPendingRequests(requests);
         setIsolatedBarns(barns);
+        setDiagnoses(diagnosisList);
       })
       .catch((cause) => { if (cause.name !== 'AbortError') setAlertsError(cause.message); })
       .finally(() => { if (!controller.signal.aborted) setRequestsLoading(false); });
@@ -117,7 +118,7 @@ function VetDashboardPage() {
             />
             <StatCard
               label="Diagnósticos realizados"
-              value={`${vetDiagnoses?.length || 4} Evaluaciones`}
+              value={`${diagnoses.length} Evaluaciones`}
               status="Control sanitario activo"
               statusColor="#2d743b"
               icon="/assets/vet-stethoscope.svg"
@@ -180,7 +181,9 @@ function VetDashboardPage() {
                 <h2 className="avi-panel-title">Galpones diagnosticados</h2>
               </div>
 
-              {vetDiagnosedBarns.slice(0, 3).map((item) => (
+              {diagnoses.length === 0 &&
+                <p className="avi-page-subtitle">No hay diagnósticos registrados.</p>}
+              {diagnoses.slice(0, 3).map((item) => (
                 <div
                   key={item.id}
                   className="avi-crit-item-row"
@@ -189,16 +192,20 @@ function VetDashboardPage() {
                   title="Ir a Diagnosticar"
                 >
                   <div className="avi-crit-item-left">
-                    <span className="avi-crit-item-name">{item.name}</span>
+                    <span className="avi-crit-item-name">
+                      {isolatedBarns.find((barn) => barn.id === item.galponId)?.nombre || item.galponId}
+                    </span>
                   </div>
                   <div
                     className="avi-crit-badge"
-                    style={{ backgroundColor: item.badgeBg }}
+                    style={{ backgroundColor: item.estado === 'ACTIVO' ? '#ffe8ba' : '#d6f0d1' }}
                   >
                     <div className="avi-crit-dot">
-                      <img alt="" src={item.dotIcon} />
+                      <img alt="" src={item.estado === 'ACTIVO' ? '/assets/dot-orange.svg' : '/assets/vet-dot-aceptada.svg'} />
                     </div>
-                    <span style={{ color: item.badgeColor }}>{item.status}</span>
+                    <span style={{ color: item.estado === 'ACTIVO' ? '#bf5400' : '#1f5929' }}>
+                      {item.estado}
+                    </span>
                   </div>
                 </div>
               ))}

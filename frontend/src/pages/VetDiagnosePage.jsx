@@ -1,668 +1,252 @@
-import { useContext, useState } from 'react';
-import { FarmContext } from '../context/FarmContext';
+import { useEffect, useState } from 'react';
 import Sidebar from '../components/Sidebar';
 import Topbar from '../components/Topbar';
 import StatCard from '../components/StatCard';
 import BaseModal from '../components/BaseModal';
 import ApiMessage from '../components/ApiMessage';
+import { getIsolatedBarns } from '../services/isolationApi';
+import { listDiseases } from '../services/diseasesApi';
+import { listMedications } from '../services/medicationsApi';
+import { createDiagnosis, getDiagnosis, listDiagnoses } from '../services/diagnosesApi';
+
+const blank = { galponId: '', enfermedadId: '', medicacionId: '', observaciones: '' };
 
 function VetDiagnosePage() {
-  const {
-    vetDiagnoses,
-    vetReviewRequests,
-    vetDiseases,
-    vetMedicines,
-    saveVetDiagnosis,
-    updateVetRequestStatus
-  } = useContext(FarmContext);
+  const [diagnoses, setDiagnoses] = useState([]);
+  const [barns, setBarns] = useState([]);
+  const [diseases, setDiseases] = useState([]);
+  const [medications, setMedications] = useState([]);
+  const [form, setForm] = useState(blank);
+  const [open, setOpen] = useState(false);
+  const [detail, setDetail] = useState(null);
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
+  const [message, setMessage] = useState('');
+  const [messageType, setMessageType] = useState('info');
+  const [saving, setSaving] = useState(false);
 
-  const [searchTerm, setSearchTerm] = useState('');
-  const [dictamenFilter, setDictamenFilter] = useState('Todos');
-  const [severityFilter, setSeverityFilter] = useState('Todas');
-  const [toastMsg, setToastMsg] = useState('');
+  async function refresh(signal) {
+    try {
+      const [diagnosesResult, barnsResult, diseasesResult, medicationsResult] = await Promise.all([
+        listDiagnoses(signal), getIsolatedBarns({ signal }),
+        listDiseases(signal), listMedications(signal)
+      ]);
+      setDiagnoses(diagnosesResult);
+      setBarns(barnsResult);
+      setDiseases(diseasesResult);
+      setMedications(medicationsResult);
+    } catch (error) {
+      if (error.name !== 'AbortError') {
+        setMessageType('error');
+        setMessage(error.message);
+      }
+    }
+  }
+  useEffect(() => {
+    const controller = new AbortController();
+    refresh(controller.signal);
+    return () => controller.abort();
+  }, []);
 
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [detailDiag, setDetailDiag] = useState(null);
-
-  const [form, setForm] = useState({
-    id: '',
-    solicitudId: '#0002',
-    galpon: 'Galpón 2',
-    lote: '#LDP-002',
-    fecha: '2026-09-20',
-    enfermedad: vetDiseases[0]?.nombre || 'Colibacilosis Aviar',
-    severidad: 'Moderada',
-    medicina: vetMedicines[0]?.nombre || 'Enrofloxacina 10% Solución Oral',
-    dosis: '1 ml / 2 L de agua por 5 días',
-    dictamen: 'En tratamiento',
-    observaciones:
-      'Aislamiento preventivo del galpón y seguimiento de consumo de agua cada 12 horas.'
+  const selectedDisease = diseases.find((item) => item.id === form.enfermedadId);
+  const compatibleMedications = medications.filter((item) => item.enfermedadId === form.enfermedadId);
+  const barnName = (id) => barns.find((item) => item.id === id)?.nombre || id;
+  const filtered = diagnoses.filter((item) => {
+    const text = search.trim().toLowerCase();
+    return (!text || item.enfermedadNombre.toLowerCase().includes(text) ||
+      (item.medicamentoNombre || '').toLowerCase().includes(text) ||
+      barnName(item.galponId).toLowerCase().includes(text) ||
+      item.id.toLowerCase().includes(text)) &&
+      (!statusFilter || item.estado === statusFilter);
   });
 
-  const pendingRequests = vetReviewRequests.filter(
-    (r) => r.estado === 'Pendiente'
-  );
-
-  const filteredDiagnoses = vetDiagnoses.filter((row) => {
-    const q = searchTerm.trim().toLowerCase();
-    const matchesSearch =
-      !q ||
-      row.id.toLowerCase().includes(q) ||
-      row.galpon.toLowerCase().includes(q) ||
-      row.lote.toLowerCase().includes(q) ||
-      row.enfermedad.toLowerCase().includes(q) ||
-      row.medicina.toLowerCase().includes(q);
-    const matchesDictamen =
-      dictamenFilter === 'Todos' || row.dictamen === dictamenFilter;
-    const matchesSeverity =
-      severityFilter === 'Todas' || row.severidad === severityFilter;
-    return matchesSearch && matchesDictamen && matchesSeverity;
-  });
-
-  const handleOpenNew = (req = null) => {
-    const nextNum = String(vetDiagnoses.length + 1).padStart(3, '0');
-    const defaultMed = vetMedicines[0];
-    setForm({
-      id: `#DIAG-${nextNum}`,
-      solicitudId: req ? req.id : 'Directo',
-      galpon: req ? req.galpon : 'Galpón 2',
-      lote: req?.lote || `#LDP-00${(req?.galpon || '2').replace(/\D/g, '') || '2'}`,
-      fecha: '2026-09-20',
-      enfermedad: vetDiseases[2]?.nombre || vetDiseases[0]?.nombre || 'Colibacilosis Aviar',
-      severidad: 'Moderada',
-      medicina: defaultMed?.nombre || 'Enrofloxacina 10% Solución Oral',
-      dosis: defaultMed?.dosisRecomendada || '1 ml / 2 L de agua por 5 días',
-      dictamen: 'En tratamiento',
-      observaciones: req?.motivo
-        ? `Atención a solicitud ${req.id} (${req.motivo}). Se instaura protocolo terapéutico.`
-        : 'Evaluación clínica en galpón y prescripción veterinaria controlada.'
-    });
-    setIsModalOpen(true);
-  };
-
-  const handleOpenEdit = (diag) => {
-    setForm({ ...diag });
-    setIsModalOpen(true);
-  };
-
-  const handleMedicineChange = (medName) => {
-    const found = vetMedicines.find((m) => m.nombre === medName);
-    setForm((prev) => ({
-      ...prev,
-      medicina: medName,
-      dosis: found ? found.dosisRecomendada : prev.dosis
-    }));
-  };
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    saveVetDiagnosis(form);
-    setIsModalOpen(false);
-    setToastMsg(
-      `Diagnóstico ${form.id} registrado para ${form.galpon} (${form.dictamen}).`
-    );
-  };
-
-  const getDictamenBadge = (dictamen) => {
-    if (dictamen === 'Sacrificio') {
-      return { bg: '#ffe0e3', color: '#ed2b33', dot: '/assets/dot-red.svg' };
+  async function submit(event) {
+    event.preventDefault();
+    setSaving(true);
+    try {
+      const saved = await createDiagnosis(form.galponId, {
+        enfermedadId: form.enfermedadId,
+        medicacionId: selectedDisease?.requiereSacrificioSanitario ? null : form.medicacionId,
+        observaciones: form.observaciones.trim()
+      });
+      setDiagnoses((previous) => [saved, ...previous]);
+      setOpen(false);
+      setMessageType('success');
+      setMessage('Diagnóstico registrado para ' + barnName(saved.galponId));
+    } catch (error) {
+      setMessageType('error');
+      setMessage(error.message);
+    } finally {
+      setSaving(false);
     }
-    if (dictamen === 'En tratamiento') {
-      return { bg: '#ffe8ba', color: '#bf5400', dot: '/assets/dot-orange.svg' };
+  }
+
+  async function showDetail(id) {
+    try {
+      setDetail(await getDiagnosis(id));
+    } catch (error) {
+      setMessageType('error');
+      setMessage(error.message);
     }
-    return {
-      bg: '#d6f0d1',
-      color: '#1f5929',
-      dot: '/assets/vet-dot-aceptada.svg'
-    };
-  };
+  }
 
-  return (
-    <div className="avi-role-layout">
-      <Sidebar role="veterinario" />
-
-      <div className="avi-main-frame">
-        <Topbar roleLabel="Veterinario" avatarSrc="/assets/vet-avatar.svg" />
-        <ApiMessage
-          message={toastMsg}
-          type="success"
-          onClose={() => setToastMsg('')}
-        />
-
-        <div className="avi-dashboard-content">
-          {/* Subtítulo superior y botón de acción */}
-          <div className="avi-page-heading">
-            <div className="avi-heading-copy">
-              <p className="avi-page-subtitle">
-                Evaluación clínica de galpones, atención a solicitudes de revisión y prescripción terapéutica
-              </p>
-            </div>
-
-            <button
-              type="button"
-              className="avi-btn-green-cta"
-              onClick={() => handleOpenNew(null)}
-            >
-              <span>＋  Nuevo diagnóstico clínico</span>
-            </button>
+  return <div className="avi-role-layout">
+    <Sidebar role="veterinario" />
+    <div className="avi-main-frame">
+      <Topbar roleLabel="Veterinario" avatarSrc="/assets/vet-avatar.svg" />
+      <ApiMessage message={message} type={messageType} onClose={() => setMessage('')} />
+      <div className="avi-dashboard-content">
+        <div className="avi-page-heading">
+          <p className="avi-page-subtitle">
+            Diagnósticos de galpones aislados y tratamientos registrados
+          </p>
+          <button type="button" className="avi-btn-green-cta"
+            onClick={() => { setForm(blank); setOpen(true); }}>
+            ＋ Nuevo diagnóstico
+          </button>
+        </div>
+        <div className="avi-metrics-row">
+          <StatCard label="Galpones en aislamiento" value={String(barns.length)}
+            status="Disponibles para evaluación" statusColor="#9e4a0f"
+            icon="/assets/vet-bell.svg" tileBg="#f4eee3" width="437px" />
+          <StatCard label="Diagnósticos registrados" value={String(diagnoses.length)}
+            status="Historial del backend" statusColor="#2d743b"
+            icon="/assets/vet-stethoscope.svg" tileBg="#e6f7e4" width="437px" />
+        </div>
+        <div className="avi-receptions-filter-bar">
+          <input type="search" className="avi-receptions-search-input"
+            placeholder="Buscar galpón, enfermedad o medicamento"
+            value={search} onChange={(event) => setSearch(event.target.value)} />
+          <select className="avi-receptions-select" value={statusFilter}
+            onChange={(event) => setStatusFilter(event.target.value)}>
+            <option value="">Todos los estados</option>
+            <option value="ACTIVO">Activo</option>
+            <option value="REINTEGRADO">Reintegrado</option>
+            <option value="REINTEGRO_OMITIDO">Reintegro omitido</option>
+          </select>
+          <button type="button" className="avi-receptions-filter-btn"
+            onClick={() => { setSearch(''); setStatusFilter(''); }}>Limpiar</button>
+        </div>
+        <div className="avi-recent-orders-panel">
+          <div className="avi-panel-header avi-panel-header-full">
+            <h2 className="avi-panel-title">Historial de diagnósticos</h2>
+            <button type="button" className="avi-admin-table-btn avi-admin-table-btn-green"
+              onClick={() => refresh()}>Actualizar</button>
           </div>
-
-          {/* 2 Tarjetas KPI */}
-          <div className="avi-metrics-row">
-            <StatCard
-              label="Solicitudes por diagnosticar"
-              value={`${pendingRequests.length} Pendiente(s)`}
-              status={`De ${vetReviewRequests.length} solicitudes recibidas`}
-              statusColor="#9e4a0f"
-              icon="/assets/vet-bell.svg"
-              tileBg="#f4eee3"
-              width="437px"
-            />
-            <StatCard
-              label="Diagnósticos realizados"
-              value={`${vetDiagnoses.length} Evaluaciones`}
-              status="Historial clínico activo"
-              statusColor="#2d743b"
-              icon="/assets/vet-stethoscope.svg"
-              tileBg="#e6f7e4"
-              width="437px"
-            />
-          </div>
-
-          {/* Solicitudes de revisión enviadas por trabajadores */}
-          {pendingRequests.length > 0 && (
-            <div className="avi-recent-orders-panel">
-              <div className="avi-panel-header avi-panel-header-full">
-                <div className="avi-panel-icon-28">
-                  <img alt="" src="/assets/vet-bell.svg" />
-                </div>
-                <h2 className="avi-panel-title">
-                  Solicitudes de revisión pendientes de dictamen
-                </h2>
-              </div>
-
-              <div className="avi-orders-table">
-                <div className="avi-orders-thead">
-                  <span style={{ flex: '0.8' }}>Solicitud</span>
-                  <span style={{ flex: '1.1' }}>Galpón / Lote</span>
-                  <span style={{ flex: '2.2' }}>Motivo reportado en granja</span>
-                  <span style={{ flex: '1' }}>Fecha</span>
-                  <span style={{ flex: '1.3', textAlign: 'right' }}>Acción clínica</span>
-                </div>
-
-                {pendingRequests.map((req) => (
-                  <div key={req.id} className="avi-orders-trow">
-                    <span
-                      className="avi-col-dark"
-                      style={{ flex: '0.8', fontWeight: 700 }}
-                    >
-                      {req.id}
-                    </span>
-                    <span className="avi-col-dark" style={{ flex: '1.1', fontWeight: 600 }}>
-                      {req.galpon} {req.lote ? `(${req.lote})` : ''}
-                    </span>
-                    <span className="avi-col-muted" style={{ flex: '2.2' }}>
-                      {req.motivo || 'Revisión sanitaria solicitada por operario de galpón'}
-                    </span>
-                    <span className="avi-col-muted" style={{ flex: '1' }}>
-                      {req.fecha}
-                    </span>
-                    <div
-                      style={{
-                        flex: '1.3',
-                        display: 'flex',
-                        justifyContent: 'flex-end',
-                        gap: '6px'
-                      }}
-                    >
-                      <button
-                        type="button"
-                        className="avi-admin-table-btn avi-admin-table-btn-green"
-                        onClick={() => handleOpenNew(req)}
-                      >
-                        Diagnosticar
-                      </button>
-                      <button
-                        type="button"
-                        className="avi-admin-table-btn avi-admin-table-btn-orange"
-                        onClick={() => {
-                          updateVetRequestStatus(req.id, 'Rechazada');
-                          setToastMsg(`Solicitud ${req.id} descartada.`);
-                        }}
-                      >
-                        Descartar
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
+          <div className="avi-orders-table">
+            <div className="avi-orders-thead">
+              <span style={{ flex: 1.4 }}>Galpón</span>
+              <span style={{ flex: 1.8 }}>Enfermedad</span>
+              <span style={{ flex: 1.5 }}>Medicamento</span>
+              <span style={{ flex: 0.9 }}>Fecha</span>
+              <span style={{ flex: 0.8 }}>Estado</span>
+              <span style={{ flex: 0.6 }}>Acción</span>
             </div>
-          )}
-
-          {/* Barra de búsqueda y filtro */}
-          <form
-            className="avi-receptions-filter-bar"
-            onSubmit={(e) => e.preventDefault()}
-          >
-            <input
-              type="text"
-              className="avi-receptions-search-input"
-              placeholder="Buscar por diagnóstico, galpón, enfermedad o medicina recetada..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-
-            <select
-              className="avi-receptions-select"
-              value={dictamenFilter}
-              onChange={(e) => setDictamenFilter(e.target.value)}
-            >
-              <option value="Todos">Todos los dictámenes</option>
-              <option value="En tratamiento">En tratamiento</option>
-              <option value="Reintegro">Reintegro</option>
-              <option value="Sacrificio">Sacrificio</option>
-            </select>
-
-            <select
-              className="avi-receptions-select"
-              value={severityFilter}
-              onChange={(e) => setSeverityFilter(e.target.value)}
-            >
-              <option value="Todas">Todas las severidades</option>
-              <option value="Leve">Severidad Leve</option>
-              <option value="Moderada">Severidad Moderada</option>
-              <option value="Crítica">Severidad Crítica</option>
-            </select>
-
-            <button
-              type="button"
-              className="avi-receptions-filter-btn"
-              onClick={() => {
-                setSearchTerm('');
-                setDictamenFilter('Todos');
-                setSeverityFilter('Todas');
-              }}
-            >
-              Filtrar
-            </button>
-          </form>
-
-          {/* Tabla de Diagnósticos Realizados */}
-          <div className="avi-recent-orders-panel">
-            <div className="avi-panel-header avi-panel-header-full">
-              <div className="avi-panel-icon-28">
-                <img alt="" src="/assets/vet-stethoscope.svg" />
-              </div>
-              <h2 className="avi-panel-title">
-                Historial de diagnósticos y tratamientos por galpón
-              </h2>
-            </div>
-
-            <div className="avi-orders-table">
-              <div className="avi-orders-thead">
-                <span style={{ flex: '0.9' }}>Código</span>
-                <span style={{ flex: '1.1' }}>Galpón / Lote</span>
-                <span style={{ flex: '1.4' }}>Enfermedad diagnosticada</span>
-                <span style={{ flex: '1.5' }}>Medicina prescrita</span>
-                <span style={{ flex: '1' }}>Dictamen</span>
-                <span style={{ flex: '1.2', textAlign: 'right' }}>Acciones</span>
-              </div>
-
-              {filteredDiagnoses.map((row) => {
-                const st = getDictamenBadge(row.dictamen);
-                return (
-                  <div key={row.id} className="avi-orders-trow">
-                    <span
-                      className="avi-col-dark"
-                      style={{ flex: '0.9', fontWeight: 700 }}
-                    >
-                      {row.id}
-                    </span>
-                    <span className="avi-col-dark" style={{ flex: '1.1', fontWeight: 600 }}>
-                      {row.galpon} ({row.lote})
-                    </span>
-                    <span className="avi-col-dark" style={{ flex: '1.4' }}>
-                      {row.enfermedad}
-                    </span>
-                    <span className="avi-col-muted" style={{ flex: '1.5' }}>
-                      {row.medicina}
-                    </span>
-                    <div style={{ flex: '1', display: 'flex', alignItems: 'center' }}>
-                      <div
-                        className="avi-crit-badge"
-                        style={{ backgroundColor: st.bg }}
-                      >
-                        <div className="avi-crit-dot">
-                          <img alt="" src={st.dot} />
-                        </div>
-                        <span style={{ color: st.color }}>{row.dictamen}</span>
-                      </div>
-                    </div>
-                    <div
-                      style={{
-                        flex: '1.2',
-                        display: 'flex',
-                        justifyContent: 'flex-end',
-                        gap: '6px'
-                      }}
-                    >
-                      <button
-                        type="button"
-                        className="avi-admin-table-btn avi-admin-table-btn-green"
-                        onClick={() => setDetailDiag(row)}
-                      >
-                        Detalle
-                      </button>
-                      <button
-                        type="button"
-                        className="avi-admin-table-btn avi-admin-table-btn-orange"
-                        onClick={() => handleOpenEdit(row)}
-                      >
-                        Editar
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+            {filtered.map((item) => <div key={item.id} className="avi-orders-trow">
+              <span className="avi-col-dark" style={{ flex: 1.4, minWidth: 0, overflowWrap: 'anywhere' }}>
+                {barnName(item.galponId)}
+              </span>
+              <span style={{ flex: 1.8, minWidth: 0, overflowWrap: 'anywhere' }}>
+                {item.enfermedadNombre}
+              </span>
+              <span style={{ flex: 1.5, minWidth: 0, overflowWrap: 'anywhere' }}>
+                {item.medicamentoNombre || 'Sin medicación'}
+              </span>
+              <span style={{ flex: 0.9 }}>{item.fechaDiagnostico}</span>
+              <span style={{ flex: 0.8 }}>{item.estado}</span>
+              <span style={{ flex: 0.6 }}>
+                <button type="button" className="avi-admin-table-btn avi-admin-table-btn-green"
+                  onClick={() => showDetail(item.id)}>Detalle</button>
+              </span>
+            </div>)}
+            {filtered.length === 0 && <p>No hay diagnósticos para mostrar.</p>}
           </div>
         </div>
       </div>
-
-      {/* Modal: Emitir / Editar Diagnóstico Clínico */}
-      <BaseModal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        maxWidth="720px"
-      >
-        <form className="avi-figma-modal-720" onSubmit={handleSubmit}>
-          <div className="avi-figma-modal-header">
-            <div className="avi-figma-modal-titles">
-              <h2 className="avi-figma-modal-title">
-                Diagnóstico clínico veterinario ({form.id})
-              </h2>
-              <p className="avi-figma-modal-subtitle">
-                Vincula patología, tratamiento farmacológico y dictamen operativo del galpón
-              </p>
-            </div>
-            <button
-              type="button"
-              className="avi-figma-modal-close"
-              onClick={() => setIsModalOpen(false)}
-            >
-              ×
-            </button>
-          </div>
-
-          <div className="avi-figma-modal-grid">
-            <div className="avi-figma-field">
-              <label className="avi-figma-label">Galpón evaluado</label>
-              <div className="avi-figma-select-wrap">
-                <select
-                  className="avi-figma-input avi-figma-select"
-                  value={form.galpon}
-                  onChange={(e) =>
-                    setForm({
-                      ...form,
-                      galpon: e.target.value,
-                      lote: `#LDP-00${e.target.value.replace(/\D/g, '') || '1'}`
-                    })
-                  }
-                >
-                  {[
-                    'Galpón 1',
-                    'Galpón 2',
-                    'Galpón 3',
-                    'Galpón 4',
-                    'Galpón 5',
-                    'Galpón 6',
-                    'Galpón 7',
-                    'Galpón 9'
-                  ].map((g) => (
-                    <option key={g} value={g}>
-                      {g}
-                    </option>
-                  ))}
-                </select>
-                <img
-                  alt=""
-                  src="/assets/admin-select-chevron.svg"
-                  className="avi-figma-select-chevron"
-                />
-              </div>
-            </div>
-
-            <div className="avi-figma-field">
-              <label className="avi-figma-label">Lote y fecha de evaluación</label>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                <input
-                  type="text"
-                  className="avi-figma-input"
-                  value={form.lote}
-                  onChange={(e) => setForm({ ...form, lote: e.target.value })}
-                  required
-                />
-                <input
-                  type="date"
-                  className="avi-figma-input"
-                  value={form.fecha}
-                  onChange={(e) => setForm({ ...form, fecha: e.target.value })}
-                  required
-                />
-              </div>
-            </div>
-
-            <div className="avi-figma-field">
-              <label className="avi-figma-label">Enfermedad diagnosticada</label>
-              <div className="avi-figma-select-wrap">
-                <select
-                  className="avi-figma-input avi-figma-select"
-                  value={form.enfermedad}
-                  onChange={(e) =>
-                    setForm({ ...form, enfermedad: e.target.value })
-                  }
-                >
-                  {vetDiseases.map((d) => (
-                    <option key={d.id} value={d.nombre}>
-                      {d.nombre} ({d.tipo})
-                    </option>
-                  ))}
-                </select>
-                <img
-                  alt=""
-                  src="/assets/admin-select-chevron.svg"
-                  className="avi-figma-select-chevron"
-                />
-              </div>
-            </div>
-
-            <div className="avi-figma-field">
-              <label className="avi-figma-label">Severidad del cuadro clínico</label>
-              <div className="avi-figma-select-wrap">
-                <select
-                  className="avi-figma-input avi-figma-select"
-                  value={form.severidad}
-                  onChange={(e) =>
-                    setForm({ ...form, severidad: e.target.value })
-                  }
-                >
-                  <option value="Leve">Leve</option>
-                  <option value="Moderada">Moderada</option>
-                  <option value="Crítica">Crítica</option>
-                </select>
-                <img
-                  alt=""
-                  src="/assets/admin-select-chevron.svg"
-                  className="avi-figma-select-chevron"
-                />
-              </div>
-            </div>
-
-            <div className="avi-figma-field">
-              <label className="avi-figma-label">Medicina prescrita</label>
-              <div className="avi-figma-select-wrap">
-                <select
-                  className="avi-figma-input avi-figma-select"
-                  value={form.medicina}
-                  onChange={(e) => handleMedicineChange(e.target.value)}
-                >
-                  {vetMedicines.map((m) => (
-                    <option key={m.id} value={m.nombre}>
-                      {m.nombre} (Retiro: {m.tiempoRetiroDias}d)
-                    </option>
-                  ))}
-                  <option value="Sin tratamiento curativo (Brote agudo)">
-                    Sin tratamiento curativo (Brote agudo)
-                  </option>
-                </select>
-                <img
-                  alt=""
-                  src="/assets/admin-select-chevron.svg"
-                  className="avi-figma-select-chevron"
-                />
-              </div>
-            </div>
-
-            <div className="avi-figma-field">
-              <label className="avi-figma-label">Dictamen sanitario del galpón</label>
-              <div className="avi-figma-select-wrap">
-                <select
-                  className="avi-figma-input avi-figma-select"
-                  value={form.dictamen}
-                  onChange={(e) =>
-                    setForm({ ...form, dictamen: e.target.value })
-                  }
-                >
-                  <option value="En tratamiento">En tratamiento / Aislamiento</option>
-                  <option value="Reintegro">Reintegro a producción</option>
-                  <option value="Sacrificio">Sacrificio sanitario</option>
-                </select>
-                <img
-                  alt=""
-                  src="/assets/admin-select-chevron.svg"
-                  className="avi-figma-select-chevron"
-                />
-              </div>
-            </div>
-
-            <div className="avi-figma-field" style={{ gridColumn: '1 / -1' }}>
-              <label className="avi-figma-label">Posología y duración del tratamiento</label>
-              <input
-                type="text"
-                className="avi-figma-input"
-                value={form.dosis}
-                onChange={(e) => setForm({ ...form, dosis: e.target.value })}
-                required
-              />
-            </div>
-
-            <div className="avi-figma-field" style={{ gridColumn: '1 / -1' }}>
-              <label className="avi-figma-label">Observaciones clínicas y manejo</label>
-              <input
-                type="text"
-                className="avi-figma-input"
-                value={form.observaciones}
-                onChange={(e) =>
-                  setForm({ ...form, observaciones: e.target.value })
-                }
-                required
-              />
-            </div>
-          </div>
-
-          <div className="avi-figma-modal-footer">
-            <button
-              type="button"
-              className="avi-figma-btn-cancel"
-              onClick={() => setIsModalOpen(false)}
-            >
-              Cancelar
-            </button>
-            <button type="submit" className="avi-figma-btn-green">
-              Guardar diagnóstico clínico
-            </button>
-          </div>
-        </form>
-      </BaseModal>
-
-      {/* Modal: Detalle de Diagnóstico */}
-      <BaseModal
-        isOpen={Boolean(detailDiag)}
-        onClose={() => setDetailDiag(null)}
-        maxWidth="680px"
-      >
-        {detailDiag && (
-          <div className="avi-figma-modal-720">
-            <div className="avi-figma-modal-header">
-              <div className="avi-figma-modal-titles">
-                <h2 className="avi-figma-modal-title">
-                  Ficha diagnóstica {detailDiag.id} · {detailDiag.galpon}
-                </h2>
-                <p className="avi-figma-modal-subtitle">
-                  Lote {detailDiag.lote} · Fecha de evaluación: {detailDiag.fecha}
-                </p>
-              </div>
-              <button
-                type="button"
-                className="avi-figma-modal-close"
-                onClick={() => setDetailDiag(null)}
-              >
-                ×
-              </button>
-            </div>
-
-            <div className="avi-figma-modal-grid">
-              <div className="avi-figma-field">
-                <label className="avi-figma-label">Enfermedad y Severidad</label>
-                <div className="avi-figma-readonly-box">
-                  {detailDiag.enfermedad} · Severidad {detailDiag.severidad}
-                </div>
-              </div>
-              <div className="avi-figma-field">
-                <label className="avi-figma-label">Dictamen operativo</label>
-                <div className="avi-figma-valid-box">{detailDiag.dictamen}</div>
-              </div>
-              <div className="avi-figma-field" style={{ gridColumn: '1 / -1' }}>
-                <label className="avi-figma-label">
-                  Medicina prescrita y posología
-                </label>
-                <div className="avi-figma-readonly-box">
-                  {detailDiag.medicina} — {detailDiag.dosis}
-                </div>
-              </div>
-              <div className="avi-figma-field" style={{ gridColumn: '1 / -1' }}>
-                <label className="avi-figma-label">Observaciones clínicas</label>
-                <div className="avi-figma-demand-box">
-                  {detailDiag.observaciones}
-                </div>
-              </div>
-            </div>
-
-            <div className="avi-figma-modal-footer">
-              <button
-                type="button"
-                className="avi-figma-btn-cancel"
-                onClick={() => setDetailDiag(null)}
-              >
-                Cerrar
-              </button>
-              <button
-                type="button"
-                className="avi-figma-btn-orange"
-                onClick={() => {
-                  const target = detailDiag;
-                  setDetailDiag(null);
-                  handleOpenEdit(target);
-                }}
-              >
-                Editar diagnóstico
-              </button>
-            </div>
-          </div>
-        )}
-      </BaseModal>
     </div>
-  );
+    <BaseModal isOpen={open} onClose={() => setOpen(false)} maxWidth="720px">
+      <form className="avi-figma-modal-720" onSubmit={submit}>
+        <div className="avi-figma-modal-header">
+          <h2 className="avi-figma-modal-title">Nuevo diagnóstico</h2>
+          <button type="button" className="avi-figma-modal-close"
+            onClick={() => setOpen(false)}>×</button>
+        </div>
+        <div className="avi-figma-modal-grid">
+          <label className="avi-figma-field">
+            <span className="avi-figma-label">Galpón aislado</span>
+            <select className="avi-figma-input" value={form.galponId} required
+              onChange={(event) => setForm({ ...form, galponId: event.target.value })}>
+              <option value="">Seleccionar galpón</option>
+              {barns.map((item) => <option key={item.id} value={item.id}>
+                {item.nombre} · Lote {item.loteActual?.id || 'sin lote'}
+              </option>)}
+            </select>
+          </label>
+          <label className="avi-figma-field">
+            <span className="avi-figma-label">Enfermedad</span>
+            <select className="avi-figma-input" value={form.enfermedadId} required
+              onChange={(event) => setForm({
+                ...form, enfermedadId: event.target.value, medicacionId: ''
+              })}>
+              <option value="">Seleccionar enfermedad</option>
+              {diseases.map((item) => <option key={item.id} value={item.id}>{item.nombre}</option>)}
+            </select>
+          </label>
+          <label className="avi-figma-field" style={{ gridColumn: '1 / -1' }}>
+            <span className="avi-figma-label">Medicación</span>
+            {selectedDisease?.requiereSacrificioSanitario
+              ? <div className="avi-figma-readonly-box">
+                La enfermedad requiere sacrificio sanitario; no admite medicación.
+              </div>
+              : <select className="avi-figma-input" value={form.medicacionId} required
+                disabled={!form.enfermedadId}
+                onChange={(event) => setForm({ ...form, medicacionId: event.target.value })}>
+                <option value="">Seleccionar medicación compatible</option>
+                {compatibleMedications.map((item) => <option key={item.id} value={item.id}>
+                  {item.nombreMedicamento} · {item.dosis}
+                </option>)}
+              </select>}
+          </label>
+          <label className="avi-figma-field" style={{ gridColumn: '1 / -1' }}>
+            <span className="avi-figma-label">Observaciones</span>
+            <textarea className="avi-figma-input" value={form.observaciones} required
+              onChange={(event) => setForm({ ...form, observaciones: event.target.value })} />
+          </label>
+        </div>
+        <div className="avi-figma-modal-footer">
+          <button type="button" className="avi-figma-btn-cancel"
+            onClick={() => setOpen(false)}>Cancelar</button>
+          <button type="submit" className="avi-figma-btn-green" disabled={saving}>
+            {saving ? 'Guardando…' : 'Registrar diagnóstico'}
+          </button>
+        </div>
+      </form>
+    </BaseModal>
+    <BaseModal isOpen={Boolean(detail)} onClose={() => setDetail(null)} maxWidth="720px">
+      {detail && <div className="avi-figma-modal-720">
+        <div className="avi-figma-modal-header">
+          <h2 className="avi-figma-modal-title">Diagnóstico de {barnName(detail.galponId)}</h2>
+          <button type="button" className="avi-figma-modal-close"
+            onClick={() => setDetail(null)}>×</button>
+        </div>
+        <div className="avi-figma-modal-grid">
+          <p><strong>ID:</strong> {detail.id}</p>
+          <p><strong>Estado:</strong> {detail.estado}</p>
+          <p><strong>Enfermedad:</strong> {detail.enfermedadNombre}</p>
+          <p><strong>Fecha:</strong> {detail.fechaDiagnostico}</p>
+          <p><strong>Medicamento:</strong> {detail.medicamentoNombre || 'Sin medicación'}</p>
+          {detail.dosis && <p><strong>Dosis:</strong> {detail.dosis}</p>}
+          <p><strong>Duración:</strong> {detail.duracionDias == null
+            ? 'No aplica' : `${detail.duracionDias} días`}</p>
+          {detail.principioActivo && <p><strong>Principio activo:</strong> {detail.principioActivo}</p>}
+          {detail.diasAplicacion && <p><strong>Días de aplicación:</strong> {detail.diasAplicacion.join(', ')}</p>}
+          <p><strong>Reintegro previsto:</strong> {detail.fechaReintegro || 'No aplica'}</p>
+          <p><strong>Sacrificio sanitario:</strong> {detail.requiereSacrificioSanitario ? 'Sí' : 'No'}</p>
+          <p style={{ gridColumn: '1 / -1' }}><strong>Observaciones:</strong> {detail.observaciones}</p>
+        </div>
+      </div>}
+    </BaseModal>
+  </div>;
 }
 
 export default VetDiagnosePage;

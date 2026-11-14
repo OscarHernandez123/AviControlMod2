@@ -10,6 +10,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
 import java.net.URI;
+import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.UUID;
 import org.springframework.http.ResponseEntity;
@@ -60,5 +61,15 @@ public class DiagnosticoController {
             diagnosticos
                 .buscar(diagnosticoId)
                 .orElseThrow(() -> new NoSuchElementException("Diagnóstico no encontrado"))));
+  }
+
+  @GetMapping("/diagnosticos")
+  @PreAuthorize("hasRole('VETERINARIO')")
+  @Operation(summary = "Listar diagnósticos registrados")
+  public List<DiagnosticoGalponResponse> listar() {
+    return diagnosticos.listar().stream()
+        .map(DiagnosticoGalponResult::de)
+        .map(mapper::response)
+        .toList();
   }
 }

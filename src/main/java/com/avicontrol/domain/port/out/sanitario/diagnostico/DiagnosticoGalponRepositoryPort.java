@@ -11,6 +11,8 @@ public interface DiagnosticoGalponRepositoryPort {
 
   Optional<DiagnosticoGalpon> buscar(UUID id);
 
+  List<DiagnosticoGalpon> listar();
+
   Optional<DiagnosticoGalpon> bloquear(UUID id);
 
   boolean existeActivo(UUID galponId);
