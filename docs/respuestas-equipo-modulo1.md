@@ -6,7 +6,11 @@
 
 ## 1. IP pública de la aplicación
 
-Actualmente la aplicación corre localmente. **Todavía no tenemos una IP pública de salida definida para AWS.** La compartiremos cuando esté configurado el despliegue.
+La aplicación corre actualmente desde nuestro computador. **La IP pública de salida actual para las pruebas es `191.95.16.24`**, consultada el 19 de noviembre de 2026.
+
+Solicitamos autorizar esta IP para acceder a los servicios Kafka y REST del Módulo 1, según sus reglas de acceso. Las pruebas se realizarán desde la misma conexión y VPN utilizadas al consultar la IP; esta puede cambiar al cambiar de red o por reasignación del proveedor.
+
+**La IP de salida del futuro despliegue en AWS todavía no está definida.** La compartiremos cuando esté configurado ese entorno.
 
 `localhost` corresponde únicamente a nuestras pruebas y no es una dirección pública que pueda utilizarse para autorizar el acceso desde otro entorno.
 
