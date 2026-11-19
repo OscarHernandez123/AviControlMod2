@@ -125,6 +125,7 @@ export default defineConfig({
         changeOrigin: true,
         headers: { Authorization: adminAuthorization }
       },
+      '/api/integracion': { target: backend, changeOrigin: true, headers: { Authorization: workerAuthorization } },
       '/api': backend,
       '/actuator': backend
     }

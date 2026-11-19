@@ -1,3 +1,4 @@
+import IntegrationOperations from '../components/IntegrationOperations';
 import { useCallback, useEffect, useState } from 'react';
 import Sidebar from '../components/Sidebar';
 import Topbar from '../components/Topbar';
@@ -110,7 +111,7 @@ function AdminSlaughterOrdersPage() {
       setModal(null);
       await load();
       const feedback = modal.kind === 'validate'
-        ? result.apto ? 'Galpón apto; pasó a En cosecha.' : result.motivosNoAptitud.join(' · ')
+        ? result.apto ? ((result.estadoGalponResultante || result.estadoGalpon) === 'EN_COSECHA' ? 'Galpón apto; pasó a En cosecha.' : 'Galpón apto. El administrador debe cambiarlo a En cosecha en el módulo de infraestructura.') : result.motivosNoAptitud.join(' · ')
         : modal.kind === 'result' ? 'Resultado de sacrificio guardado.' : `Orden ${result.estado.toLowerCase()} correctamente.`;
       setMessage({ type: modal.kind === 'validate' && !result.apto ? 'error' : 'success', text: feedback });
     } catch (error) {
@@ -131,6 +132,7 @@ function AdminSlaughterOrdersPage() {
       <Topbar roleLabel="Administrador" avatarSrc="/assets/admin-avatar.svg" />
       <ApiMessage message={message?.text} type={message?.type} onClose={() => setMessage(null)} />
       <div className="avi-dashboard-content">
+          <IntegrationOperations tipos={['VACIADO']} onDelivered={() => load()} />
         <div className="avi-page-heading">
           <div><h1 className="avi-page-title avi-title-lg">Órdenes de sacrificio</h1>
             <p className="avi-page-subtitle">Aptitud, programación y resultados del sacrificio productivo</p></div>
@@ -144,7 +146,7 @@ function AdminSlaughterOrdersPage() {
         <div className="avi-receptions-filter-bar">
           <input className="avi-receptions-search-input" placeholder="Buscar por orden, galpón o lote" value={search} onChange={(event) => setSearch(event.target.value)} />
           <select className="avi-receptions-select" value={status} onChange={(event) => setStatus(event.target.value)}>
-            <option value="TODOS">Todos los estados</option><option value="PROGRAMADA">Programada</option><option value="REPROGRAMADA">Reprogramada</option><option value="EJECUTADA">Ejecutada</option><option value="CANCELADA">Cancelada</option>
+            <option value="TODOS">Todos los estados</option><option value="PROGRAMADA">Programada</option><option value="REPROGRAMADA">Reprogramada</option><option value="EJECUTADA">Ejecutada</option><option value="CANCELADA">Cancelada</option><option value="VACIADO_SOLICITADO">Vaciado solicitado</option>
           </select>
           <button type="button" className="avi-receptions-filter-btn" onClick={() => load()}>Actualizar</button>
           <button type="button" className="avi-btn-orange-cta" onClick={() => open('schedule')}>Programar orden</button>
@@ -173,7 +175,7 @@ function AdminSlaughterOrdersPage() {
               </div>;
             })}
           </div>
-          <p className="avi-page-subtitle">Las órdenes se ejecutan automáticamente al llegar la fecha programada. Pulsa Actualizar para ver el nuevo estado.</p>
+          <p className="avi-page-subtitle">Al llegar la fecha programada se solicita el vaciado. El envío no confirma su aceptación; pulsa Actualizar para consultar el estado.</p>
         </div>
       </div>
     </div>

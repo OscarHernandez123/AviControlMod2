@@ -30,7 +30,8 @@ public class AptitudSacrificioController {
   @PreAuthorize("hasRole('ADMINISTRADOR')")
   @Operation(
       summary = "Validar aptitud del galpón para sacrificio productivo",
-      description = "Solo administrador. Si es apto, cambia PRODUCTIVA a EN_COSECHA.")
+      description =
+          "Solo administrador. En modo remoto evalúa aptitud sin cambiar el estado; el cambio a EN_COSECHA pertenece al módulo de infraestructura.")
   @ApiResponses({
     @ApiResponse(responseCode = "200", description = "Aptitud evaluada"),
     @ApiResponse(responseCode = "400", description = "Identificador inválido"),

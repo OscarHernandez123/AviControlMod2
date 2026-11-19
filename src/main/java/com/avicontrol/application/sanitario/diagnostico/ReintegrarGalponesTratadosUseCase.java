@@ -15,6 +15,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.transaction.support.TransactionTemplate;
 
 public class ReintegrarGalponesTratadosUseCase {
+  private final com.avicontrol.application.modulo1.eventos.FlujosKafkaModulo1UseCase integracion;
   private static final Logger log =
       LoggerFactory.getLogger(ReintegrarGalponesTratadosUseCase.class);
   private final DiagnosticoGalponRepositoryPort diagnosticos;
@@ -29,6 +30,17 @@ public class ReintegrarGalponesTratadosUseCase {
       GalponReintegroPort reintegro,
       Clock clock,
       TransactionTemplate transaction) {
+    this(diagnosticos, galpones, reintegro, clock, transaction, null);
+  }
+
+  public ReintegrarGalponesTratadosUseCase(
+      DiagnosticoGalponRepositoryPort diagnosticos,
+      GalponLoteAislamientoQueryPort galpones,
+      GalponReintegroPort reintegro,
+      Clock clock,
+      TransactionTemplate transaction,
+      com.avicontrol.application.modulo1.eventos.FlujosKafkaModulo1UseCase integracion) {
+    this.integracion = integracion;
     this.diagnosticos = diagnosticos;
     this.galpones = galpones;
     this.reintegro = reintegro;
@@ -58,6 +70,16 @@ public class ReintegrarGalponesTratadosUseCase {
         || d.fechaReintegro().isAfter(hoy)) return false;
     GalponLoteAislamiento contexto =
         galpones.consultar(d.galponId()).orElseThrow(Modulo1NoDisponibleException::new);
+    if (integracion != null) {
+      UUID eventoId =
+          UUID.nameUUIDFromBytes(
+              ("REANUDACION:" + d.id()).getBytes(java.nio.charset.StandardCharsets.UTF_8));
+      if (integracion.existe(eventoId)) return false;
+      if (!d.loteId().equals(contexto.loteId()) || !"AISLAMIENTO".equals(contexto.estado()))
+        return false;
+      if (diagnosticos.existeOtroActivo(d.galponId(), d.id())) return false;
+      return integracion.solicitarCambio(eventoId, "REANUDACION", d.galponId(), d.loteId());
+    }
     if (!d.loteId().equals(contexto.loteId()) || !"AISLAMIENTO".equals(contexto.estado())) {
       if (!diagnosticos.resolver(d, d.resolver(EstadoDiagnostico.REINTEGRO_OMITIDO, hoy)))
         throw new IllegalStateException("El diagnóstico cambió durante el reintegro");

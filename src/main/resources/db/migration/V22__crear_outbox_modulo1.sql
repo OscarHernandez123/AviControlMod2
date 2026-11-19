@@ -1,0 +1,16 @@
+CREATE TABLE modulo1_event_outbox (
+  secuencia BIGSERIAL UNIQUE NOT NULL,
+  alerta_id UUID PRIMARY KEY,
+  galpon_id UUID NOT NULL,
+  topic VARCHAR(100) NOT NULL,
+  event_type VARCHAR(100) NOT NULL,
+  occurred_at TIMESTAMP WITH TIME ZONE NOT NULL,
+  payload TEXT NOT NULL,
+  estado VARCHAR(20) NOT NULL DEFAULT 'PENDIENTE' CHECK (estado IN ('PENDIENTE','PUBLICADO','EXPIRADO')),
+  intentos INTEGER NOT NULL DEFAULT 0,
+  siguiente_intento TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  creado_en TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  publicado_en TIMESTAMP WITH TIME ZONE,
+  ultimo_error VARCHAR(500)
+);
+CREATE INDEX modulo1_outbox_pendientes ON modulo1_event_outbox (estado, secuencia);

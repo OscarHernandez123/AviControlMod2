@@ -69,7 +69,8 @@ public class RegistrarMortalidadAnormalUseCase {
         lotes
             .consultarActual(c.galponId())
             .orElseThrow(() -> new NoSuchElementException("Lote activo no encontrado"));
-    if (!"PRODUCTIVA".equals(galpon.estado()) || !lote.id().equals(galpon.loteId()))
+    if (!("PRODUCTIVA".equals(galpon.estado()) || "PRODUCTIVO".equals(galpon.estado()))
+        || !lote.id().equals(galpon.loteId()))
       throw new IllegalStateException("Galpón no productivo");
     Instant ahora = Instant.now(clock);
     if (lote.fechaIngreso() == null

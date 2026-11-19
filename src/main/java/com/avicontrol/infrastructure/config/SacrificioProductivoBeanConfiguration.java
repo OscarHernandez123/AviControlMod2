@@ -21,8 +21,15 @@ import org.springframework.context.annotation.Configuration;
 public class SacrificioProductivoBeanConfiguration {
   @Bean
   ValidarAptitudSacrificioUseCase validarAptitudSacrificio(
-      GalponQueryPort galpones, LoteQueryPort lotes, GalponUpdatePort cambios, Clock clock) {
-    return new ValidarAptitudSacrificioUseCase(galpones, lotes, cambios, clock);
+      GalponQueryPort galpones,
+      LoteQueryPort lotes,
+      GalponUpdatePort cambios,
+      Clock clock,
+      org.springframework.beans.factory.ObjectProvider<
+              com.avicontrol.application.modulo1.eventos.FlujosKafkaModulo1UseCase>
+          integracion) {
+    return new ValidarAptitudSacrificioUseCase(
+        galpones, lotes, cambios, clock, integracion.getIfAvailable());
   }
 
   @Bean
@@ -56,9 +63,12 @@ public class SacrificioProductivoBeanConfiguration {
       LoteQueryPort lotes,
       GalponUpdatePort cambiosGalpon,
       LoteUpdatePort cambiosLote,
-      Clock clock) {
+      Clock clock,
+      org.springframework.beans.factory.ObjectProvider<
+              com.avicontrol.application.modulo1.eventos.FlujosKafkaModulo1UseCase>
+          integracion) {
     return new EjecutarOrdenSacrificioUseCase(
-        ordenes, galpones, lotes, cambiosGalpon, cambiosLote, clock);
+        ordenes, galpones, lotes, cambiosGalpon, cambiosLote, clock, integracion.getIfAvailable());
   }
 
   @Bean

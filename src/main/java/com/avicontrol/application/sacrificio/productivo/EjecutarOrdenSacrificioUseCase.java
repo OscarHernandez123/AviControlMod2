@@ -12,6 +12,7 @@ import java.util.UUID;
 import org.springframework.transaction.annotation.Transactional;
 
 public class EjecutarOrdenSacrificioUseCase {
+  private final com.avicontrol.application.modulo1.eventos.FlujosKafkaModulo1UseCase integracion;
   private final OrdenSacrificioProductivoRepositoryPort ordenes;
   private final GalponQueryPort galpones;
   private final LoteQueryPort lotes;
@@ -26,6 +27,18 @@ public class EjecutarOrdenSacrificioUseCase {
       GalponUpdatePort cambiosGalpon,
       LoteUpdatePort cambiosLote,
       Clock clock) {
+    this(ordenes, galpones, lotes, cambiosGalpon, cambiosLote, clock, null);
+  }
+
+  public EjecutarOrdenSacrificioUseCase(
+      OrdenSacrificioProductivoRepositoryPort ordenes,
+      GalponQueryPort galpones,
+      LoteQueryPort lotes,
+      GalponUpdatePort cambiosGalpon,
+      LoteUpdatePort cambiosLote,
+      Clock clock,
+      com.avicontrol.application.modulo1.eventos.FlujosKafkaModulo1UseCase integracion) {
+    this.integracion = integracion;
     this.ordenes = ordenes;
     this.galpones = galpones;
     this.lotes = lotes;
@@ -40,6 +53,11 @@ public class EjecutarOrdenSacrificioUseCase {
     if (actual == null || !actual.estado().pendiente()) return false;
     Instant ahora = Instant.now(clock);
     if (actual.fechaHoraProgramada().isAfter(ahora)) return false;
+    if (integracion != null) {
+      // La orden sigue pendiente; la entrega por Kafka no confirma su ejecución.
+      return integracion.solicitarCambio(
+          actual.id(), "VACIADO", actual.galponId(), actual.loteId());
+    }
     var galpon = galpones.consultar(actual.galponId());
     var lote = lotes.consultarActual(actual.galponId());
     if (galpon.isEmpty()

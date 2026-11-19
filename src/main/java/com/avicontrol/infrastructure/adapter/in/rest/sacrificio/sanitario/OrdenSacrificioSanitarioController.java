@@ -13,8 +13,8 @@ import java.util.List;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
@@ -22,6 +22,9 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @SecurityRequirement(name = "basicAuth")
 public class OrdenSacrificioSanitarioController {
+  @org.springframework.beans.factory.annotation.Value("${avicontrol.modulo1.asincrono:false}")
+  private boolean asincrono;
+
   private final EmitirOrdenSacrificioSanitarioUseCase emision;
   private final ConfirmarEjecucionSacrificioSanitarioUseCase ejecucion;
   private final ConsultarOrdenesSacrificioSanitarioUseCase consulta;
@@ -79,6 +82,9 @@ public class OrdenSacrificioSanitarioController {
     @ApiResponse(responseCode = "503", description = "Módulo 1 no disponible")
   })
   public OrdenSacrificioSanitarioResponse confirmar(@PathVariable UUID ordenId) {
+    if (asincrono)
+      throw new IllegalStateException(
+          "El contrato del Módulo 1 no admite sacrificio sanitario desde AISLAMIENTO. Requiere acuerdo entre módulos.");
     return mapper.response(ejecucion.confirmar(ordenId));
   }
 }

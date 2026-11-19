@@ -15,6 +15,7 @@ import java.time.LocalDate;
 import org.springframework.transaction.annotation.Transactional;
 
 public class ValidarAptitudSacrificioUseCase {
+  private final com.avicontrol.application.modulo1.eventos.FlujosKafkaModulo1UseCase integracion;
   private final GalponQueryPort galpones;
   private final LoteQueryPort lotes;
   private final GalponUpdatePort cambios;
@@ -22,6 +23,16 @@ public class ValidarAptitudSacrificioUseCase {
 
   public ValidarAptitudSacrificioUseCase(
       GalponQueryPort galpones, LoteQueryPort lotes, GalponUpdatePort cambios, Clock clock) {
+    this(galpones, lotes, cambios, clock, null);
+  }
+
+  public ValidarAptitudSacrificioUseCase(
+      GalponQueryPort galpones,
+      LoteQueryPort lotes,
+      GalponUpdatePort cambios,
+      Clock clock,
+      com.avicontrol.application.modulo1.eventos.FlujosKafkaModulo1UseCase integracion) {
+    this.integracion = integracion;
     this.galpones = galpones;
     this.lotes = lotes;
     this.cambios = cambios;
@@ -40,13 +51,15 @@ public class ValidarAptitudSacrificioUseCase {
       throw new InformacionAptitudNoDisponibleException();
     Edad edad = lote.calcularEdad(LocalDate.now(clock));
     var validacion = ValidacionAptitudSacrificio.evaluar(galpon.estado(), edad);
-    if (validacion.apto() && !cambios.pasarACosechaSiProductiva(galpon.id(), lote.id()))
+    if (integracion == null
+        && validacion.apto()
+        && !cambios.pasarACosechaSiProductiva(galpon.id(), lote.id()))
       throw new GalponNoAptoParaSacrificioException();
     return new ValidacionAptitudResult(
         galpon.id(),
         lote.id(),
         validacion.apto(),
         validacion.motivosNoAptitud(),
-        validacion.apto() ? "EN_COSECHA" : galpon.estado());
+        validacion.apto() && integracion == null ? "EN_COSECHA" : galpon.estado());
   }
 }

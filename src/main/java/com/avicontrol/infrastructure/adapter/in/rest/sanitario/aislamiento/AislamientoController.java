@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+@org.springframework.context.annotation.Profile("!modulo1-rest | local | test")
 @RestController
 @RequestMapping("/api/solicitudes-aislamiento")
 @SecurityRequirement(name = "basicAuth")

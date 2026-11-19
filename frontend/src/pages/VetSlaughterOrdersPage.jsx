@@ -1,3 +1,4 @@
+import { getIntegrationCapabilities } from '../services/integrationApi';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Sidebar from '../components/Sidebar';
 import Topbar from '../components/Topbar';
@@ -10,6 +11,12 @@ import { getBarn } from '../services/barnsApi';
 import { listSanitarySlaughterOrders, issueSanitarySlaughterOrder, executeSanitarySlaughterOrder } from '../services/sanitarySlaughterApi';
 
 function VetSlaughterOrdersPage() {
+  const [sanitaryExecutionAllowed, setSanitaryExecutionAllowed] = useState(false);
+  useEffect(() => {
+    const controller = new AbortController();
+    getIntegrationCapabilities({ signal: controller.signal }).then((value) => setSanitaryExecutionAllowed(value.sacrificioSanitario)).catch(() => {});
+    return () => controller.abort();
+  }, []);
   const [orders, setOrders] = useState([]);
   const [diagnoses, setDiagnoses] = useState([]);
   const [isolatedBarns, setIsolatedBarns] = useState([]);
@@ -95,7 +102,7 @@ function VetSlaughterOrdersPage() {
       <ApiMessage message={message?.text} type={message?.type} onClose={() => setMessage(null)} />
       <div className="avi-dashboard-content">
         <div className="avi-page-heading">
-          <p className="avi-page-subtitle">Órdenes de sacrificio sanitario registradas en el backend</p>
+          <p className="avi-page-subtitle">Órdenes de sacrificio sanitario registradas en el backend</p>{!sanitaryExecutionAllowed && <p>La ejecución desde aislamiento requiere acordar el proceso con el módulo de infraestructura.</p>}
           <button type="button" className="avi-btn-orange-cta" onClick={() => setModal({ kind: 'issue' })}>Emitir orden sanitaria</button>
         </div>
         <div className="avi-metrics-row">
@@ -126,7 +133,7 @@ function VetSlaughterOrdersPage() {
                 <span style={{ flex: 1.4 }}>{diagnosis?.enfermedadNombre || 'Diagnóstico no disponible'}</span>
                 <span style={{ flex: 0.8 }}>{order.estado}</span>
                 <span style={{ flex: 0.9 }}>{order.poblacionSacrificada ?? '—'}</span>
-                <span style={{ flex: 0.9 }}>{order.estado === 'PENDIENTE' && <button type="button" className="avi-admin-table-btn avi-admin-table-btn-orange" onClick={() => setModal({ kind: 'execute', order })}>Confirmar ejecución</button>}</span>
+                <span style={{ flex: 0.9 }}>{order.estado === 'PENDIENTE' && sanitaryExecutionAllowed && <button type="button" className="avi-admin-table-btn avi-admin-table-btn-orange" onClick={() => setModal({ kind: 'execute', order })}>Confirmar ejecución</button>}</span>
               </div>;
             })}
           </div>

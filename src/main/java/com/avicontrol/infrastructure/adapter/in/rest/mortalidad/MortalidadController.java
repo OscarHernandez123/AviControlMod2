@@ -14,6 +14,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
+@org.springframework.context.annotation.Profile("!modulo1-rest | local | test")
 @RestController
 @SecurityRequirement(name = "basicAuth")
 public class MortalidadController {

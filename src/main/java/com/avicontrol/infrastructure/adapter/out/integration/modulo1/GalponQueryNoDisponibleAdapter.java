@@ -9,7 +9,7 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Repository;
 
 @Repository
-@Profile("!local & !test")
+@Profile("!local & !test & !modulo1-rest")
 public class GalponQueryNoDisponibleAdapter implements GalponQueryPort {
   @Override
   public Optional<String> estadoVigente(UUID galponId) {
