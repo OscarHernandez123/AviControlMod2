@@ -1,3 +1,4 @@
+import IntegrationOperations from '../components/IntegrationOperations';
 import { useEffect, useState } from 'react';
 import Sidebar from '../components/Sidebar';
 import Topbar from '../components/Topbar';
@@ -215,7 +216,7 @@ function WorkerDashboardPage() {
         observaciones: mortalityForm.observaciones
       }, mortalityKey);
       setIsMortalityOpen(false);
-      setToast(`${bajasCount} bajas registradas en ${selectedMortalityBarn.name}. Población: ${Number(result.poblacionResultante).toLocaleString('es-CO')}. Clasificación: ${result.clasificacion}.`);
+      setToast(result.integracion ? `Registro de ${bajasCount} bajas solicitado. La población se actualizará cuando el cambio sea aceptado. Referencia ${result.id.slice(0, 8)}.` : `${bajasCount} bajas registradas en ${selectedMortalityBarn.name}. Población: ${Number(result.poblacionResultante).toLocaleString('es-CO')}. Clasificación: ${result.clasificacion}.`);
       setFoodReload((value) => value + 1);
     } catch (cause) {
       if (cause.status >= 400 && cause.status < 500) setMortalityLocked(false);
@@ -284,6 +285,7 @@ function WorkerDashboardPage() {
         <ApiMessage message={medicationError} type="error" onClose={() => setMedicationError('')} />
 
         <div className="avi-dashboard-content" data-node-id="238:5842">
+          <IntegrationOperations tipos={['MORTALIDAD']} onDelivered={() => setFoodReload((value) => value + 1)} />
           {/* Encabezado de Página */}
           <div className="avi-page-heading" data-node-id="238:5843">
             <div className="avi-heading-copy">
@@ -696,7 +698,7 @@ function WorkerDashboardPage() {
             <div className="avi-figma-modal-titles">
               <h2 className="avi-figma-modal-title">Registrar bajas / mortalidad</h2>
               <p className="avi-figma-modal-subtitle">
-                Descuenta la población viva y genera una alerta si el backend clasifica la mortalidad como anormal
+                Solicita el registro de bajas. La población y la clasificación se muestran cuando estén disponibles.
               </p>
             </div>
             <button
@@ -817,8 +819,8 @@ function WorkerDashboardPage() {
             <div className="avi-figma-field" style={{ gridColumn: '1 / -1' }}>
               <label className="avi-figma-label">Bajas sobre población viva</label>
               <div className="avi-figma-valid-box">
-                {bajasCount} aves · {lotePercentage}% del lote. El backend determinará la clasificación
-                y generará una alerta veterinaria si corresponde.
+                {bajasCount} aves · {lotePercentage}% del lote. La solicitud no confirma por sí sola
+                el descuento de población; consulta el estado actualizado del galpón.
               </div>
             </div>
 

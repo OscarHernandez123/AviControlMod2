@@ -182,6 +182,42 @@ class SacrificioProductivoControllerTest {
         .andExpect(jsonPath("$.totalOrdenes").value(0));
   }
 
+  @Test
+  void permiteNuevaOrdenTrasCancelarConservandoHistorialYBloqueandoDuplicados() throws Exception {
+    UUID galpon = galpon("EN_COSECHA", UUID.randomUUID());
+    UUID anterior = programar(galpon);
+    mvc.perform(post("/api/ordenes-sacrificio/{id}/cancelacion", anterior).with(admin()))
+        .andExpect(status().isOk());
+    UUID nueva = programar(galpon);
+    assertFalse(anterior.equals(nueva));
+    assertEquals(
+        "CANCELADA",
+        jdbc.queryForObject(
+            "SELECT estado FROM ordenes_sacrificio_productivo WHERE id=?", String.class, anterior));
+    mvc.perform(
+            post("/api/galpones/{id}/ordenes-sacrificio", galpon)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(fecha(OffsetDateTime.now(clock).plusDays(1)))
+                .with(admin()))
+        .andExpect(status().isConflict());
+    mvc.perform(get("/api/ordenes-sacrificio/resumen").with(admin()))
+        .andExpect(jsonPath("$.totalOrdenes").value(2))
+        .andExpect(jsonPath("$.ordenesPendientes").value(1));
+    vencer(nueva);
+    assertTrue(ejecucion.ejecutar(nueva));
+    jdbc.update(
+        "UPDATE modulo1_galpon_local SET estado='EN_COSECHA', lote_id=? WHERE id=?",
+        jdbc.queryForObject(
+            "SELECT lote_id FROM ordenes_sacrificio_productivo WHERE id=?", UUID.class, nueva),
+        galpon);
+    mvc.perform(
+            post("/api/galpones/{id}/ordenes-sacrificio", galpon)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(fecha(OffsetDateTime.now(clock).plusDays(1)))
+                .with(admin()))
+        .andExpect(status().isConflict());
+  }
+
   private UUID galpon(String estado, UUID lote) {
     UUID id = UUID.randomUUID();
     jdbc.update(

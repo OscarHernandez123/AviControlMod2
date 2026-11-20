@@ -1,3 +1,4 @@
+import IntegrationOperations from '../components/IntegrationOperations';
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
@@ -67,7 +68,7 @@ function VetDashboardPage() {
         observaciones: observations.trim()
       });
       setSelectedRequest(null);
-      setDecisionMessage(`Solicitud ${result.estado.toLowerCase()}. Estado del galpón: ${result.estadoGalponResultante}.`);
+      setDecisionMessage(result.integracion ? `Decisión aceptada. Cambio de estado solicitado; pendiente de aceptación. Referencia ${result.id.slice(0, 8)}.` : `Solicitud ${result.estado.toLowerCase()}. Estado del galpón: ${result.estadoGalponResultante}.`);
       setRequestsReload((value) => value + 1);
     } catch (cause) {
       setAlertsError(cause.message);
@@ -107,6 +108,7 @@ function VetDashboardPage() {
         <ApiMessage message={decisionMessage} type="success" onClose={() => setDecisionMessage('')} />
 
         <div className="avi-dashboard-content" data-node-id="106:68">
+          <IntegrationOperations tipos={['AISLAMIENTO', 'REANUDACION']} onDelivered={() => setRequestsReload((value) => value + 1)} />
           {/* Subtítulo superior discreto */}
           <div className="avi-page-heading" data-node-id="106:69">
             <div className="avi-heading-copy" data-node-id="106:70">

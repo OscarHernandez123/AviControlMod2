@@ -32,8 +32,16 @@ public class DiagnosticoBeanConfiguration {
       GalponLoteAislamientoQueryPort galpones,
       GalponReintegroPort reintegro,
       Clock clock,
-      PlatformTransactionManager manager) {
+      PlatformTransactionManager manager,
+      org.springframework.beans.factory.ObjectProvider<
+              com.avicontrol.application.modulo1.eventos.FlujosKafkaModulo1UseCase>
+          integracion) {
     return new ReintegrarGalponesTratadosUseCase(
-        diagnosticos, galpones, reintegro, clock, new TransactionTemplate(manager));
+        diagnosticos,
+        galpones,
+        reintegro,
+        clock,
+        new TransactionTemplate(manager),
+        integracion.getIfAvailable());
   }
 }

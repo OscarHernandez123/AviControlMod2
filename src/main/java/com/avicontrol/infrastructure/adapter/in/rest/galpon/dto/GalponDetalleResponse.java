@@ -10,5 +10,14 @@ public record GalponDetalleResponse(
     LoteActualResponse loteActual,
     String mensaje) {
   public record LoteActualResponse(
-      UUID id, int poblacionActual, EdadLoteResponse.EdadResponse edad, String mensaje) {}
+      UUID id,
+      int poblacionActual,
+      EdadLoteResponse.EdadResponse edad,
+      String mensaje,
+      String nombre) {
+    public LoteActualResponse(
+        UUID id, int poblacionActual, EdadLoteResponse.EdadResponse edad, String mensaje) {
+      this(id, poblacionActual, edad, mensaje, null);
+    }
+  }
 }

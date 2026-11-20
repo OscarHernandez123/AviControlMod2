@@ -33,7 +33,7 @@ public class GalponQueryAdapter implements GalponQueryPort {
   public Optional<GalponDatos> consultar(UUID galponId) {
     return jdbc
         .query(
-            "SELECT id,nombre,aforo_maximo,estado FROM modulo1_galpon_local WHERE id = ?",
+            "SELECT id,nombre,aforo_maximo,estado,lote_id,lote_codigo FROM modulo1_galpon_local WHERE id = ?",
             (rs, row) -> map(rs),
             galponId)
         .stream()
@@ -43,7 +43,8 @@ public class GalponQueryAdapter implements GalponQueryPort {
   @Override
   public List<GalponDatos> todos() {
     return jdbc.query(
-        "SELECT id,nombre,aforo_maximo,estado FROM modulo1_galpon_local", (rs, row) -> map(rs));
+        "SELECT id,nombre,aforo_maximo,estado,lote_id,lote_codigo FROM modulo1_galpon_local",
+        (rs, row) -> map(rs));
   }
 
   @Override
@@ -57,7 +58,7 @@ public class GalponQueryAdapter implements GalponQueryPort {
         };
     String direccion = ascendente ? " ASC" : " DESC";
     String sql =
-        "SELECT id,nombre,aforo_maximo,estado FROM modulo1_galpon_local ORDER BY "
+        "SELECT id,nombre,aforo_maximo,estado,lote_id,lote_codigo FROM modulo1_galpon_local ORDER BY "
             + columna
             + direccion
             + ", id ASC LIMIT ? OFFSET ?";
@@ -74,6 +75,9 @@ public class GalponQueryAdapter implements GalponQueryPort {
         rs.getInt("aforo_maximo"),
         EstadoGalpon.desde(rs.getString("estado"))
             .map(EstadoGalpon::name)
-            .orElse(rs.getString("estado")));
+            .orElse(rs.getString("estado")),
+        rs.getObject("lote_id", UUID.class) == null
+            ? null
+            : new LoteDatos(rs.getObject("lote_id", UUID.class), rs.getString("lote_codigo")));
   }
 }

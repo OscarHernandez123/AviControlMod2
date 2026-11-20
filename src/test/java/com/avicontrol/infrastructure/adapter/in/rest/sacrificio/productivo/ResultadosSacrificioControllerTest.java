@@ -280,7 +280,7 @@ class ResultadosSacrificioControllerTest {
     UUID id = UUID.randomUUID();
     Instant ahora = Instant.now(clock);
     jdbc.update(
-        "INSERT INTO ordenes_sacrificio_productivo (id,galpon_id,lote_id,estado,fecha_hora_programada,fecha_creacion,fecha_ejecucion,version) VALUES (?,?,?,?,?,?,?,?)",
+        "INSERT INTO ordenes_sacrificio_productivo (id,galpon_id,lote_id,estado,fecha_hora_programada,fecha_creacion,fecha_ejecucion,version,lote_reservado_id) VALUES (?,?,?,?,?,?,?,?,?)",
         id,
         UUID.randomUUID(),
         lote,
@@ -288,7 +288,8 @@ class ResultadosSacrificioControllerTest {
         java.sql.Timestamp.from(ahora.minusSeconds(10)),
         java.sql.Timestamp.from(ahora.minusSeconds(100)),
         estado.equals("EJECUTADA") ? java.sql.Timestamp.from(ahora) : null,
-        estado.equals("EJECUTADA") ? 1 : 0);
+        estado.equals("EJECUTADA") ? 1 : 0,
+        estado.equals("CANCELADA") ? null : lote);
     return id;
   }
 

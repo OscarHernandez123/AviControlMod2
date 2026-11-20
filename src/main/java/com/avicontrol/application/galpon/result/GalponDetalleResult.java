@@ -5,5 +5,9 @@ import java.util.UUID;
 
 public record GalponDetalleResult(
     UUID id, String nombre, int aforoMaximo, String estado, LoteActual loteActual, String mensaje) {
-  public record LoteActual(UUID id, int poblacionActual, Edad edad, String mensaje) {}
+  public record LoteActual(UUID id, int poblacionActual, Edad edad, String mensaje, String nombre) {
+    public LoteActual(UUID id, int poblacionActual, Edad edad, String mensaje) {
+      this(id, poblacionActual, edad, mensaje, null);
+    }
+  }
 }

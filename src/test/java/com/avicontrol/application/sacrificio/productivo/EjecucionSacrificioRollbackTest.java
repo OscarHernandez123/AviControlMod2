@@ -53,14 +53,15 @@ class EjecucionSacrificioRollbackTest {
         9000,
         "L1");
     jdbc.update(
-        "INSERT INTO ordenes_sacrificio_productivo (id,galpon_id,lote_id,estado,fecha_hora_programada,fecha_creacion,version) VALUES (?,?,?,?,?,?,?)",
+        "INSERT INTO ordenes_sacrificio_productivo (id,galpon_id,lote_id,estado,fecha_hora_programada,fecha_creacion,version,lote_reservado_id) VALUES (?,?,?,?,?,?,?,?)",
         orden,
         galpon,
         lote,
         "PROGRAMADA",
         Timestamp.from(ahora.minusSeconds(10)),
         Timestamp.from(ahora.minusSeconds(100)),
-        0);
+        0,
+        lote);
     assertThrows(PrecondicionSacrificioNoCumplidaException.class, () -> ejecucion.ejecutar(orden));
     assertEquals(
         "EN_COSECHA",

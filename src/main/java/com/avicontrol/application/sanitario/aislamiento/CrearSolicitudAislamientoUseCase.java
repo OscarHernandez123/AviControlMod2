@@ -40,7 +40,7 @@ public class CrearSolicitudAislamientoUseCase {
         galpones.consultar(command.galponId()).orElseThrow(GalponNoEncontradoException::new);
     if (contexto.loteId() == null || contexto.fechaIngreso() == null)
       throw new LoteActivoNoEncontradoException();
-    if (!"PRODUCTIVA".equals(contexto.estado()))
+    if (!("PRODUCTIVA".equals(contexto.estado()) || "PRODUCTIVO".equals(contexto.estado())))
       throw new EstadoGalponNoAislableException("El galpón debe estar en productiva");
     if (contexto.poblacionViva() <= 0)
       throw new EstadoGalponNoAislableException("El lote no tiene aves vivas");

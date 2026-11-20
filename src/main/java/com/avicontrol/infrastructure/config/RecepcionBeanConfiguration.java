@@ -21,7 +21,7 @@ public class RecepcionBeanConfiguration {
   }
 
   @Bean
-  @Profile({"local", "test"})
+  @Profile({"local", "test", "modulo1-rest"})
   CatalogoRecepcionPort catalogoLocal(
       @Value("${avicontrol.catalogo.alimentos:}") String alimentos,
       @Value("${avicontrol.catalogo.medicamentos:}") String medicamentos,

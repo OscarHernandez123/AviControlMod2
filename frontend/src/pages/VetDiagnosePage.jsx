@@ -1,3 +1,4 @@
+import IntegrationOperations from '../components/IntegrationOperations';
 import { useEffect, useState } from 'react';
 import Sidebar from '../components/Sidebar';
 import Topbar from '../components/Topbar';
@@ -154,6 +155,7 @@ function VetDiagnosePage() {
       <Topbar roleLabel="Veterinario" avatarSrc="/assets/vet-avatar.svg" />
       <ApiMessage message={message} type={messageType} onClose={() => setMessage('')} />
       <div className="avi-dashboard-content">
+          <IntegrationOperations tipos={['REANUDACION']} />
         <div className="avi-page-heading">
           <p className="avi-page-subtitle">
             Diagnósticos de galpones aislados y tratamientos registrados
