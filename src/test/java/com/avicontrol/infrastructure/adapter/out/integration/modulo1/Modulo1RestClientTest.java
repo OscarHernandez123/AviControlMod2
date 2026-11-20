@@ -170,6 +170,46 @@ class Modulo1RestClientTest {
     assertThrows(InformacionGalponNoDisponibleException.class, () -> client.detalle(ID));
   }
 
+  @Test
+  void conservaNombreDelLoteEnListadoYDetalleHastaLaRespuestaRest() throws Exception {
+    var mapper = new com.avicontrol.infrastructure.adapter.in.rest.galpon.mapper.GalponRestMapper();
+    var clock =
+        java.time.Clock.fixed(
+            java.time.Instant.parse("2026-09-20T12:00:00Z"), java.time.ZoneId.of("America/Bogota"));
+    var galpones = new GalponRestQueryAdapter(client);
+    var lotes = new LoteRestQueryAdapter(client);
+    var detalle =
+        mapper.response(
+            new com.avicontrol.application.galpon.ConsultarGalponUseCase(galpones, lotes, clock)
+                .consultar(ID));
+    assertEquals("Lote A1", detalle.loteActual().nombre());
+    String detalleJson = body;
+    server.createContext(
+        "/api/v1/galpones/" + ID,
+        exchange -> {
+          requests.add(exchange.getRequestMethod() + " " + exchange.getRequestURI());
+          var bytes = detalleJson.getBytes(StandardCharsets.UTF_8);
+          exchange.sendResponseHeaders(200, bytes.length);
+          exchange.getResponseBody().write(bytes);
+          exchange.close();
+        });
+    var json = tools.jackson.databind.json.JsonMapper.builder().build();
+    var resumen = json.readTree(detalleJson);
+    ((tools.jackson.databind.node.ObjectNode) resumen).remove("loteActivo");
+    body =
+        "{\"contenido\":["
+            + resumen.toString()
+            + "],\"pagina\":1,\"tamanio\":10,\"totalElementos\":1,\"totalPaginas\":1}";
+    var listado =
+        mapper.response(
+            new com.avicontrol.application.galpon.ConsultarListadoGalponesUseCase(galpones, lotes)
+                .consultar(0, 20, "nombre,asc"));
+    assertEquals("Lote A1", listado.elementos().getFirst().loteActual().nombre());
+    assertEquals(detalle.loteActual().id(), listado.elementos().getFirst().loteActual().id());
+    assertEquals(
+        4, requests.size()); // Detalle y listado con consulta del lote omitido en el resumen.
+  }
+
   private String fixture(String name) throws Exception {
     try (var input = getClass().getResourceAsStream("/contratos/modulo1/" + name)) {
       return new String(input.readAllBytes(), StandardCharsets.UTF_8);

@@ -44,12 +44,19 @@ class GalponControllerTest {
   @Test
   void detalleConLoteSinLoteYFechaFutura() throws Exception {
     UUID conLote = crear("PRODUCTIVA", "G1", UUID.randomUUID(), LocalDate.now(clock).minusDays(16));
+    jdbc.update(
+        "UPDATE modulo1_galpon_local SET lote_codigo = ? WHERE id = ?", "Lote de prueba", conLote);
     UUID sinLote = crear("DISPONIBLE", "G2", null, null);
     UUID futuro = crear("AISLAMIENTO", "G3", UUID.randomUUID(), LocalDate.now(clock).plusDays(1));
+    mvc.perform(get("/api/galpones?sort=nombre,asc").with(trabajador()))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.elementos[0].loteActual.nombre").value("Lote de prueba"))
+        .andExpect(jsonPath("$.elementos[1].loteActual").isEmpty());
     mvc.perform(get("/api/galpones/{id}", conLote).with(trabajador()))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.nombre").value("G1"))
         .andExpect(jsonPath("$.estado").value("PRODUCTIVO"))
+        .andExpect(jsonPath("$.loteActual.nombre").value("Lote de prueba"))
         .andExpect(jsonPath("$.loteActual.poblacionActual").value(8000))
         .andExpect(jsonPath("$.loteActual.edad.diasTotales").value(17));
     mvc.perform(get("/api/galpones/{id}", sinLote).with(trabajador()))

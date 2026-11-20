@@ -49,7 +49,7 @@ public class ConsultarGalponUseCase {
         galpon.aforoMaximo(),
         galpon.estado(),
         new GalponDetalleResult.LoteActual(
-            lote.get().id(), lote.get().poblacionActual(), edad, mensaje),
+            lote.get().id(), lote.get().poblacionActual(), edad, mensaje, lote.get().nombre()),
         null);
   }
 }

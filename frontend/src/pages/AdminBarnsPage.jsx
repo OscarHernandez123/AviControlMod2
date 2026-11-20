@@ -4,6 +4,11 @@ import Topbar from '../components/Topbar';
 import ApiMessage from '../components/ApiMessage';
 import { getBarn, getBarnAge, getBarnSummary, listBarns } from '../services/barnsApi';
 
+function lotLabel(lote) {
+  if (!lote) return 'Sin lote actual';
+  return lote.nombre?.trim() || lote.id || 'Nombre no disponible';
+}
+
 function AdminBarnsPage() {
   const [page, setPage] = useState(0);
   const [listing, setListing] = useState({ elementos: [], totalElementos: 0, totalPaginas: 0 });
@@ -119,7 +124,7 @@ function AdminBarnsPage() {
                     {barn.nombre}
                   </span>
                   <span className="avi-col-dark" style={{ flex: '1.2' }}>
-                    Ver en detalle
+                    {lotLabel(barn.loteActual)}
                   </span>
                   <div style={{ flex: '1.2', display: 'flex', alignItems: 'center' }}>
                     <span
@@ -238,7 +243,7 @@ function AdminBarnsPage() {
               </div>
 
               <div className="avi-drawer-lote-banner" data-node-id="216:1129">
-                <span>{selectedBarn.loteActual ? 'Lote activo' : 'Sin lote actual'}</span>
+                <span>{lotLabel(selectedBarn.loteActual)}</span>
               </div>
 
               <div className="avi-drawer-age-banner" data-node-id="216:1132">

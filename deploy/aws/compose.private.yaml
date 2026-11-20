@@ -1,0 +1,41 @@
+# Acceso privado mediante túnel SSH. Ejecutar desde esta carpeta con .env local.
+name: avicontrol-m2
+services:
+  postgres:
+    image: postgres:16
+    restart: unless-stopped
+    mem_limit: 256m
+    environment:
+      POSTGRES_DB: avicontrol_modulo2
+      POSTGRES_USER: avicontrol
+      POSTGRES_PASSWORD: ${AVICONTROL_DB_PASSWORD:?Definir password BD}
+    volumes: [postgres_data:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U avicontrol -d avicontrol_modulo2"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    logging: &logs
+      driver: json-file
+      options: {max-size: "10m", max-file: "3"}
+  backend:
+    image: avicontrol-m2-backend:aws-prep
+    restart: unless-stopped
+    mem_limit: 768m
+    depends_on:
+      postgres: {condition: service_healthy}
+    env_file: .env
+    environment:
+      SPRING_PROFILES_ACTIVE: aws,modulo1-rest
+      AVICONTROL_DB_URL: jdbc:postgresql://postgres:5432/avicontrol_modulo2
+      AVICONTROL_DB_USERNAME: avicontrol
+    logging: *logs
+  frontend:
+    image: avicontrol-m2-frontend:aws-prep
+    restart: unless-stopped
+    mem_limit: 96m
+    depends_on: [backend]
+    ports: ["127.0.0.1:8088:80"]
+    logging: *logs
+volumes:
+  postgres_data:

@@ -55,6 +55,12 @@ public class GalponRestQueryAdapter implements GalponQueryPort {
   }
 
   private GalponDatos map(Modulo1RestClient.Galpon g) {
-    return new GalponDatos(g.id(), g.nombre(), Math.toIntExact(g.capacidad()), g.estado());
+    var lote = g.loteActivo();
+    return new GalponDatos(
+        g.id(),
+        g.nombre(),
+        Math.toIntExact(g.capacidad()),
+        g.estado(),
+        lote == null ? null : new LoteDatos(lote.id(), lote.nombre()));
   }
 }

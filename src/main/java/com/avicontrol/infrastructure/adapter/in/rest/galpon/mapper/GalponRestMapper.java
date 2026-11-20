@@ -24,7 +24,11 @@ public class GalponRestMapper {
       var actual = result.loteActual();
       lote =
           new GalponDetalleResponse.LoteActualResponse(
-              actual.id(), actual.poblacionActual(), edad(actual.edad()), actual.mensaje());
+              actual.id(),
+              actual.poblacionActual(),
+              edad(actual.edad()),
+              actual.mensaje(),
+              actual.nombre());
     }
     return new GalponDetalleResponse(
         result.id(),
@@ -38,7 +42,16 @@ public class GalponRestMapper {
   public ListadoGalponesResponse response(ListadoGalponesResult result) {
     return new ListadoGalponesResponse(
         result.elementos().stream()
-            .map(g -> new ListadoGalponesResponse.Elemento(g.id(), g.nombre(), g.estado()))
+            .map(
+                g ->
+                    new ListadoGalponesResponse.Elemento(
+                        g.id(),
+                        g.nombre(),
+                        g.estado(),
+                        g.loteActual() == null
+                            ? null
+                            : new ListadoGalponesResponse.LoteActualResponse(
+                                g.loteActual().id(), g.loteActual().nombre())))
             .toList(),
         result.pagina(),
         result.tamano(),

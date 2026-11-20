@@ -23,6 +23,13 @@ public class LoteRestQueryAdapter implements LoteQueryPort {
         .flatMap(
             g ->
                 Optional.ofNullable(g.loteActivo())
-                    .map(l -> new Lote(l.id(), g.id(), l.poblacionActual(), l.fechaIngreso())));
+                    .map(
+                        l ->
+                            new Lote(
+                                l.id(),
+                                g.id(),
+                                l.poblacionActual(),
+                                l.fechaIngreso(),
+                                l.nombre())));
   }
 }

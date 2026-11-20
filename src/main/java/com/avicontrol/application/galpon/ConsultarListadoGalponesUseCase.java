@@ -8,9 +8,32 @@ import java.util.Set;
 public class ConsultarListadoGalponesUseCase {
   private static final Set<String> CAMPOS = Set.of("nombre", "estado", "id");
   private final GalponQueryPort galpones;
+  private final com.avicontrol.domain.port.out.modulo1.LoteQueryPort lotes;
 
   public ConsultarListadoGalponesUseCase(GalponQueryPort galpones) {
+    this(galpones, null);
+  }
+
+  public ConsultarListadoGalponesUseCase(
+      GalponQueryPort galpones, com.avicontrol.domain.port.out.modulo1.LoteQueryPort lotes) {
     this.galpones = galpones;
+    this.lotes = lotes;
+  }
+
+  private GalponListadoResult elemento(GalponQueryPort.GalponDatos galpon) {
+    var lote = galpon.loteActual();
+    if (lote == null && lotes != null) {
+      lote =
+          lotes
+              .consultarActual(galpon.id())
+              .map(actual -> new GalponQueryPort.LoteDatos(actual.id(), actual.nombre()))
+              .orElse(null);
+    }
+    return new GalponListadoResult(
+        galpon.id(),
+        galpon.nombre(),
+        galpon.estado(),
+        lote == null ? null : new GalponListadoResult.LoteActual(lote.id(), lote.nombre()));
   }
 
   public ListadoGalponesResult consultar(int pagina, int tamano, String orden) {
@@ -24,9 +47,7 @@ public class ConsultarListadoGalponesUseCase {
     var resultado = galpones.listar(pagina, tamano, partes[0], partes[1].equals("asc"));
     long paginas = (resultado.totalElementos() + tamano - 1) / tamano;
     return new ListadoGalponesResult(
-        resultado.elementos().stream()
-            .map(g -> new GalponListadoResult(g.id(), g.nombre(), g.estado()))
-            .toList(),
+        resultado.elementos().stream().map(this::elemento).toList(),
         pagina,
         tamano,
         resultado.totalElementos(),

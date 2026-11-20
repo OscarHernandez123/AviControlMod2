@@ -10,5 +10,11 @@ public record ListadoGalponesResponse(
     long totalElementos,
     int totalPaginas,
     String mensaje) {
-  public record Elemento(UUID id, String nombre, String estado) {}
+  public record Elemento(UUID id, String nombre, String estado, LoteActualResponse loteActual) {
+    public Elemento(UUID id, String nombre, String estado) {
+      this(id, nombre, estado, null);
+    }
+  }
+
+  public record LoteActualResponse(UUID id, String nombre) {}
 }

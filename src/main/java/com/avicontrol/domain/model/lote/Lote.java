@@ -5,7 +5,12 @@ import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.UUID;
 
-public record Lote(UUID id, UUID galponId, int poblacionActual, LocalDate fechaIngreso) {
+public record Lote(
+    UUID id, UUID galponId, int poblacionActual, LocalDate fechaIngreso, String nombre) {
+  public Lote(UUID id, UUID galponId, int poblacionActual, LocalDate fechaIngreso) {
+    this(id, galponId, poblacionActual, fechaIngreso, null);
+  }
+
   public Lote {
     if (id == null || galponId == null || poblacionActual < 0)
       throw new IllegalArgumentException("Datos del lote inconsistentes");

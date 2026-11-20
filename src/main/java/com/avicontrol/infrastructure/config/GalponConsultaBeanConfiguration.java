@@ -25,8 +25,9 @@ public class GalponConsultaBeanConfiguration {
   }
 
   @Bean
-  ConsultarListadoGalponesUseCase consultarListadoGalpones(GalponQueryPort galpones) {
-    return new ConsultarListadoGalponesUseCase(galpones);
+  ConsultarListadoGalponesUseCase consultarListadoGalpones(
+      GalponQueryPort galpones, LoteQueryPort lotes) {
+    return new ConsultarListadoGalponesUseCase(galpones, lotes);
   }
 
   @Bean

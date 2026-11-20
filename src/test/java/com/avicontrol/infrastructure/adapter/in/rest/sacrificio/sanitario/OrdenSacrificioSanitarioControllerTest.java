@@ -83,8 +83,7 @@ class OrdenSacrificioSanitarioControllerTest {
         .andExpect(jsonPath("$[0].id").value(orden.toString()))
         .andExpect(jsonPath("$[0].estado").value("EJECUTADA"))
         .andExpect(jsonPath("$[0].poblacionSacrificada").value(750));
-    mvc.perform(get("/api/ordenes-sacrificio-sanitario"))
-        .andExpect(status().isUnauthorized());
+    mvc.perform(get("/api/ordenes-sacrificio-sanitario")).andExpect(status().isUnauthorized());
     mvc.perform(post("/api/ordenes-sacrificio-sanitario/{id}/ejecucion", orden).with(veterinario()))
         .andExpect(status().isConflict());
   }

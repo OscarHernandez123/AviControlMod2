@@ -77,7 +77,7 @@ function AdminSlaughterOrdersPage() {
 
   const readyToValidate = activeBarns.filter((barn) => barn.estado === 'PRODUCTIVO' && barn.loteActual);
   const readyToSchedule = activeBarns.filter((barn) => barn.estado === 'EN_COSECHA' && barn.loteActual &&
-    !orders.some((order) => order.galponId === barn.id && order.loteId === barn.loteActual.id));
+    !orders.some((order) => order.galponId === barn.id && order.loteId === barn.loteActual.id && order.estado !== 'CANCELADA'));
   const eligible = modal?.kind === 'validate' ? readyToValidate : readyToSchedule;
   const filtered = orders.filter((order) => {
     const barnName = barns.find((barn) => barn.id === order.galponId)?.nombre;
@@ -194,7 +194,7 @@ function AdminSlaughterOrdersPage() {
           <label className="avi-figma-label">Fecha y hora futura</label>
           <input type="datetime-local" className="avi-figma-input" required min={localDateTime(Date.now() + 60000)} value={scheduledAt} onChange={(event) => setScheduledAt(event.target.value)} />
         </div>}
-        {modal.kind === 'cancel' && <p>¿Cancelar la orden de este galpón? No podrá programarse otra para el mismo lote.</p>}
+        {modal.kind === 'cancel' && <p>¿Cancelar la orden de este galpón? Podrá crear una nueva orden para el mismo lote si el galpón sigue en cosecha.</p>}
         {modal.kind === 'result' && <div className="avi-figma-modal-grid">
           <div className="avi-figma-field"><label className="avi-figma-label">Cantidad final de pollos</label><input type="number" min="1" step="1" className="avi-figma-input" required value={birds} onChange={(event) => setBirds(event.target.value)} /></div>
           <div className="avi-figma-field"><label className="avi-figma-label">Peso total (kg)</label><input type="number" min="0.01" step="0.01" className="avi-figma-input" required value={weight} onChange={(event) => setWeight(event.target.value)} /></div>

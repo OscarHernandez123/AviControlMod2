@@ -21,7 +21,7 @@ public class LoteQueryAdapter implements LoteQueryPort {
   public Optional<Lote> consultarActual(UUID galponId) {
     return jdbc
         .query(
-            "SELECT lote_id,id,poblacion_viva,fecha_ingreso FROM modulo1_galpon_local WHERE id = ? AND lote_id IS NOT NULL",
+            "SELECT lote_id,id,poblacion_viva,fecha_ingreso,lote_codigo FROM modulo1_galpon_local WHERE id = ? AND lote_id IS NOT NULL",
             (rs, row) ->
                 new Lote(
                     rs.getObject("lote_id", UUID.class),
@@ -29,7 +29,8 @@ public class LoteQueryAdapter implements LoteQueryPort {
                     rs.getInt("poblacion_viva"),
                     rs.getDate("fecha_ingreso") == null
                         ? null
-                        : rs.getDate("fecha_ingreso").toLocalDate()),
+                        : rs.getDate("fecha_ingreso").toLocalDate(),
+                    rs.getString("lote_codigo")),
             galponId)
         .stream()
         .findFirst();

@@ -26,14 +26,15 @@ public class OrdenSacrificioProductivoPersistenceAdapter
   @Override
   public void crear(OrdenSacrificioProductivo orden) {
     jdbc.update(
-        "INSERT INTO ordenes_sacrificio_productivo (id,galpon_id,lote_id,estado,fecha_hora_programada,fecha_creacion,version) VALUES (?,?,?,?,?,?,?)",
+        "INSERT INTO ordenes_sacrificio_productivo (id,galpon_id,lote_id,estado,fecha_hora_programada,fecha_creacion,version,lote_reservado_id) VALUES (?,?,?,?,?,?,?,?)",
         orden.id(),
         orden.galponId(),
         orden.loteId(),
         orden.estado().name(),
         Timestamp.from(orden.fechaHoraProgramada()),
         Timestamp.from(orden.fechaCreacion()),
-        orden.version());
+        orden.version(),
+        orden.loteId());
   }
 
   @Override
@@ -61,7 +62,7 @@ public class OrdenSacrificioProductivoPersistenceAdapter
   public boolean existePorGalponLote(UUID galponId, UUID loteId) {
     Integer total =
         jdbc.queryForObject(
-            "SELECT COUNT(*) FROM ordenes_sacrificio_productivo WHERE galpon_id=? AND lote_id=?",
+            "SELECT COUNT(*) FROM ordenes_sacrificio_productivo WHERE galpon_id=? AND lote_id=? AND estado<>'CANCELADA'",
             Integer.class,
             galponId,
             loteId);
@@ -71,13 +72,14 @@ public class OrdenSacrificioProductivoPersistenceAdapter
   @Override
   public boolean actualizar(OrdenSacrificioProductivo orden) {
     return jdbc.update(
-            "UPDATE ordenes_sacrificio_productivo SET estado=?,fecha_hora_programada=?,fecha_reprogramacion=?,fecha_cancelacion=?,fecha_ejecucion=?,version=? WHERE id=? AND version=?",
+            "UPDATE ordenes_sacrificio_productivo SET estado=?,fecha_hora_programada=?,fecha_reprogramacion=?,fecha_cancelacion=?,fecha_ejecucion=?,version=?,lote_reservado_id=? WHERE id=? AND version=?",
             orden.estado().name(),
             Timestamp.from(orden.fechaHoraProgramada()),
             timestamp(orden.fechaReprogramacion()),
             timestamp(orden.fechaCancelacion()),
             timestamp(orden.fechaEjecucion()),
             orden.version(),
+            orden.estado() == EstadoOrdenSacrificio.CANCELADA ? null : orden.loteId(),
             orden.id(),
             orden.version() - 1)
         == 1;

@@ -1,18 +1,18 @@
 # Respuestas al equipo del Módulo 1 — Integración con Módulo 2
 
 **Proyecto:** AVICONTROL
-**Fecha:** 19 de noviembre de 2026
-**Estado:** consultas REST y publicación Kafka implementadas y probadas localmente con ambos módulos, sin modificar el código del Módulo 1.
+**Fecha:** 20 de noviembre de 2026
+**Estado:** integración desplegada en AWS; consultas REST, mortalidad y alerta sanitaria de aislamiento verificadas con el equipo del Módulo 1. Su código no fue modificado.
 
 ## 1. IP pública de la aplicación
 
-La aplicación corre actualmente desde nuestro computador. **La IP pública de salida actual para las pruebas es `191.95.16.24`**, consultada el 19 de noviembre de 2026.
+La aplicación está desplegada para pruebas en AWS EC2, región Ohio (`us-east-2`). **La IP pública de salida es la Elastic IP `3.21.155.197`**, verificada desde EC2 el 19 de noviembre de 2026. Reemplaza a `18.220.161.224`. El equipo del Módulo 1 autorizó `3.21.155.197/32` en TCP 9092 y se verificó la conexión.
 
-Solicitamos autorizar esta IP para acceder a los servicios Kafka y REST del Módulo 1, según sus reglas de acceso. Las pruebas se realizarán desde la misma conexión y VPN utilizadas al consultar la IP; esta puede cambiar al cambiar de red o por reasignación del proveedor.
+La Elastic IP está asociada a la instancia `i-04e068ee540cb28cf` y se conservará mientras mantengamos su asignación y asociación. El acceso por túnel SSH ya funciona con esta dirección.
 
-**La IP de salida del futuro despliegue en AWS todavía no está definida.** La compartiremos cuando esté configurado ese entorno.
+REST funciona contra `http://18.227.58.143/api/v1` y Kafka contra `18.227.58.143:9092`, usando PLAINTEXT. Tras autorizar la Elastic IP se verificaron el protocolo y los brokers anunciados. Se publicó una mortalidad de 1 ave (1975 → 1974) y una alerta de AISLAMIENTO para galpón demo 3, que conservó sus 1000 aves. La reanudación y el vaciado sanitario no se consideran verificados por esas pruebas.
 
-`localhost` corresponde únicamente a nuestras pruebas y no es una dirección pública que pueda utilizarse para autorizar el acceso desde otro entorno.
+El acceso al frontend del Módulo 2 está restringido a un túnel SSH; esta IP se comparte para autorizar las conexiones salientes hacia el Módulo 1.
 
 ## 2. Librería Kafka y serializadores
 
