@@ -176,8 +176,32 @@ Verificación posterior al despliegue de esta corrección: listado y detalle coi
 
 Se permite crear otra orden para el mismo galpón y lote cuando todas sus órdenes anteriores están CANCELADAS y el módulo 1 confirma EN_COSECHA con ese lote alojado. Se conserva el historial. Una orden no cancelada (incluida EJECUTADA o con vaciado solicitado) sigue bloqueando duplicados.
 
-La migración Java V24 sustituye la unicidad histórica por una reserva de lote para órdenes no canceladas, con validación de consistencia e índice único. Está probada en H2 y PostgreSQL, incluyendo datos cancelados previos y dos solicitudes concurrentes. No modifica V17 ni el módulo 1. El formulario excluye del bloqueo únicamente las órdenes canceladas.
+La migración V24 (actualmente SQL, antes Java) sustituye la unicidad histórica por una reserva de lote para órdenes no canceladas, con validación de consistencia e índice único. Está probada en H2 y PostgreSQL, incluyendo datos cancelados previos y dos solicitudes concurrentes. No modifica V17 ni el módulo 1. El formulario excluye del bloqueo únicamente las órdenes canceladas.
 
 Se conserva la reprogramación existente; el spec 005 ya la contempla en FR-001 y FR-005. Este ajuste permite usar Programar orden después de una cancelación sin reactivar la orden anterior.
 
 Antes de aplicar V24 se creó un respaldo en EC2: /home/ec2-user/avicontrol-modulo2/backups/antes-orden-tras-cancelacion.dump. Las imágenes de esta actualización se etiquetan orden-tras-cancelacion. Después de V24, no se debe volver a una imagen anterior que desconozca la reserva de lote sin preparar también la reversión de esquema o restaurar el respaldo.
+### V24 exclusivamente SQL — 20 de noviembre de 2026
+
+La clase Java de migración se retiró. Las migraciones comunes V1–V23 permanecen intactas en src/main/resources/db/migration. V24 está en db/vendor/postgresql/V24__permitir_orden_tras_cancelacion.sql y db/vendor/h2/V24__permitir_orden_tras_cancelacion.sql. Spring Boot selecciona solo el motor correspondiente con spring.flyway.locations=classpath:db/migration,classpath:db/vendor/{vendor}. Las dos variantes tienen el mismo efecto; sus sintaxis para identificar y eliminar la restricción anterior son distintas.
+
+En una base nueva o en versión 23, Flyway aplica V24 SQL normalmente. En una base donde ya se ejecutó V24 Java, no se debe intentar aplicar el SQL otra vez ni desactivar la validación de Flyway.
+
+Procedimiento para el entorno con V24 Java ya aplicada:
+1. Respaldar la base y su historial de Flyway. Detener el backend durante la transición.
+2. Comprobar que el esquema contiene la columna lote_reservado_id, el CHECK ck_orden_reserva_lote y el índice único uq_orden_no_cancelada_galpon_lote, y que las reservas coinciden con el estado de las órdenes.
+3. Ejecutar con psql, ON_ERROR_STOP habilitado y contra la base correcta, el archivo src/main/resources/db/maintenance/normalizar_historial_v24_java_a_sql.sql. Este SQL comprueba el registro Java esperado y el esquema antes de cambiar únicamente el tipo y nombre del script en el historial. No cambia órdenes ni recrea objetos. Está fuera de las ubicaciones de migración automática.
+4. Con la versión de Flyway compatible con el proyecto (12.4.0), configurar FLYWAY_URL, FLYWAY_USER y FLYWAY_PASSWORD de forma privada, usando las mismas ubicaciones SQL que el nuevo backend. Desde la raíz del repositorio ejecutar:
+
+    flyway -locations=filesystem:src/main/resources/db/migration,filesystem:src/main/resources/db/vendor/postgresql repair
+    flyway -locations=filesystem:src/main/resources/db/migration,filesystem:src/main/resources/db/vendor/postgresql validate
+    flyway -locations=filesystem:src/main/resources/db/migration,filesystem:src/main/resources/db/vendor/postgresql info
+
+5. Verificar que no hay migraciones fallidas, ausentes ni pendientes inesperadas y que V24 figura como SQL con checksum. Desplegar el nuevo backend y comprobar que no reejecuta V24 y conserva órdenes, lotes y eventos. No reiniciar la imagen anterior durante la transición.
+6. Conservar el respaldo y el registro de la intervención. No ejecutar clean ni borrar el historial para resolver una diferencia de tipos.
+
+Este procedimiento se prueba sobre PostgreSQL temporal: simula el registro JDBC de la V24 anterior, lo convierte a SQL, ejecuta repair/validate y confirma cero migraciones ejecutadas y los mismos registros de órdenes. Flyway repair puede afectar otras entradas del historial; antes de ejecutarlo deben revisarse todas las diferencias, no solo V24.
+
+Referencias: [ubicaciones por motor en Spring Boot](https://docs.spring.io/spring-boot/how-to/data-initialization.html), [Flyway repair](https://documentation.red-gate.com/fd/repair-277578892.html).
+
+La conversión del historial de AWS no se aplicó durante esta modificación del repositorio. La lectura por SSH no respondió durante esta revisión; antes del siguiente despliegue se debe recuperar el acceso y ejecutar el procedimiento controlado.

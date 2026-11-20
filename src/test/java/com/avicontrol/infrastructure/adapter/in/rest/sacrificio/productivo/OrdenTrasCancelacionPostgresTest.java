@@ -22,7 +22,12 @@ class OrdenTrasCancelacionPostgresTest {
   void migraHistorialExistenteYPermiteSoloUnaNuevaOrdenConcurrente() throws Exception {
     var url = System.getenv("AVICONTROL_TEST_DB_URL");
     var ds = new DriverManagerDataSource(url, "avicontrol", "avicontrol");
-    Flyway.configure().dataSource(ds).target("17").load().migrate();
+    Flyway.configure()
+        .dataSource(ds)
+        .locations("classpath:db/migration", "classpath:db/vendor/postgresql")
+        .target("17")
+        .load()
+        .migrate();
     var jdbc = new JdbcTemplate(ds);
     UUID galpon = UUID.randomUUID(), lote = UUID.randomUUID(), anterior = UUID.randomUUID();
     jdbc.update(
@@ -34,7 +39,11 @@ class OrdenTrasCancelacionPostgresTest {
         anterior,
         galpon,
         lote);
-    Flyway.configure().dataSource(ds).load().migrate();
+    Flyway.configure()
+        .dataSource(ds)
+        .locations("classpath:db/migration", "classpath:db/vendor/postgresql")
+        .load()
+        .migrate();
     var repo = new OrdenSacrificioProductivoPersistenceAdapter(jdbc);
     assertFalse(repo.existePorGalponLote(galpon, lote));
     assertEquals("CANCELADA", repo.buscar(anterior).orElseThrow().estado().name());
@@ -64,5 +73,37 @@ class OrdenTrasCancelacionPostgresTest {
     assertTrue(repo.existePorGalponLote(galpon, lote));
     assertEquals(2, repo.resumen().totalOrdenes());
     assertEquals(1, repo.resumen().ordenesPendientes());
+
+    // Simula el historial de la V24 Java ya aplicada: mismo esquema, tipo JDBC y sin checksum.
+    var datosAntes = jdbc.queryForList("SELECT * FROM ordenes_sacrificio_productivo ORDER BY id");
+    jdbc.update(
+        """
+        UPDATE flyway_schema_history SET type='JDBC',
+          script='db.migration.V24__permitir_orden_tras_cancelacion',checksum=NULL
+        WHERE version='24'
+        """);
+    var flyway =
+        Flyway.configure()
+            .dataSource(ds)
+            .locations("classpath:db/migration", "classpath:db/vendor/postgresql")
+            .load();
+    assertFalse(flyway.validateWithResult().validationSuccessful);
+    try (var connection = ds.getConnection();
+        var statement = connection.createStatement()) {
+      var sql =
+          new org.springframework.core.io.ClassPathResource(
+                  "db/maintenance/normalizar_historial_v24_java_a_sql.sql")
+              .getContentAsString(java.nio.charset.StandardCharsets.UTF_8);
+      statement.execute(sql);
+    }
+    flyway.repair();
+    flyway.validate();
+    assertEquals(0, flyway.migrate().migrationsExecuted);
+    assertEquals(
+        datosAntes, jdbc.queryForList("SELECT * FROM ordenes_sacrificio_productivo ORDER BY id"));
+    assertEquals(
+        "SQL",
+        jdbc.queryForObject(
+            "SELECT type FROM flyway_schema_history WHERE version='24'", String.class));
   }
 }
