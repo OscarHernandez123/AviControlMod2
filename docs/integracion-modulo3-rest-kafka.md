@@ -1,6 +1,6 @@
 # Integración REST directa entre M2 y M3
 
-Estado: implementación local en M2, pendiente de despliegue y prueba entre equipos. No cambia el módulo 1 ni el módulo 3. No necesita migraciones de base de datos.
+Estado: código a454b66 desplegado y verificado en la EC2 de M2 el 20 de noviembre de 2026. El acceso continúa por túnel SSH; queda pendiente publicar HTTPS para M3 y realizar la prueba entre equipos. No cambia el módulo 1 ni el módulo 3. No necesita migraciones nuevas de base de datos.
 
 ## Revisión del repositorio de M3
 
@@ -158,3 +158,25 @@ Antes de probar la liquidación, acordar el flujo válido para completar el lote
 
 La ejecución de `spotlessApply check bootJar` terminó correctamente: 209 pruebas aprobadas, 21 omitidas y ningún fallo. Las ocho pruebas nuevas verifican Basic Auth y roles, contrato y versión estricta, campos adicionales, resultado inexistente, lote incorrecto, reutilización incompatible de eventId, reintentos simultáneos y bloqueo de correcciones tras HTTP 200. Ambas plantillas Compose también validan sin iniciar contenedores. Estas comprobaciones no despliegan AWS ni envían confirmaciones a otro módulo.
 
+
+## Despliegue verificado en AWS — 20 de noviembre de 2026
+
+Se desplegó el código del commit `a454b66`, incluido en el PR #29 hacia `develop`:
+
+- Backend: `avicontrol-m2-backend:m3-rest-a454b66`.
+- Frontend/Nginx: `avicontrol-m2-frontend:m3-rest-a454b66`.
+- Se conservó el contenedor PostgreSQL 16 y el mismo volumen. No se recreó la base de datos ni se ejecutaron migraciones nuevas.
+- Las 35 tablas públicas (incluido el historial Flyway) mantienen los mismos conteos y huellas de contenido antes y después. La configuración previa ajena a M3 mantiene la misma huella; no se cambiaron credenciales existentes ni parámetros REST/Kafka de M1.
+- M1: consultas REST HTTP 200 y respuesta Kafka ApiVersions correcta (61 APIs), sin publicar eventos de negocio.
+- Administrador: SPA y listado de galpones HTTP 200; acceso anónimo a SPA HTTP 401.
+- M3: consultas de alimento y medicamento HTTP 200; el lote de prueba devuelve listas vacías conforme a sus datos existentes. Resultado y plan ausentes devuelven 404.
+- Confirmación REST: sin identidad 401, administrador 403 y cuenta M3 con UUID de resultado inexistente 404 estructurado. No se confirmó ningún resultado real ni se bloquearon correcciones de datos del usuario.
+- Cuenta `modulo3_consulta` activada con contraseña aleatoria guardada solo en el `.env` del servidor (permisos 600). El listener Kafka de M3 continúa apagado.
+
+Checkpoint del servidor: `/home/ec2-user/avicontrol-modulo2/backups/m3-rest-a454b66-20261121-021853`. El nombre utiliza UTC; la actualización corresponde al 20 de noviembre en Colombia. Contiene el dump, copias protegidas de configuración, comparación de tablas e informe `verification.json`.
+
+Copia local del dump: `build/aws-deploy/m3-rest-a454b66-20261121-021853/database.dump` (ignorada por Git). Tamaño: 87 996 bytes. SHA256 coincidente en servidor y copia local: `14719bd170d73782081a425947b4ae8d26010323cf54d208f8a059b267d796be`. El archivo pg_dump se validó mediante pg_restore -l antes de aplicar las imágenes.
+
+Las imágenes anteriores se conservaron para reversión. El procedimiento del servidor `/home/ec2-user/avicontrol-modulo2/deploy_m3_rest.py` permite restaurar su configuración anterior con `python3 deploy_m3_rest.py rollback`, sin eliminar volúmenes ni restaurar destructivamente la BD.
+
+Esta actualización conserva la publicación en `127.0.0.1:8088`: todavía no es una URL accesible directamente desde la EC2 de M3. La publicación externa HTTPS y el intercambio privado de credenciales son el siguiente paso para la prueba coordinada; no requieren usar infraestructura de M1 para comunicar M2 con M3.
