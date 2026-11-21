@@ -1,0 +1,11 @@
+[Unit]
+Description=Comprobar renovacion HTTPS de M2 cada seis horas
+
+[Timer]
+OnCalendar=*-*-* 00,06,12,18:20:00
+RandomizedDelaySec=15min
+Persistent=true
+Unit=avicontrol-m3-https-renew.service
+
+[Install]
+WantedBy=timers.target

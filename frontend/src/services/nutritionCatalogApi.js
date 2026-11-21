@@ -48,3 +48,8 @@ export const getLotFoodRequirement = (lotId, { signal } = {}) =>
   request(`/api/lotes/${encodeURIComponent(lotId)}/alimento-requerido`, { signal });
 export const getSupplyBalance = ({ signal } = {}) =>
   request('/api/administracion/balance-abastecimiento', { signal });
+
+export const assignBarnNutritionPlan = (barnId, data) =>
+  request(`/api/galpones/${encodeURIComponent(barnId)}/plan-nutricional/asignacion`, {
+    method: 'PUT', body: JSON.stringify(data)
+  });

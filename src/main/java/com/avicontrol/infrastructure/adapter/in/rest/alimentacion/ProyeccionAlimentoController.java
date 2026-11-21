@@ -24,7 +24,7 @@ public class ProyeccionAlimentoController {
   }
 
   @GetMapping("/lotes/{loteId}/alimento-requerido")
-  @PreAuthorize("hasAnyRole('ADMINISTRADOR','NUTRICIONISTA','FINANZAS')")
+  @PreAuthorize("hasAnyRole('ADMINISTRADOR','NUTRICIONISTA','FINANZAS','MODULO3')")
   public RequerimientoResponse consultar(@PathVariable UUID loteId) {
     var requerimiento = useCase.consultarLote(loteId);
     return new RequerimientoResponse(

@@ -67,7 +67,7 @@ function NutritionTemplateFormModal({ isOpen, onClose, template, foods, onSave, 
   let nextStart = 1;
   return (
     <BaseModal isOpen={isOpen} onClose={onClose} maxWidth="740px">
-      <form className="avi-figma-modal-720" onSubmit={handleSubmit}>
+      <form className="avi-figma-modal-720 avi-nutrition-template-modal" onSubmit={handleSubmit}>
         <div className="avi-figma-modal-header">
           <div className="avi-figma-modal-titles">
             <h2 className="avi-figma-modal-title">{template ? 'Editar plantilla nutricional' : 'Nueva plantilla nutricional'}</h2>
@@ -97,7 +97,7 @@ function NutritionTemplateFormModal({ isOpen, onClose, template, foods, onSave, 
             const start = nextStart;
             nextStart = Number(stage.diaFin) + 1;
             return (
-              <div key={stage.etapaCrianza} className="avi-figma-demand-box"
+              <div key={stage.etapaCrianza} className="avi-figma-demand-box avi-nutrition-template-stage"
                 style={{ gridColumn: '1 / -1', display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px' }}>
                 <strong style={{ gridColumn: '1 / -1' }}>{LABELS[stage.etapaCrianza]} · desde el día {start}</strong>
                 <div className="avi-figma-field">

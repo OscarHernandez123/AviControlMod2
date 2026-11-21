@@ -13,6 +13,8 @@ public interface ResultadoSacrificioRepositoryPort {
 
   Optional<ResultadoSacrificioProductivo> bloquear(UUID resultadoId);
 
+  Optional<ResultadoSacrificioProductivo> buscarPorLote(UUID loteId);
+
   boolean existePorLote(UUID loteId);
 
   boolean actualizarSiDisponible(ResultadoSacrificioProductivo resultado);

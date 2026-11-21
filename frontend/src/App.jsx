@@ -1,4 +1,5 @@
 import './index.css';
+import { roleSelectorEnabled } from './utils/roleAccess';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import LoginPage from './pages/LoginPage';
@@ -27,8 +28,8 @@ function App() {
           <div className="avi-app-shell">
             <main className="avi-app-viewport">
               <Routes>
-                <Route path="/" element={<Navigate to="/login" replace />} />
-                <Route path="/login" element={<LoginPage />} />
+                <Route path="/" element={<Navigate to={roleSelectorEnabled ? "/roles" : "/login"} replace />} />
+                <Route path="/login" element={roleSelectorEnabled ? <Navigate to="/roles" replace /> : <LoginPage />} />
                 <Route path="/roles" element={<RoleSelectionPage />} />
                 <Route path="/administrador" element={<AdminDashboardPage />} />
                 <Route path="/administrador/galpones" element={<AdminBarnsPage />} />
@@ -50,7 +51,7 @@ function App() {
                 <Route path="/veterinario/medicinas" element={<VetMedicinesPage />} />
                 <Route path="/veterinario/*" element={<Navigate to="/veterinario" replace />} />
                 <Route path="/trabajador/*" element={<WorkerDashboardPage />} />
-                <Route path="*" element={<Navigate to="/login" replace />} />
+                <Route path="*" element={<Navigate to={roleSelectorEnabled ? "/roles" : "/login"} replace />} />
               </Routes>
             </main>
           </div>

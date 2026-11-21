@@ -2,6 +2,8 @@ import { useContext, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import BaseModal from './BaseModal';
+import RoleSelector from './RoleSelector';
+import { roleSelectorEnabled } from '../utils/roleAccess';
 
 function Topbar({
   roleLabel = 'Administrador',
@@ -63,7 +65,8 @@ function Topbar({
             <span>{leftBadge}</span>
           </div>
         )}
-        <div className="avi-topbar-account-wrap" ref={dropdownRef}>
+        {roleSelectorEnabled && <RoleSelector />}
+        <div className="avi-topbar-account-wrap" ref={dropdownRef} style={roleSelectorEnabled ? { display: 'none' } : undefined}>
           <button
             type="button"
             className={`avi-topbar-account avi-topbar-account-btn ${menuOpen ? 'active' : ''}`}

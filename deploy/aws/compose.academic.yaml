@@ -1,0 +1,11 @@
+# Usar junto con el Compose privado; preparar academic-access/nginx.active.conf en el servidor.
+services:
+  frontend:
+    image: avicontrol-m2-frontend:academic
+    build:
+      context: ../../frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_ACADEMIC_ROLE_SELECTOR: "true"
+    volumes:
+      - ./academic-access/nginx.active.conf:/etc/nginx/conf.d/default.conf:ro
