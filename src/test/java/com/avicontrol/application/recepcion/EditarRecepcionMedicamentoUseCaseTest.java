@@ -64,13 +64,13 @@ class EditarRecepcionMedicamentoUseCaseTest {
 
     when(repository.bloquear(id)).thenReturn(Optional.of(anterior));
     when(inventario.tieneMovimientosPosteriores(id)).thenReturn(false);
-    when(catalogo.unidadBaseMedicamento(medId)).thenReturn(UnidadMedidaMedicamento.GRAMO);
+    when(catalogo.unidadBaseMedicamento(medId)).thenReturn(UnidadMedidaMedicamento.MILILITRO);
     when(catalogo.nombreMedicamento(medId)).thenReturn("Enrofloxacina 10%");
 
     RecepcionMedicamento resultado = useCase.editar(cmd);
 
     assertThat(resultado.cantidadUnidadBase()).isEqualByComparingTo("3.000");
-    assertThat(resultado.unidadBase()).isEqualTo(UnidadMedidaMedicamento.MILILITRO);
+    assertThat(resultado.unidadBase()).isEqualTo(UnidadMedidaMedicamento.GRAMO);
     verify(repository).actualizar(resultado);
     verify(inventario)
         .ajustarEntrada(
@@ -119,7 +119,7 @@ class EditarRecepcionMedicamentoUseCaseTest {
             "admin");
     when(repository.bloquear(id)).thenReturn(Optional.of(anterior));
     when(inventario.tieneMovimientosPosteriores(id)).thenReturn(false);
-    when(catalogo.unidadBaseMedicamento(medId)).thenReturn(UnidadMedidaMedicamento.GRAMO);
+    when(catalogo.unidadBaseMedicamento(medId)).thenReturn(UnidadMedidaMedicamento.MILILITRO);
 
     assertThatThrownBy(() -> useCase.editar(cmd))
         .isInstanceOf(UnidadIncompatibleException.class);

@@ -66,7 +66,7 @@ class RegistrarMortalidadUseCaseTest {
     Instant evento = Instant.now(clock).minusSeconds(120);
     var cmd =
         new RegistrarMortalidadCommand(
-            galponId, evento, 3, CausaMortalidad.ACCIDENTE, "Obs", "trabajador", key);
+            galponId, evento, 1, CausaMortalidad.ACCIDENTE, "Obs", "trabajador", key);
 
     when(registros.buscar(key)).thenReturn(Optional.empty());
     when(galpones.consultar(galponId))
@@ -78,13 +78,13 @@ class RegistrarMortalidadUseCaseTest {
         .thenReturn(Optional.of(new Lote(loteId, galponId, 1000, LocalDate.of(2026, 11, 10))));
     when(registros.totalDia(any(), any(), any(), any())).thenReturn(0);
     when(inventario.actualizar(any(ActualizarInventarioVivoCommand.class)))
-        .thenReturn(new InventarioVivoActualizadoResult(loteId, 1000, -3, 997, "MORTALIDAD"));
+        .thenReturn(new InventarioVivoActualizadoResult(loteId, 1000, -1, 999, "MORTALIDAD"));
 
     var result = useCase.registrar(cmd);
 
-    assertThat(result.cantidad()).isEqualTo(3);
+    assertThat(result.cantidad()).isEqualTo(1);
     assertThat(result.clasificacion()).isEqualTo("NORMAL");
-    assertThat(result.poblacionResultante()).isEqualTo(997);
+    assertThat(result.poblacionResultante()).isEqualTo(999);
     verify(registros).guardar(any(RegistroMortalidad.class));
     verifyNoInteractions(anormal);
   }
