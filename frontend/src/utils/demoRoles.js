@@ -1,4 +1,6 @@
 export const demoRolesEnabled = import.meta.env.VITE_DEMO_ROLE_SELECTOR === 'true';
+export const academicRolesEnabled = !demoRolesEnabled && import.meta.env.VITE_ACADEMIC_ROLE_SELECTOR === 'true';
+export const roleSelectorEnabled = demoRolesEnabled || academicRolesEnabled;
 export const demoRoles = [
   ['administrador', 'Administrador'], ['nutricionista', 'Nutricionista'],
   ['veterinario', 'Veterinario'], ['trabajador', 'Trabajador']
@@ -8,7 +10,7 @@ export function roleForPath(pathname) {
   return demoRoles.some(([value]) => value === role) ? role : null;
 }
 export function installDemoRoleRequests() {
-  if (!demoRolesEnabled) return;
+  if (!roleSelectorEnabled) return;
   const originalFetch = window.fetch.bind(window);
   window.fetch = (input, init = {}) => {
     const request = new Request(input, init);
@@ -16,7 +18,9 @@ export function installDemoRoleRequests() {
     if (url.origin === window.location.origin && url.pathname.startsWith('/api/')) {
       const headers = new Headers(request.headers);
       const role = roleForPath(window.location.pathname);
-      if (role) headers.set('X-Demo-Role', role);
+      headers.delete('X-Demo-Role');
+      headers.delete('X-Academic-Role');
+      if (role) headers.set(demoRolesEnabled ? 'X-Demo-Role' : 'X-Academic-Role', role);
       headers.delete('Authorization');
       return originalFetch(new Request(request, { headers, credentials: 'omit' }));
     }

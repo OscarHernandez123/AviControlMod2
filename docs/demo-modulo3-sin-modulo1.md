@@ -112,3 +112,6 @@ El puerto `http://localhost:8089` y el prefijo HTTPS `/demo/` usan otra base y u
 M3 confirmó desde 52.15.95.91 las partidas DEMO: 40 kg a 2500 y 20 kg a 3000, neto 160000 e impuesto de tramos 8000; 100 ml a 50, neto 5000 e impuesto de tramo 250. El resultado final se guardó por frontend con 1000 aves y 2500 kg. Quedan pendientes la liquidación en su frontend y la confirmación POST de utilización; la confirmación de consultas no demuestra esos dos pasos.
 
 Publicar el código en `main` no copia las bases ni cambia automáticamente los contenedores de AWS. El selector libre y el reintegro anticipado permanecen desactivados en la configuración normal. La validación conjunta real de los tres módulos requiere registros reales para un mismo lote y que M3 use la base sin `/demo/`.
+
+El entorno principal incorpora acceso académico sin contraseña desde el 21/11/2026; ver [acceso académico principal](acceso-academico-principal.md). Su selector muestra «Rol» y conserva la conexión con M1. El selector «Rol DEMO» y los controles simulados permanecen en la copia independiente.
+
