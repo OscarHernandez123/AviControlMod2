@@ -1,0 +1,54 @@
+name: avicontrol-m2-demo
+services:
+  postgres-demo:
+    image: postgres:16
+    restart: unless-stopped
+    mem_limit: 128m
+    command: ["postgres", "-c", "shared_buffers=32MB", "-c", "max_connections=30"]
+    environment:
+      POSTGRES_DB: avicontrol_modulo2_demo
+      POSTGRES_USER: avicontrol_demo
+      POSTGRES_PASSWORD: ${AVICONTROL_DEMO_DB_PASSWORD:?Definir password BD demo}
+    volumes: [demo_postgres_data:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U avicontrol_demo -d avicontrol_modulo2_demo"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    logging: &logs
+      driver: json-file
+      options: {max-size: "5m", max-file: "2"}
+  backend-demo:
+    image: avicontrol-m2-backend:m3-rest-a454b66
+    restart: unless-stopped
+    mem_limit: 512m
+    depends_on:
+      postgres-demo: {condition: service_healthy}
+    env_file: .env
+    environment:
+      SPRING_PROFILES_ACTIVE: local
+      AVICONTROL_DB_URL: jdbc:postgresql://postgres-demo:5432/avicontrol_modulo2_demo
+      AVICONTROL_DB_USERNAME: avicontrol_demo
+      AVICONTROL_DB_PASSWORD: ${AVICONTROL_DEMO_DB_PASSWORD}
+      AVICONTROL_MODULO1_GALPON_ID: a402a368-cd4d-4e27-8d48-9e0d7eb8d374
+      AVICONTROL_MODULO1_LOTE_ID: 7331eec8-e447-4868-bdef-8eca3fff8d44
+      AVICONTROL_MODULO3_RESULTADO_UTILIZADO_ENABLED: "false"
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: 127.0.0.1:1
+      JAVA_TOOL_OPTIONS: -Xms64m -Xmx256m -XX:MaxMetaspaceSize=160m -XX:ReservedCodeCacheSize=48m -Duser.timezone=America/Bogota
+    logging: *logs
+  frontend-demo:
+    build: {context: ., dockerfile: Dockerfile.frontend}
+    image: avicontrol-m2-frontend:demo-m3
+    restart: unless-stopped
+    mem_limit: 48m
+    depends_on: [backend-demo]
+    networks: [default, frontend-access]
+    ports: ["127.0.0.1:8089:80"]
+    logging: *logs
+volumes:
+  demo_postgres_data:
+
+networks:
+  default:
+    internal: true
+  frontend-access: {}

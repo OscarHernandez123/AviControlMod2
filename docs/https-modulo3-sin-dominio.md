@@ -83,3 +83,8 @@ Para retirar únicamente HTTPS: deshabilitar el temporizador, detener y quitar s
 A petición del usuario, se retiró el requisito externo de usuario y contraseña. Checkpoint del cambio: `/home/ec2-user/avicontrol-modulo2/backups/m3-ip-only-20261121-025248`. El informe confirma GET sin credenciales 200, POST con resultado inexistente 404, versión inválida 400 y rutas administrativas no publicadas 404. Desde una IP externa no autorizada se comprobó 403 incluso enviando X-Forwarded-For falsificado. La interfaz privada conserva HTTP 401 sin autenticación.
 
 No se recrearon los contenedores base, no se modificó `.env` y las 35 tablas conservaron sus huellas. Se recargó únicamente Nginx. La cuenta interna existe para conservar los permisos del backend: esto no exige credenciales al cliente M3 ni habilita acceso general a otras rutas.
+
+
+## Entorno de demostración independiente
+
+Existe una copia con base y volumen propios para trabajar sin M1. Su interfaz está en localhost:8089 y M3 utiliza el prefijo HTTPS `/demo/`. Las rutas normales siguen apuntando al entorno principal. Ver [datos, aislamiento y uso](demo-modulo3-sin-modulo1.md).
