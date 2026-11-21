@@ -19,8 +19,7 @@ class UnidadConsumoMedicamentoTest {
 
     assertThatThrownBy(() -> UnidadConsumoMedicamento.GRAMO.normalizar(BigDecimal.ZERO))
         .isInstanceOf(CantidadMedicamentoInvalidaException.class);
-    assertThatThrownBy(
-            () -> UnidadConsumoMedicamento.MILIGRAMO.normalizar(new BigDecimal("1.23")))
+    assertThatThrownBy(() -> UnidadConsumoMedicamento.MILIGRAMO.normalizar(new BigDecimal("1.23")))
         .isInstanceOf(CantidadMedicamentoInvalidaException.class);
   }
 }

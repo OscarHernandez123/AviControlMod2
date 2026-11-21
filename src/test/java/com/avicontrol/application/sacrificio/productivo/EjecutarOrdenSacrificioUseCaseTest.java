@@ -3,10 +3,15 @@ package com.avicontrol.application.sacrificio.productivo;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import com.avicontrol.domain.exception.sacrificio.productivo.PrecondicionSacrificioNoCumplidaException;
 import com.avicontrol.domain.model.lote.Lote;
+import com.avicontrol.domain.model.sacrificio.productivo.EstadoOrdenSacrificio;
 import com.avicontrol.domain.model.sacrificio.productivo.OrdenSacrificioProductivo;
 import com.avicontrol.domain.port.out.modulo1.GalponQueryPort;
 import com.avicontrol.domain.port.out.modulo1.GalponUpdatePort;
@@ -58,6 +63,14 @@ class EjecutarOrdenSacrificioUseCaseTest {
     when(ordenes.actualizar(any())).thenReturn(true);
 
     assertThat(useCase.ejecutar(orden.id())).isTrue();
+    verify(cambiosLote).finalizarAlojamiento(galponId, loteId);
+    verify(ordenes)
+        .actualizar(
+            argThat(
+                updated ->
+                    updated.id().equals(orden.id())
+                        && updated.estado() == EstadoOrdenSacrificio.EJECUTADA
+                        && ahora.equals(updated.fechaEjecucion())));
   }
 
   @Test
@@ -87,5 +100,7 @@ class EjecutarOrdenSacrificioUseCaseTest {
 
     assertThatThrownBy(() -> useCase.ejecutar(vencida.id()))
         .isInstanceOf(PrecondicionSacrificioNoCumplidaException.class);
+    verifyNoInteractions(cambiosLote);
+    verify(ordenes, never()).actualizar(any());
   }
 }

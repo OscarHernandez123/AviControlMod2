@@ -55,8 +55,7 @@ class ConsultarRecepcionesMedicamentoUseCaseTest {
 
     when(repository.listar(filtro))
         .thenReturn(new PaginaRecepciones<>(List.of(recepcion), 1, 0, 10));
-    when(repository.contarMes(LocalDate.of(2026, 11, 1), LocalDate.of(2026, 12, 1)))
-        .thenReturn(3L);
+    when(repository.contarMes(LocalDate.of(2026, 11, 1), LocalDate.of(2026, 12, 1))).thenReturn(3L);
     when(repository.buscar(recepcion.id())).thenReturn(Optional.of(recepcion));
     when(inventario.tieneMovimientosPosteriores(recepcion.id())).thenReturn(false);
 
@@ -72,8 +71,7 @@ class ConsultarRecepcionesMedicamentoUseCaseTest {
         new ConsultarRecepcionesMedicamentoUseCase(repository, inventario, clock);
     UUID id = UUID.randomUUID();
     when(repository.buscar(id)).thenReturn(Optional.empty());
-    assertThatThrownBy(() -> useCase.detalle(id))
-        .isInstanceOf(RecursoNoEncontradoException.class);
+    assertThatThrownBy(() -> useCase.detalle(id)).isInstanceOf(RecursoNoEncontradoException.class);
 
     RecepcionMedicamento recepcion =
         RecepcionMedicamento.crear(

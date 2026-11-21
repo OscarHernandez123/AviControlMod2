@@ -40,7 +40,8 @@ class PlanNutricionalPlantillaControllerTest {
     mvc.perform(
             post("/api/nutricion/plantillas")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"nombre\":\"P1\",\"tipoAve\":\"ROSS_308\",\"esPredeterminado\":true,\"etapas\":[]}")
+                .content(
+                    "{\"nombre\":\"P1\",\"tipoAve\":\"ROSS_308\",\"esPredeterminado\":true,\"etapas\":[]}")
                 .with(SecurityMockMvcRequestPostProcessors.user("admin").roles("ADMINISTRADOR")))
         .andExpect(status().isForbidden())
         .andExpect(content().contentTypeCompatibleWith("application/problem+json"));

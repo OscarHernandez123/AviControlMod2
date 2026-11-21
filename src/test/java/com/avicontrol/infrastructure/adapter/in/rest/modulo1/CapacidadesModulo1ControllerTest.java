@@ -27,7 +27,6 @@ class CapacidadesModulo1ControllerTest {
         .andExpect(status().isOk())
         .andExpect(jsonPath("$").isMap());
 
-    mvc.perform(get("/api/integracion/modulo1/capacidades"))
-        .andExpect(status().isUnauthorized());
+    mvc.perform(get("/api/integracion/modulo1/capacidades")).andExpect(status().isUnauthorized());
   }
 }

@@ -100,8 +100,7 @@ class EditarRecepcionMedicamentoUseCaseTest {
             "admin");
 
     when(repository.bloquear(id)).thenReturn(Optional.empty());
-    assertThatThrownBy(() -> useCase.editar(cmd))
-        .isInstanceOf(RecursoNoEncontradoException.class);
+    assertThatThrownBy(() -> useCase.editar(cmd)).isInstanceOf(RecursoNoEncontradoException.class);
 
     RecepcionMedicamento anterior =
         RecepcionMedicamento.crear(
@@ -121,12 +120,10 @@ class EditarRecepcionMedicamentoUseCaseTest {
     when(inventario.tieneMovimientosPosteriores(id)).thenReturn(false);
     when(catalogo.unidadBaseMedicamento(medId)).thenReturn(UnidadMedidaMedicamento.MILILITRO);
 
-    assertThatThrownBy(() -> useCase.editar(cmd))
-        .isInstanceOf(UnidadIncompatibleException.class);
+    assertThatThrownBy(() -> useCase.editar(cmd)).isInstanceOf(UnidadIncompatibleException.class);
 
     when(inventario.tieneMovimientosPosteriores(id)).thenReturn(true);
-    assertThatThrownBy(() -> useCase.editar(cmd))
-        .isInstanceOf(RecepcionNoEditableException.class);
+    assertThatThrownBy(() -> useCase.editar(cmd)).isInstanceOf(RecepcionNoEditableException.class);
     verifyNoInteractions(auditoria);
   }
 }

@@ -42,13 +42,41 @@ class ConsultarInventarioUseCaseTest {
         new InventarioActual(
             List.of(
                 new ExistenciaAlimento(
-                    idCumple, "Inicio", "INICIO", 1, hoy.plusDays(20), new BigDecimal("200"), BigDecimal.ZERO, ""),
+                    idCumple,
+                    "Inicio",
+                    "INICIO",
+                    1,
+                    hoy.plusDays(20),
+                    new BigDecimal("200"),
+                    BigDecimal.ZERO,
+                    ""),
                 new ExistenciaAlimento(
-                    idParcial, "Engorde", "ENGORDE", 1, hoy.plusDays(15), new BigDecimal("50"), BigDecimal.ZERO, ""),
+                    idParcial,
+                    "Engorde",
+                    "ENGORDE",
+                    1,
+                    hoy.plusDays(15),
+                    new BigDecimal("50"),
+                    BigDecimal.ZERO,
+                    ""),
                 new ExistenciaAlimento(
-                    idSinCob, "Finalizador", "FINALIZACION", 0, null, BigDecimal.ZERO, BigDecimal.ZERO, ""),
+                    idSinCob,
+                    "Finalizador",
+                    "FINALIZACION",
+                    0,
+                    null,
+                    BigDecimal.ZERO,
+                    BigDecimal.ZERO,
+                    ""),
                 new ExistenciaAlimento(
-                    idSinReq, "Preiniciador", "PREINICIO", 1, hoy.plusDays(30), new BigDecimal("100"), BigDecimal.ZERO, "")),
+                    idSinReq,
+                    "Preiniciador",
+                    "PREINICIO",
+                    1,
+                    hoy.plusDays(30),
+                    new BigDecimal("100"),
+                    BigDecimal.ZERO,
+                    "")),
             List.of(),
             Map.of("TOTAL", new BigDecimal("350")),
             Map.of());
@@ -56,7 +84,8 @@ class ConsultarInventarioUseCaseTest {
     when(movimientos.consultar(hoy)).thenReturn(base);
     when(demanda.demandaVigente(idCumple, "Inicio", "INICIO")).thenReturn(new BigDecimal("150"));
     when(demanda.demandaVigente(idParcial, "Engorde", "ENGORDE")).thenReturn(new BigDecimal("120"));
-    when(demanda.demandaVigente(idSinCob, "Finalizador", "FINALIZACION")).thenReturn(new BigDecimal("80"));
+    when(demanda.demandaVigente(idSinCob, "Finalizador", "FINALIZACION"))
+        .thenReturn(new BigDecimal("80"));
     when(demanda.demandaVigente(idSinReq, "Preiniciador", "PREINICIO")).thenReturn(BigDecimal.ZERO);
 
     InventarioActual resultado = useCase.consultar();

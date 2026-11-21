@@ -97,8 +97,7 @@ class EditarRecepcionAlimentoUseCaseTest {
             "admin");
 
     when(repository.bloquear(id)).thenReturn(Optional.empty());
-    assertThatThrownBy(() -> useCase.editar(cmd))
-        .isInstanceOf(RecursoNoEncontradoException.class);
+    assertThatThrownBy(() -> useCase.editar(cmd)).isInstanceOf(RecursoNoEncontradoException.class);
 
     RecepcionAlimento existente =
         RecepcionAlimento.crear(
@@ -116,8 +115,7 @@ class EditarRecepcionAlimentoUseCaseTest {
     when(repository.bloquear(id)).thenReturn(Optional.of(existente));
     when(inventario.tieneMovimientosPosteriores(id)).thenReturn(true);
 
-    assertThatThrownBy(() -> useCase.editar(cmd))
-        .isInstanceOf(RecepcionNoEditableException.class);
+    assertThatThrownBy(() -> useCase.editar(cmd)).isInstanceOf(RecepcionNoEditableException.class);
     verifyNoInteractions(auditoria);
   }
 
@@ -153,8 +151,7 @@ class EditarRecepcionAlimentoUseCaseTest {
             BigDecimal.ZERO,
             "admin");
 
-    assertThatThrownBy(() -> useCase.editar(cmd))
-        .isInstanceOf(RecursoNoEncontradoException.class);
+    assertThatThrownBy(() -> useCase.editar(cmd)).isInstanceOf(RecursoNoEncontradoException.class);
     verify(repository, org.mockito.Mockito.never()).actualizar(any());
   }
 }

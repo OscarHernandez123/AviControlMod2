@@ -29,7 +29,13 @@ class FlujosKafkaModulo1ControllerTest {
     UUID id = UUID.randomUUID();
     var res =
         new FlujosKafkaModulo1UseCase.Resultado(
-            id, UUID.randomUUID(), UUID.randomUUID(), "COMPLETADA", "EN_PRODUCCION", null, "MORTALIDAD");
+            id,
+            UUID.randomUUID(),
+            UUID.randomUUID(),
+            "COMPLETADA",
+            "EN_PRODUCCION",
+            null,
+            "MORTALIDAD");
     when(caso.listar()).thenReturn(List.of(res));
     when(caso.consultar(id)).thenReturn(res);
 

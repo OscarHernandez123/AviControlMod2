@@ -27,9 +27,7 @@ class EdadTest {
 
   @Test
   void rechazaDiasMenoresAUno() {
-    assertThatThrownBy(() -> Edad.deDias(0))
-        .isInstanceOf(IllegalArgumentException.class);
-    assertThatThrownBy(() -> Edad.deDias(-3))
-        .isInstanceOf(IllegalArgumentException.class);
+    assertThatThrownBy(() -> Edad.deDias(0)).isInstanceOf(IllegalArgumentException.class);
+    assertThatThrownBy(() -> Edad.deDias(-3)).isInstanceOf(IllegalArgumentException.class);
   }
 }

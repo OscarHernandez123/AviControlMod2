@@ -48,11 +48,29 @@ class PlanNutricionalLoteUseCaseTest {
         Instant.now(clock),
         List.of(
             new PlanNutricionalPlantilla.Etapa(
-                EtapaCrianza.PRE_INICIO, 1, 7, new BigDecimal("0.025"), EtapaCrianza.PRE_INICIO, new BigDecimal("40"), null),
+                EtapaCrianza.PRE_INICIO,
+                1,
+                7,
+                new BigDecimal("0.025"),
+                EtapaCrianza.PRE_INICIO,
+                new BigDecimal("40"),
+                null),
             new PlanNutricionalPlantilla.Etapa(
-                EtapaCrianza.INICIO, 8, 21, new BigDecimal("0.085"), EtapaCrianza.INICIO, new BigDecimal("40"), null),
+                EtapaCrianza.INICIO,
+                8,
+                21,
+                new BigDecimal("0.085"),
+                EtapaCrianza.INICIO,
+                new BigDecimal("40"),
+                null),
             new PlanNutricionalPlantilla.Etapa(
-                EtapaCrianza.ENGORDE, 22, 42, new BigDecimal("0.150"), EtapaCrianza.ENGORDE, new BigDecimal("40"), null)));
+                EtapaCrianza.ENGORDE,
+                22,
+                42,
+                new BigDecimal("0.150"),
+                EtapaCrianza.ENGORDE,
+                new BigDecimal("40"),
+                null)));
   }
 
   @Test
@@ -72,7 +90,8 @@ class PlanNutricionalLoteUseCaseTest {
 
     assertThat(resultado.estado()).isEqualTo("PENDIENTE_ASIGNACION");
     verify(planes).crear(any(PlanNutricionalGalpon.class));
-    verify(eventos).publishEvent(any(PlanNutricionalLoteUseCase.PlanNutricionalPendienteEvent.class));
+    verify(eventos)
+        .publishEvent(any(PlanNutricionalLoteUseCase.PlanNutricionalPendienteEvent.class));
   }
 
   @Test
@@ -118,11 +137,35 @@ class PlanNutricionalLoteUseCaseTest {
             "ACTIVO",
             List.of(
                 new PlanNutricionalGalpon.Etapa(
-                    UUID.randomUUID(), EtapaCrianza.PRE_INICIO, "COMPLETADA", 1, 7, new BigDecimal("0.025"), EtapaCrianza.PRE_INICIO, null, new BigDecimal("40")),
+                    UUID.randomUUID(),
+                    EtapaCrianza.PRE_INICIO,
+                    "COMPLETADA",
+                    1,
+                    7,
+                    new BigDecimal("0.025"),
+                    EtapaCrianza.PRE_INICIO,
+                    null,
+                    new BigDecimal("40")),
                 new PlanNutricionalGalpon.Etapa(
-                    UUID.randomUUID(), EtapaCrianza.INICIO, "ACTIVA", 8, 21, new BigDecimal("0.085"), EtapaCrianza.INICIO, null, new BigDecimal("40")),
+                    UUID.randomUUID(),
+                    EtapaCrianza.INICIO,
+                    "ACTIVA",
+                    8,
+                    21,
+                    new BigDecimal("0.085"),
+                    EtapaCrianza.INICIO,
+                    null,
+                    new BigDecimal("40")),
                 new PlanNutricionalGalpon.Etapa(
-                    UUID.randomUUID(), EtapaCrianza.ENGORDE, "FUTURA", 22, 42, new BigDecimal("0.150"), EtapaCrianza.ENGORDE, null, new BigDecimal("40"))));
+                    UUID.randomUUID(),
+                    EtapaCrianza.ENGORDE,
+                    "FUTURA",
+                    22,
+                    42,
+                    new BigDecimal("0.150"),
+                    EtapaCrianza.ENGORDE,
+                    null,
+                    new BigDecimal("40"))));
 
     PlanNutricionalPlantilla nueva =
         new PlanNutricionalPlantilla(
@@ -134,11 +177,29 @@ class PlanNutricionalLoteUseCaseTest {
             Instant.now(clock),
             List.of(
                 new PlanNutricionalPlantilla.Etapa(
-                    EtapaCrianza.PRE_INICIO, 1, 7, new BigDecimal("0.030"), EtapaCrianza.PRE_INICIO, new BigDecimal("40"), null),
+                    EtapaCrianza.PRE_INICIO,
+                    1,
+                    7,
+                    new BigDecimal("0.030"),
+                    EtapaCrianza.PRE_INICIO,
+                    new BigDecimal("40"),
+                    null),
                 new PlanNutricionalPlantilla.Etapa(
-                    EtapaCrianza.INICIO, 8, 21, new BigDecimal("0.090"), EtapaCrianza.INICIO, new BigDecimal("40"), null),
+                    EtapaCrianza.INICIO,
+                    8,
+                    21,
+                    new BigDecimal("0.090"),
+                    EtapaCrianza.INICIO,
+                    new BigDecimal("40"),
+                    null),
                 new PlanNutricionalPlantilla.Etapa(
-                    EtapaCrianza.ENGORDE, 22, 45, new BigDecimal("0.165"), EtapaCrianza.ENGORDE, new BigDecimal("40"), null)));
+                    EtapaCrianza.ENGORDE,
+                    22,
+                    45,
+                    new BigDecimal("0.165"),
+                    EtapaCrianza.ENGORDE,
+                    new BigDecimal("40"),
+                    null)));
 
     when(planes.buscarPorGalpon(galponId)).thenReturn(Optional.of(actual));
     when(plantillas.buscar(nuevaPlantillaId)).thenReturn(Optional.of(nueva));

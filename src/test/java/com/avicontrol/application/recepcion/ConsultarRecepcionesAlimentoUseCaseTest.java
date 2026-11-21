@@ -54,8 +54,7 @@ class ConsultarRecepcionesAlimentoUseCaseTest {
 
     when(repository.listar(filtro))
         .thenReturn(new PaginaRecepciones<>(List.of(recepcion), 1, 0, 10));
-    when(repository.contarMes(LocalDate.of(2026, 11, 1), LocalDate.of(2026, 12, 1)))
-        .thenReturn(1L);
+    when(repository.contarMes(LocalDate.of(2026, 11, 1), LocalDate.of(2026, 12, 1))).thenReturn(1L);
     when(repository.pesoMes(LocalDate.of(2026, 11, 1), LocalDate.of(2026, 12, 1)))
         .thenReturn(new BigDecimal("200"));
     when(repository.buscar(recepcion.id())).thenReturn(Optional.of(recepcion));
@@ -74,8 +73,7 @@ class ConsultarRecepcionesAlimentoUseCaseTest {
         new ConsultarRecepcionesAlimentoUseCase(repository, inventario, clock);
     UUID id = UUID.randomUUID();
     when(repository.buscar(id)).thenReturn(Optional.empty());
-    assertThatThrownBy(() -> useCase.detalle(id))
-        .isInstanceOf(RecursoNoEncontradoException.class);
+    assertThatThrownBy(() -> useCase.detalle(id)).isInstanceOf(RecursoNoEncontradoException.class);
 
     RecepcionAlimento recepcion =
         RecepcionAlimento.crear(

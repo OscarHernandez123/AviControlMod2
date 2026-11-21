@@ -41,11 +41,29 @@ class GestionarPlantillasUseCaseTest {
         Instant.now(clock),
         List.of(
             new PlanNutricionalPlantilla.Etapa(
-                EtapaCrianza.PRE_INICIO, 1, 7, new BigDecimal("0.025"), EtapaCrianza.PRE_INICIO, new BigDecimal("40"), null),
+                EtapaCrianza.PRE_INICIO,
+                1,
+                7,
+                new BigDecimal("0.025"),
+                EtapaCrianza.PRE_INICIO,
+                new BigDecimal("40"),
+                null),
             new PlanNutricionalPlantilla.Etapa(
-                EtapaCrianza.INICIO, 8, 21, new BigDecimal("0.085"), EtapaCrianza.INICIO, new BigDecimal("40"), null),
+                EtapaCrianza.INICIO,
+                8,
+                21,
+                new BigDecimal("0.085"),
+                EtapaCrianza.INICIO,
+                new BigDecimal("40"),
+                null),
             new PlanNutricionalPlantilla.Etapa(
-                EtapaCrianza.ENGORDE, 22, 42, new BigDecimal("0.150"), EtapaCrianza.ENGORDE, new BigDecimal("40"), null)));
+                EtapaCrianza.ENGORDE,
+                22,
+                42,
+                new BigDecimal("0.150"),
+                EtapaCrianza.ENGORDE,
+                new BigDecimal("40"),
+                null)));
   }
 
   @Test
@@ -72,8 +90,7 @@ class GestionarPlantillasUseCaseTest {
         new GestionarPlantillasUseCase(repositorio, alimentos, clock);
     UUID id = UUID.randomUUID();
     when(repositorio.buscar(id)).thenReturn(Optional.empty());
-    assertThatThrownBy(() -> useCase.consultar(id))
-        .isInstanceOf(NoSuchElementException.class);
+    assertThatThrownBy(() -> useCase.consultar(id)).isInstanceOf(NoSuchElementException.class);
 
     PlanNutricionalPlantilla anterior = plantillaValida("ROSS_308");
     when(repositorio.buscar(id)).thenReturn(Optional.of(anterior));

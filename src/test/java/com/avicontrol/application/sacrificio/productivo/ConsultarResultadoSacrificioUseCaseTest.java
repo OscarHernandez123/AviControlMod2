@@ -46,7 +46,6 @@ class ConsultarResultadoSacrificioUseCaseTest {
 
     UUID otroId = UUID.randomUUID();
     when(resultados.buscarPorOrden(otroId)).thenReturn(Optional.empty());
-    assertThatThrownBy(() -> useCase.consultar(otroId))
-        .isInstanceOf(NoSuchElementException.class);
+    assertThatThrownBy(() -> useCase.consultar(otroId)).isInstanceOf(NoSuchElementException.class);
   }
 }

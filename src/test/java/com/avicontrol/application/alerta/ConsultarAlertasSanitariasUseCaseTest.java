@@ -82,8 +82,7 @@ class ConsultarAlertasSanitariasUseCaseTest {
 
     UUID id = UUID.randomUUID();
     when(alertas.buscar(id)).thenReturn(Optional.empty());
-    assertThatThrownBy(() -> useCase.detalle(id))
-        .isInstanceOf(NoSuchElementException.class);
+    assertThatThrownBy(() -> useCase.detalle(id)).isInstanceOf(NoSuchElementException.class);
 
     UUID galponId = UUID.randomUUID();
     UUID loteId = UUID.randomUUID();

@@ -39,8 +39,7 @@ class MortalidadControllerTest {
     UUID id = UUID.randomUUID();
     when(caso.registrar(any()))
         .thenReturn(
-            new RegistroMortalidadResult(
-                id, galponId, UUID.randomUUID(), 4, "NORMAL", 996));
+            new RegistroMortalidadResult(id, galponId, UUID.randomUUID(), 4, "NORMAL", 996));
 
     mvc.perform(
             post("/api/galpones/{galponId}/mortalidad", galponId)
@@ -75,7 +74,8 @@ class MortalidadControllerTest {
             post("/api/galpones/{galponId}/mortalidad", UUID.randomUUID())
                 .header("X-Idempotency-Key", UUID.randomUUID().toString())
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"fechaHoraEvento\":\"2026-11-20T10:00:00-05:00\",\"cantidad\":0,\"causa\":\"ACCIDENTE\"}")
+                .content(
+                    "{\"fechaHoraEvento\":\"2026-11-20T10:00:00-05:00\",\"cantidad\":0,\"causa\":\"ACCIDENTE\"}")
                 .with(SecurityMockMvcRequestPostProcessors.user("trab").roles("TRABAJADOR")))
         .andExpect(status().isBadRequest())
         .andExpect(content().contentTypeCompatibleWith("application/problem+json"))

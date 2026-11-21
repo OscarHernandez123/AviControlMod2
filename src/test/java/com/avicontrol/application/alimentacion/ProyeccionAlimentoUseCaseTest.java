@@ -65,7 +65,9 @@ class ProyeccionAlimentoUseCaseTest {
         .thenReturn(
             List.of(
                 new ProyeccionAlimentoRepositoryPort.CostoSaldo(
-                    new BigDecimal("2500"), new BigDecimal("1000"))));
+                    new BigDecimal("2500"), new BigDecimal("1000")),
+                new ProyeccionAlimentoRepositoryPort.CostoSaldo(
+                    new BigDecimal("3000"), new BigDecimal("1000"))));
 
     useCase.activar(plan, etapa);
 
@@ -74,7 +76,7 @@ class ProyeccionAlimentoUseCaseTest {
             argThat(
                 p ->
                     p.proyeccionKg().compareTo(new BigDecimal("400.000")) == 0
-                        && p.costoUnitarioKg().compareTo(new BigDecimal("2500.0000")) == 0
+                        && p.costoUnitarioKg().compareTo(new BigDecimal("2750.0000")) == 0
                         && "ACTIVA".equals(p.estado())));
   }
 

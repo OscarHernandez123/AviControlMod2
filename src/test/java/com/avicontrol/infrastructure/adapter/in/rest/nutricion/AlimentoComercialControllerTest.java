@@ -70,9 +70,7 @@ class AlimentoComercialControllerTest {
         .andExpect(content().contentTypeCompatibleWith("application/problem+json"));
 
     mvc.perform(
-            post("/api/nutricion/alimentos")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(BODY))
+            post("/api/nutricion/alimentos").contentType(MediaType.APPLICATION_JSON).content(BODY))
         .andExpect(status().isUnauthorized());
   }
 }

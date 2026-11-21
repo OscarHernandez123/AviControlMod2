@@ -42,8 +42,7 @@ class ActualizarInventarioVivoUseCaseTest {
 
   @Test
   void rechazaComandoNuloOPropagaPoblacionInsuficiente() {
-    assertThatThrownBy(() -> useCase.actualizar(null))
-        .isInstanceOf(IllegalArgumentException.class);
+    assertThatThrownBy(() -> useCase.actualizar(null)).isInstanceOf(IllegalArgumentException.class);
 
     UUID loteId = UUID.randomUUID();
     UUID galponId = UUID.randomUUID();

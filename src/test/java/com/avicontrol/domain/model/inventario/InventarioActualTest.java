@@ -34,9 +34,7 @@ class InventarioActualTest {
 
     InventarioActual actual =
         new InventarioActual(
-            List.of(alimento),
-            List.of(medicamento),
-            Map.of("TOTAL_KG", new BigDecimal("500.00")));
+            List.of(alimento), List.of(medicamento), Map.of("TOTAL_KG", new BigDecimal("500.00")));
 
     assertThat(actual.alimentos()).hasSize(1);
     assertThat(actual.medicamentos()).hasSize(1);

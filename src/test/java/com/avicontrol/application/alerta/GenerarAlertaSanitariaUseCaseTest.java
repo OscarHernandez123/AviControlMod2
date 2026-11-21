@@ -83,8 +83,7 @@ class GenerarAlertaSanitariaUseCaseTest {
   void rechazaReporteNulo() {
     GenerarAlertaSanitariaUseCase useCase =
         new GenerarAlertaSanitariaUseCase(alertas, clock, metrics);
-    assertThatThrownBy(() -> useCase.generar(null))
-        .isInstanceOf(IllegalArgumentException.class);
+    assertThatThrownBy(() -> useCase.generar(null)).isInstanceOf(IllegalArgumentException.class);
   }
 
   private static AlertaSanitaria argThatId(UUID id) {

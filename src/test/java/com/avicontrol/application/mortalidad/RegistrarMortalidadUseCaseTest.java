@@ -101,7 +101,13 @@ class RegistrarMortalidadUseCaseTest {
             () ->
                 useCase.registrar(
                     new RegistrarMortalidadCommand(
-                        galponId, Instant.now(clock), 0, CausaMortalidad.OTRA, null, "trabajador", key)))
+                        galponId,
+                        Instant.now(clock),
+                        0,
+                        CausaMortalidad.OTRA,
+                        null,
+                        "trabajador",
+                        key)))
         .isInstanceOf(IllegalArgumentException.class);
 
     when(registros.buscar(key)).thenReturn(Optional.empty());

@@ -40,21 +40,22 @@ class ArquitecturaTest {
         .resideInAPackage("com.avicontrol.domain..")
         .should()
         .dependOnClassesThat()
-        .resideInAnyPackage(
-            "jakarta.servlet..",
-            "com.fasterxml.jackson..",
-            "tools.jackson..")
+        .resideInAnyPackage("jakarta.servlet..", "com.fasterxml.jackson..", "tools.jackson..")
         .check(classes);
   }
 
   @Test
-  void aplicacionNoDependeDeHttpNiServlet() {
+  void aplicacionNoDependeDeHttpServletNiSerializacion() {
     noClasses()
         .that()
         .resideInAPackage("com.avicontrol.application..")
         .should()
         .dependOnClassesThat()
-        .resideInAnyPackage("jakarta.servlet..", "org.springframework.web..")
+        .resideInAnyPackage(
+            "jakarta.servlet..",
+            "org.springframework.web..",
+            "com.fasterxml.jackson..",
+            "tools.jackson..")
         .check(classes);
   }
 }

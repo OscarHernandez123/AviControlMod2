@@ -14,9 +14,7 @@ class RecepcionCalculosTest {
         .isEqualByComparingTo("1234.57");
     assertThat(RecepcionCalculos.moneda(new BigDecimal("1234.564")))
         .isEqualByComparingTo("1234.56");
-    assertThat(
-            RecepcionCalculos.precioUnidad(
-                new BigDecimal("100.00"), new BigDecimal("3")))
+    assertThat(RecepcionCalculos.precioUnidad(new BigDecimal("100.00"), new BigDecimal("3")))
         .isEqualByComparingTo("33.3333");
   }
 
