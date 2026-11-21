@@ -3,6 +3,8 @@ WORKDIR /workspace
 COPY package.json package-lock.json ./
 RUN npm ci
 COPY . .
+ARG VITE_ACADEMIC_ROLE_SELECTOR=false
+ENV VITE_ACADEMIC_ROLE_SELECTOR=${VITE_ACADEMIC_ROLE_SELECTOR}
 RUN npm run build
 
 FROM nginx:stable-alpine
