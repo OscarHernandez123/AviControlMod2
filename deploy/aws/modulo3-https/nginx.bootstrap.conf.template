@@ -1,0 +1,11 @@
+server {
+    listen 80;
+    server_name {{M2_PUBLIC_IP}};
+    client_max_body_size 2m;
+    location ^~ /.well-known/acme-challenge/ {
+        root /var/www/acme;
+        try_files $uri =404;
+        limit_except GET { deny all; }
+    }
+    location / { return 404; }
+}

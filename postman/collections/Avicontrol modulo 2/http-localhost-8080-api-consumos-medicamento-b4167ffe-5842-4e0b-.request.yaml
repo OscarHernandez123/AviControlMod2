@@ -1,0 +1,11 @@
+$kind: http-request
+name: http://localhost:8080/api/consumos-medicamento/b4167ffe-5842-4e0b-8c1a-fdd6194e6e4f
+description: ""
+url: http://localhost:8080/api/consumos-medicamento/b4167ffe-5842-4e0b-8c1a-fdd6194e6e4f
+method: GET
+auth:
+  type: basic
+  credentials:
+    username: veterinario
+    password: veterinario123
+order: 49000

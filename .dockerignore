@@ -1,0 +1,12 @@
+.git
+.gradle
+build
+target
+frontend
+postman
+docs
+**/node_modules
+**/.env
+**/.env.*
+!**/.env.example
+deploy

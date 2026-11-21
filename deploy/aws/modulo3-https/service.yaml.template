@@ -1,0 +1,13 @@
+  modulo3-https:
+    image: {{HTTPS_IMAGE}}
+    restart: unless-stopped
+    mem_limit: 64m
+    depends_on: [backend]
+    ports: ["80:80", "443:443"]
+    volumes:
+      - ./https-modulo3/nginx.active.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./https-modulo3/webroot:/var/www/acme:ro
+      - ./https-modulo3/letsencrypt:/etc/letsencrypt:ro
+    logging:
+      driver: json-file
+      options: {max-size: "10m", max-file: "3"}

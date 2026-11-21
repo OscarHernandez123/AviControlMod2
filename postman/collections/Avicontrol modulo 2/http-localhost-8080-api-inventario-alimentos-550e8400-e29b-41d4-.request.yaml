@@ -1,0 +1,11 @@
+$kind: http-request
+name: http://localhost:8080/api/inventario/alimentos/550e8400-e29b-41d4-a716-446655440000/requerimiento
+description: ""
+url: http://localhost:8080/api/inventario/alimentos/550e8400-e29b-41d4-a716-446655440000/requerimiento
+method: GET
+auth:
+  type: basic
+  credentials:
+    username: admin
+    password: admin123
+order: 11000

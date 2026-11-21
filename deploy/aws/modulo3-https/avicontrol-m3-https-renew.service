@@ -1,0 +1,14 @@
+[Unit]
+Description=Renovar certificado HTTPS por IP de M2 para M3
+Wants=network-online.target
+After=network-online.target docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+User=root
+WorkingDirectory=/home/ec2-user/avicontrol-modulo2
+ExecStart=/usr/bin/bash /home/ec2-user/avicontrol-modulo2/https-modulo3/renew.sh
+TimeoutStartSec=900
+PrivateTmp=true
+NoNewPrivileges=true

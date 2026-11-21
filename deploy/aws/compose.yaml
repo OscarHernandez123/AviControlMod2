@@ -1,0 +1,51 @@
+name: avicontrol-m2
+services:
+  postgres:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: avicontrol_modulo2
+      POSTGRES_USER: avicontrol
+      POSTGRES_PASSWORD: ${AVICONTROL_DB_PASSWORD:?Definir password PostgreSQL}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U avicontrol -d avicontrol_modulo2"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    logging: &logs
+      driver: json-file
+      options: {max-size: "10m", max-file: "3"}
+  backend:
+    build: {context: ../.., dockerfile: Dockerfile}
+    restart: unless-stopped
+    depends_on:
+      postgres: {condition: service_healthy}
+    env_file: .env
+    environment:
+      SPRING_PROFILES_ACTIVE: aws,modulo1-rest
+      AVICONTROL_DB_URL: jdbc:postgresql://postgres:5432/avicontrol_modulo2
+      AVICONTROL_DB_USERNAME: avicontrol
+    logging: *logs
+  frontend:
+    build: {context: ../../frontend, dockerfile: Dockerfile}
+    restart: unless-stopped
+    depends_on: [backend]
+    logging: *logs
+  https:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on: [frontend]
+    environment:
+      APP_DOMAIN: ${APP_DOMAIN:?Definir dominio para HTTPS}
+    ports: ["80:80", "443:443"]
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    logging: *logs
+volumes:
+  postgres_data:
+  caddy_data:
+  caddy_config:

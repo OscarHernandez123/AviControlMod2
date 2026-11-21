@@ -1,0 +1,20 @@
+$kind: http-request
+name: http://localhost:8080/api/solicitudes-aislamiento/2b2cdac5-c4d6-4bed-b506-4a01c80a81a5/validacion
+description: ""
+url: http://localhost:8080/api/solicitudes-aislamiento/2b2cdac5-c4d6-4bed-b506-4a01c80a81a5/validacion
+method: POST
+body:
+  type: json
+  content: "{\r
+
+    \  \"decision\": \"ACEPTAR\",\r
+
+    \  \"observaciones\": \"Aislamiento aprobado para validar el flujo sanitario de prueba\"\r
+
+    }"
+auth:
+  type: basic
+  credentials:
+    username: veterinario
+    password: veterinario123
+order: 60000

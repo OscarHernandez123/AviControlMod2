@@ -1,0 +1,20 @@
+$kind: http-request
+name: http://localhost:8080/api/galpones/550e8400-e29b-41d4-a716-446655440201/diagnosticos
+description: ""
+url: http://localhost:8080/api/galpones/550e8400-e29b-41d4-a716-446655440201/diagnosticos
+method: POST
+body:
+  type: json
+  content: "{\r
+
+    \  \"enfermedadId\": \"3c921407-ea1d-4f35-84af-7caf312997a7\",\r
+
+    \  \"observaciones\": \"Diagnóstico ficticio para validar la orden de sacrificio sanitario\"\r
+
+    }"
+auth:
+  type: basic
+  credentials:
+    username: veterinario
+    password: veterinario123
+order: 61000

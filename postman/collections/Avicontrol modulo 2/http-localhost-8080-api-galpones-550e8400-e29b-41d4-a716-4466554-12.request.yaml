@@ -1,0 +1,22 @@
+$kind: http-request
+name: http://localhost:8080/api/galpones/550e8400-e29b-41d4-a716-446655440101/plan-nutricional/etapas/4f57452c-3aff-4acf-9d78-
+description: ""
+url: http://localhost:8080/api/galpones/550e8400-e29b-41d4-a716-446655440101/plan-nutricional/etapas/4f57452c-3aff-4acf-9d78-e8015a7d0413/ajuste-duracion
+method: PUT
+body:
+  type: json
+  content: "{\r
+
+    \  \"nuevoDiaFin\": 23,\r
+
+    \  \"motivo\": \"BAJO_PESO\",\r
+
+    \  \"justificacion\": \"Prueba del ajuste de duración de la etapa Inicio\"\r
+
+    }"
+auth:
+  type: basic
+  credentials:
+    username: nutricionista
+    password: nutricionista123
+order: 52000

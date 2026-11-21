@@ -1,0 +1,11 @@
+$kind: http-request
+name: http://localhost:8080/api/solicitudes-aislamiento/4c99be61-eb0c-4fa3-ba30-5337fc3f4877
+description: ""
+url: http://localhost:8080/api/solicitudes-aislamiento/4c99be61-eb0c-4fa3-ba30-5337fc3f4877
+method: GET
+auth:
+  type: basic
+  credentials:
+    username: veterinario
+    password: veterinario123
+order: 38000

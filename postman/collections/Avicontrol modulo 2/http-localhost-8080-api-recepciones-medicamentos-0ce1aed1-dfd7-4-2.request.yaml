@@ -1,0 +1,30 @@
+$kind: http-request
+name: http://localhost:8080/api/recepciones/medicamentos/0ce1aed1-dfd7-426b-8f51-363b34dbec94
+description: ""
+url: http://localhost:8080/api/recepciones/medicamentos/0ce1aed1-dfd7-426b-8f51-363b34dbec94
+method: PUT
+body:
+  type: json
+  content: "{\r
+
+    \  \"medicamentoId\": \"550e8400-e29b-41d4-a716-446655440000\",\r
+
+    \  \"fechaVencimiento\": \"2027-05-12\",\r
+
+    \  \"cantidadPresentaciones\": 3,\r
+
+    \  \"contenidoPorPresentacion\": 500,\r
+
+    \  \"unidadContenido\": \"MILILITRO\",\r
+
+    \  \"precioNetoPorPresentacion\": 45000,\r
+
+    \  \"impuestoPorcentaje\": 19\r
+
+    }"
+auth:
+  type: basic
+  credentials:
+    username: admin
+    password: admin123
+order: 16000

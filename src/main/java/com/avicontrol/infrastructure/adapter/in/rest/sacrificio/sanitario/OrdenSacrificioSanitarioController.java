@@ -1,0 +1,90 @@
+package com.avicontrol.infrastructure.adapter.in.rest.sacrificio.sanitario;
+
+import com.avicontrol.application.sacrificio.sanitario.ConfirmarEjecucionSacrificioSanitarioUseCase;
+import com.avicontrol.application.sacrificio.sanitario.ConsultarOrdenesSacrificioSanitarioUseCase;
+import com.avicontrol.application.sacrificio.sanitario.EmitirOrdenSacrificioSanitarioUseCase;
+import com.avicontrol.infrastructure.adapter.in.rest.sacrificio.sanitario.dto.OrdenSacrificioSanitarioResponse;
+import com.avicontrol.infrastructure.adapter.in.rest.sacrificio.sanitario.mapper.OrdenSacrificioSanitarioRestMapper;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import java.util.List;
+import java.util.UUID;
+import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.ResponseStatus;
+import org.springframework.web.bind.annotation.RestController;
+
+@RestController
+@SecurityRequirement(name = "basicAuth")
+public class OrdenSacrificioSanitarioController {
+  @org.springframework.beans.factory.annotation.Value("${avicontrol.modulo1.asincrono:false}")
+  private boolean asincrono;
+
+  private final EmitirOrdenSacrificioSanitarioUseCase emision;
+  private final ConfirmarEjecucionSacrificioSanitarioUseCase ejecucion;
+  private final ConsultarOrdenesSacrificioSanitarioUseCase consulta;
+  private final OrdenSacrificioSanitarioRestMapper mapper;
+
+  public OrdenSacrificioSanitarioController(
+      EmitirOrdenSacrificioSanitarioUseCase emision,
+      ConfirmarEjecucionSacrificioSanitarioUseCase ejecucion,
+      ConsultarOrdenesSacrificioSanitarioUseCase consulta,
+      OrdenSacrificioSanitarioRestMapper mapper) {
+    this.emision = emision;
+    this.ejecucion = ejecucion;
+    this.consulta = consulta;
+    this.mapper = mapper;
+  }
+
+  @GetMapping("/api/ordenes-sacrificio-sanitario")
+  @PreAuthorize("hasRole('VETERINARIO')")
+  @Operation(summary = "Consultar órdenes de sacrificio sanitario")
+  public List<OrdenSacrificioSanitarioResponse> listar() {
+    return consulta.listar().stream().map(mapper::response).toList();
+  }
+
+  @PostMapping("/api/galpones/{galponId}/ordenes-sacrificio-sanitario")
+  @ResponseStatus(HttpStatus.CREATED)
+  @PreAuthorize("hasRole('VETERINARIO')")
+  @Operation(
+      summary = "Emitir orden de sacrificio sanitario total",
+      description = "Solo veterinario; deja la orden PENDIENTE sin modificar el lote")
+  @ApiResponses({
+    @ApiResponse(responseCode = "201", description = "Orden emitida"),
+    @ApiResponse(responseCode = "400", description = "Identificador inválido"),
+    @ApiResponse(responseCode = "401", description = "No autenticado"),
+    @ApiResponse(responseCode = "403", description = "Rol insuficiente"),
+    @ApiResponse(responseCode = "404", description = "Diagnóstico ausente"),
+    @ApiResponse(responseCode = "409", description = "Diagnóstico, estado o población inválidos"),
+    @ApiResponse(responseCode = "503", description = "Módulo 1 no disponible")
+  })
+  public OrdenSacrificioSanitarioResponse emitir(@PathVariable UUID galponId) {
+    return mapper.response(emision.emitir(galponId));
+  }
+
+  @PostMapping("/api/ordenes-sacrificio-sanitario/{ordenId}/ejecucion")
+  @PreAuthorize("hasRole('VETERINARIO')")
+  @Operation(
+      summary = "Confirmar sacrificio sanitario total",
+      description = "Usa la población vigente y ejecuta una sola vez")
+  @ApiResponses({
+    @ApiResponse(responseCode = "200", description = "Orden ejecutada"),
+    @ApiResponse(responseCode = "400", description = "Identificador inválido"),
+    @ApiResponse(responseCode = "401", description = "No autenticado"),
+    @ApiResponse(responseCode = "403", description = "Rol insuficiente"),
+    @ApiResponse(responseCode = "404", description = "Orden ausente"),
+    @ApiResponse(responseCode = "409", description = "Orden ejecutada o precondición inválida"),
+    @ApiResponse(responseCode = "503", description = "Módulo 1 no disponible")
+  })
+  public OrdenSacrificioSanitarioResponse confirmar(@PathVariable UUID ordenId) {
+    if (asincrono)
+      throw new IllegalStateException(
+          "El contrato del Módulo 1 no admite sacrificio sanitario desde AISLAMIENTO. Requiere acuerdo entre módulos.");
+    return mapper.response(ejecucion.confirmar(ordenId));
+  }
+}

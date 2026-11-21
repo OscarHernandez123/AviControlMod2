@@ -1,0 +1,32 @@
+$kind: http-request
+name: http://localhost:8080/api/galpones/550e8400-e29b-41d4-a716-446655440101/plan-nutricional/asignacion
+description: ""
+url: http://localhost:8080/api/galpones/550e8400-e29b-41d4-a716-446655440101/plan-nutricional/asignacion
+method: PUT
+body:
+  type: json
+  content: "{\r
+
+    \  \"plantillaId\": \"9e0f0792-6abc-4a53-b2ab-16e106b7e5e6\",\r
+
+    \  \"loteId\": \"550e8400-e29b-41d4-a716-446655440102\",\r
+
+    \  \"codigoLote\": \"DEMO-LOTE-001\",\r
+
+    \  \"tipoAve\": \"BROILER\",\r
+
+    \  \"fechaIngreso\": \"2026-11-12\",\r
+
+    \  \"edadIngresoDias\": 8,\r
+
+    \  \"poblacionViva\": 10000,\r
+
+    \  \"justificacion\": \"Asignación inicial para la demostración\"\r
+
+    }"
+auth:
+  type: basic
+  credentials:
+    username: nutricionista
+    password: nutricionista123
+order: 5000

@@ -1,0 +1,11 @@
+$kind: http-request
+name: http://localhost:8080/api/diagnosticos/92ef5cb7-0f87-4409-b6c3-86467c236d1d
+description: ""
+url: http://localhost:8080/api/diagnosticos/92ef5cb7-0f87-4409-b6c3-86467c236d1d
+method: GET
+auth:
+  type: basic
+  credentials:
+    username: veterinario
+    password: veterinario123
+order: 45000

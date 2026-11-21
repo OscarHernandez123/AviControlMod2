@@ -1,0 +1,22 @@
+$kind: http-request
+name: http://localhost:8080/api/galpones/550e8400-e29b-41d4-a716-446655440101/suministros-alimento
+description: ""
+url: http://localhost:8080/api/galpones/550e8400-e29b-41d4-a716-446655440101/suministros-alimento
+method: POST
+body:
+  type: json
+  content: "{\r
+
+    \  \"cantidadKg\": 5,\r
+
+    \  \"fechaAplicacion\": \"2026-11-13\",\r
+
+    \  \"idempotencyKey\": \"4c3eac2a-1bb2-4c49-9d91-7b5d8021366a\"\r
+
+    }"
+auth:
+  type: basic
+  credentials:
+    username: trabajador
+    password: trabajador123
+order: 32000

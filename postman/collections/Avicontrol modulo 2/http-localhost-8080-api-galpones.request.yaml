@@ -1,0 +1,15 @@
+$kind: http-request
+name: http://localhost:8080/api/galpones
+description: ""
+url: http://localhost:8080/api/galpones?page=0&size=20&sort=nombre,asc
+method: GET
+queryParams:
+  page: "0"
+  size: "20"
+  sort: nombre,asc
+auth:
+  type: basic
+  credentials:
+    username: admin
+    password: admin123
+order: 26000

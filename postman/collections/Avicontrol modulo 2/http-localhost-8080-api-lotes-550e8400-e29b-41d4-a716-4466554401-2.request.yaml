@@ -1,0 +1,11 @@
+$kind: http-request
+name: http://localhost:8080/api/lotes/550e8400-e29b-41d4-a716-446655440102/consumos-medicamento
+description: ""
+url: http://localhost:8080/api/lotes/550e8400-e29b-41d4-a716-446655440102/consumos-medicamento
+method: GET
+auth:
+  type: basic
+  credentials:
+    username: veterinario
+    password: veterinario123
+order: 50000

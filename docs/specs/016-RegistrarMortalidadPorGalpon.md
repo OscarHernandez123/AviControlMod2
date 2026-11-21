@@ -15,7 +15,7 @@ Como trabajador u operario de granja, quiero registrar las bajas de aves ocurrid
 **Acceptance Scenarios**:
 
 1. **Scenario**: Registro exitoso de mortalidad en un galpón con lote activo
-   - **Given** que un trabajador autenticado selecciona un galpón seleccionado con un lote activo cuya llave foránea referencia al galpón
+   - **Given** que un trabajador autenticado selecciona cualquier galpón existente con un lote activo cuya llave foránea referencia al galpón
    - **When** ingresa la fecha y hora del evento, la causa de la muerte y una cantidad válida de muertes
    - **Then** el sistema crea y almacena el registro de mortalidad con UUID único, fecha y hora del evento, causa, cantidad de muertes, identificador del lote y del galpón
    - **And** invoca el caso de uso incluido (`<<include>>`) para actualizar el inventario vivo del galpón
@@ -123,7 +123,7 @@ Como trabajador u operario de granja, quiero que el sistema evalúe la cantidad 
 - **SC-003**: El 100 % de los intentos de registrar cantidades mayores a la población viva actual es rechazado por el sistema.
 - **SC-004**: El 100 % de los registros de mortalidad queda vinculado al UUID del galpón y al UUID del lote activo referenciado por llave foránea.
 - **SC-005**: El 100 % de los eventos de mortalidad que superen el umbral establecido activa correctamente la extensión (`<<extend>>`) de mortalidad anormal.
-- **SC-006**: El 100 % de los intentos de registro en galpones inexistentes o no disponibles o sin lote activo es bloqueado por el sistema.
+- **SC-006**: El 100 % de los intentos de registro en galpones inexistentes, sin lote activo o en estado no productivo es bloqueado por el sistema.
 - **SC-007**: El 100 % de los registros de mortalidad confirmados permanece inmutable en el historial del sistema.
 
 ---

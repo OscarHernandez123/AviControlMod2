@@ -15,7 +15,7 @@ Como trabajador u operario de granja, quiero registrar una novedad de mortalidad
 **Acceptance Scenarios**:
 
 1. **Scenario**: Registro exitoso de mortalidad anormal por superación de umbral porcentual o causa atípica
-   - **Given** que un trabajador autenticado observa una situación atípica en su galpón seleccionado con lote activo
+   - **Given** que un trabajador autenticado observa una situación atípica en cualquier galpón existente con lote activo
    - **When** ingresa la fecha y hora del evento, la cantidad de muertes anormales, la causa probable o sospechosa y sus observaciones adicionales
    - **Then** el sistema almacena el registro de mortalidad anormal con su UUID único, porcentaje calculado, nivel de severidad y referencias de galpón y lote
    - **And** invoca el caso de uso incluido (`<<include>>`) *Generar alerta sanitaria*
@@ -104,7 +104,7 @@ Como trabajador u operario de granja, quiero que el sistema calcule automáticam
 - **SC-002**: El 100 % de los registros de mortalidad anormal confirmados invoca exitosamente el caso de uso incluido (`<<include>>`) *Generar alerta sanitaria*.
 - **SC-003**: En el 100 % de los registros, el porcentaje de mortalidad se calcula con exactitud respecto a la población viva actual del lote.
 - **SC-004**: El 100 % de los intentos de registro con cantidades superiores a la población viva del lote o en galpones sin lote activo es rechazado por el sistema.
-- **SC-005**: El 100 % de los intentos de registro en galpones inexistentes o no disponibles al trabajador es bloqueado por el sistema.
+- **SC-005**: El 100 % de los intentos de registro en galpones inexistentes, sin lote activo o en estado no productivo es bloqueado por el sistema.
 - **SC-006**: El 100 % de los registros de mortalidad anormal permanece inmutable en el sistema para fines de trazabilidad y auditoría sanitaria.
 
 ---

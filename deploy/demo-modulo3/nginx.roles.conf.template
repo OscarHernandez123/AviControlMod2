@@ -1,0 +1,36 @@
+# Solo para el frontend DEMO publicado en 127.0.0.1:8089.
+map $http_x_demo_role $demo_authorization {
+    default "";
+    administrador "{{ADMIN_AUTH}}";
+    nutricionista "{{NUTRICIONISTA_AUTH}}";
+    veterinario "{{VETERINARIO_AUTH}}";
+    trabajador "{{TRABAJADOR_AUTH}}";
+}
+server {
+    listen 80;
+    server_name _;
+    root /usr/share/nginx/html;
+    index index.html;
+    client_max_body_size 2m;
+    add_header X-Avicontrol-Environment DEMO always;
+    add_header X-Content-Type-Options nosniff always;
+    location = /api/inventario {
+        if ($demo_authorization = "") { return 400; }
+        # Lectura compartida de existencias del DEMO; no habilita escrituras de administrador.
+        limit_except GET { deny all; }
+        proxy_pass http://backend-demo:8080;
+        proxy_set_header Authorization "{{ADMIN_AUTH}}";
+        proxy_set_header Host $host;
+        add_header Cache-Control "no-store" always;
+    }
+    location /api/ {
+        if ($demo_authorization = "") { return 400; }
+        proxy_pass http://backend-demo:8080;
+        proxy_set_header Authorization $demo_authorization;
+        proxy_set_header Host $host;
+        proxy_read_timeout 60s;
+        add_header Cache-Control "no-store" always;
+    }
+    location /actuator/ { return 404; }
+    location / { try_files $uri $uri/ /index.html; }
+}

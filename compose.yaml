@@ -1,0 +1,20 @@
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: avicontrol_modulo2
+      POSTGRES_USER: avicontrol
+      POSTGRES_PASSWORD: avicontrol
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U avicontrol -d avicontrol_modulo2"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  postgres-data:
+    name: avicontrol-postgres-data

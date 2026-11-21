@@ -86,7 +86,7 @@ Como veterinario, quiero registrar el diagnóstico de un galpón en estado `aisl
 - **FR-002**: El sistema DEBE permitir el diagnóstico únicamente después de validar el aislamiento, lo cual se comprueba cuando la entidad Galpón recibida de esa acción se encuentra en estado `aislamiento`.
 - **FR-003**: El sistema DEBE utilizar la entidad Galpón recibida de la validación de aislamiento y el lote alojado actualmente en ella.
 - **FR-004**: Cada diagnóstico DEBE corresponder a un único galpón y al lote que este tenga alojado al momento del registro.
-- **FR-005**: El diagnóstico DEBE asociarse directamente a una entidad Enfermedad registrada y activa.
+- **FR-005**: El diagnóstico DEBE asociarse directamente a una entidad Enfermedad registrada en el catálogo.
 - **FR-006**: Cuando la enfermedad diagnosticada NO requiera sacrificio sanitario (`requiere sacrificio sanitario == false`), el sistema DEBE exigir la selección de una Medicación compatible, calcular automáticamente la fecha de reintegro (`fecha del diagnóstico + número total de días de la medicación`) y guardar dicha fecha en el diagnóstico.
 - **FR-007**: Cuando la enfermedad diagnosticada requiera sacrificio sanitario (`requiere sacrificio sanitario == true`), el sistema NO DEBE exigir la selección de una Medicación ni calcular fecha de reintegro a producción, y DEBE habilitar la emisión de una orden de sacrificio sanitario total (SPEC-012).
 - **FR-008**: El sistema DEBE registrar como fecha del diagnóstico la fecha calendario en la que el veterinario confirma el registro.

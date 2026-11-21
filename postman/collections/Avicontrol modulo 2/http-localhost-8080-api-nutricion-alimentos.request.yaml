@@ -1,0 +1,30 @@
+$kind: http-request
+name: http://localhost:8080/api/nutricion/alimentos
+description: ""
+url: http://localhost:8080/api/nutricion/alimentos
+method: POST
+body:
+  type: json
+  content: "{\r
+
+    \  \"id\": \"550e8400-e29b-41d4-a716-446655440000\",\r
+
+    \  \"nombre\": \"Alimento Inicio Broiler\",\r
+
+    \  \"tipoAlimento\": \"INICIO\",\r
+
+    \  \"pesoNominalPorBultoKg\": 40,\r
+
+    \  \"proteinaPorcentaje\": 20,\r
+
+    \  \"energiaKcalKg\": 3100,\r
+
+    \  \"duracionRecomendadaEtapaDias\": 14\r
+
+    }"
+auth:
+  type: basic
+  credentials:
+    username: nutricionista
+    password: nutricionista123
+order: 3000

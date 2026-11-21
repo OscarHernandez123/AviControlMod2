@@ -1,0 +1,54 @@
+server {
+    listen 80;
+    server_name {{M2_PUBLIC_IP}};
+    client_max_body_size 2m;
+    location ^~ /.well-known/acme-challenge/ {
+        root /var/www/acme;
+        try_files $uri =404;
+        limit_except GET { deny all; }
+    }
+    location / { return 404; }
+}
+
+server {
+    listen 443 ssl;
+    server_name {{M2_PUBLIC_IP}};
+    ssl_certificate /etc/letsencrypt/live/{{M2_PUBLIC_IP}}/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/{{M2_PUBLIC_IP}}/privkey.pem;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    client_max_body_size 2m;
+    add_header X-Content-Type-Options nosniff always;
+    add_header Cache-Control "no-store" always;
+
+    # Solo M3 y las comprobaciones locales de M2. No confiar en cabeceras del cliente.
+    allow {{M3_ALLOWED_IP}}/32;
+    allow {{DOCKER_GATEWAY}}/32;
+    allow 127.0.0.1/32;
+    deny all;
+
+    # Resolver de Docker para soportar la recreacion posterior del backend.
+    resolver 127.0.0.11 valid=10s ipv6=off;
+    set $modulo2_backend http://backend:8080;
+    # La identidad M3 es interna: no reenviar credenciales proporcionadas por el cliente.
+    # Este marcador solo se rellena en el servidor; nunca guardar el valor real en Git.
+    proxy_set_header Authorization "{{M3_INTERNAL_AUTHORIZATION}}";
+    proxy_set_header Host $host;
+    proxy_set_header X-Forwarded-Proto https;
+    proxy_set_header X-Forwarded-For $remote_addr;
+    proxy_connect_timeout 5s;
+    proxy_read_timeout 60s;
+
+    location ^~ /api/integracion/modulo3/ {
+        limit_except GET POST { deny all; }
+        proxy_pass $modulo2_backend;
+    }
+    location ~ "^/api/lotes/[0-9a-fA-F-]{36}/alimento-requerido$" {
+        limit_except GET { deny all; }
+        proxy_pass $modulo2_backend;
+    }
+    location ~ "^/api/ordenes-sacrificio/[0-9a-fA-F-]{36}/resultados$" {
+        limit_except GET { deny all; }
+        proxy_pass $modulo2_backend;
+    }
+    location / { return 404; }
+}

@@ -1,0 +1,11 @@
+$kind: http-request
+name: http://localhost:8080/api/nutricion/plantillas
+description: ""
+url: http://localhost:8080/api/nutricion/plantillas
+method: GET
+auth:
+  type: basic
+  credentials:
+    username: nutricionista
+    password: nutricionista123
+order: 18000

@@ -1,0 +1,52 @@
+<svg width="86" height="68" viewBox="0 0 86 68" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <g id="Logo granja">
+    <!-- Cresta naranja superior -->
+    <path
+      d="M34.5 11.5L36.2 5.2L40.8 8.4L45.2 6.2L44.8 13.2"
+      fill="#FF9E00"
+    />
+    <path
+      d="M34.5 11.5L36.2 5.2L40.8 8.4L45.2 6.2L44.8 13.2Z"
+      stroke="#FF9E00"
+      stroke-width="1.6"
+      stroke-linejoin="round"
+    />
+
+    <!-- Silueta principal del ave (trazo blanco suave y continuo) -->
+    <path
+      d="M19.5 23.5C22.8 22.8 25.2 20.2 27.2 16.2C29.4 11.8 33.4 9.5 37.8 9.8C43.2 10.2 46.8 14.8 46.8 21.2C46.8 24.4 46.2 27.2 45.4 29.6C51.6 32.2 59.8 32.2 66.8 28.4C67.4 41.8 57.6 52.5 43.2 52.5C28.4 52.5 19.2 42.2 19.5 23.5Z"
+      stroke="#FFFFFF"
+      stroke-width="3.6"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+    />
+
+    <!-- Ojo naranja -->
+    <circle cx="38.2" cy="17.2" r="2.2" fill="#FF9E00" />
+
+    <!-- Ala interior blanca -->
+    <path
+      d="M27.5 40.2C33.8 44.2 42.2 43.8 48.2 39.2"
+      stroke="#FFFFFF"
+      stroke-width="3.2"
+      stroke-linecap="round"
+    />
+
+    <!-- Hoja verde claro en la esquina inferior derecha -->
+    <path
+      d="M57.5 47.8C58.2 37.6 65.4 31.4 76.2 31.2C76.4 41.2 69.8 47.8 57.5 47.8Z"
+      fill="#1B562A"
+      stroke="#9ADB8E"
+      stroke-width="3.4"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+    />
+    <!-- Nervadura y tallo de la hoja -->
+    <path
+      d="M65.8 39.5L54.2 57.5"
+      stroke="#9ADB8E"
+      stroke-width="3.4"
+      stroke-linecap="round"
+    />
+  </g>
+</svg>
