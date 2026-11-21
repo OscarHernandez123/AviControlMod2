@@ -32,4 +32,29 @@ class ArquitecturaTest {
         .resideInAPackage("com.avicontrol.infrastructure..")
         .check(classes);
   }
+
+  @Test
+  void dominioNoDependeDeHttpNiSerializacion() {
+    noClasses()
+        .that()
+        .resideInAPackage("com.avicontrol.domain..")
+        .should()
+        .dependOnClassesThat()
+        .resideInAnyPackage(
+            "jakarta.servlet..",
+            "com.fasterxml.jackson..",
+            "tools.jackson..")
+        .check(classes);
+  }
+
+  @Test
+  void aplicacionNoDependeDeHttpNiServlet() {
+    noClasses()
+        .that()
+        .resideInAPackage("com.avicontrol.application..")
+        .should()
+        .dependOnClassesThat()
+        .resideInAnyPackage("jakarta.servlet..", "org.springframework.web..")
+        .check(classes);
+  }
 }
