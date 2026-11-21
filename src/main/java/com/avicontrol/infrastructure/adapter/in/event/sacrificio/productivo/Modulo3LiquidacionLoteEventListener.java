@@ -10,7 +10,11 @@ import org.springframework.stereotype.Component;
 @Component
 public class Modulo3LiquidacionLoteEventListener {
   private final MarcarResultadoUtilizadoUseCase caso;
-  private final ObjectMapper json = new ObjectMapper().findAndRegisterModules();
+  private final ObjectMapper json =
+      new ObjectMapper()
+          .findAndRegisterModules()
+          .disable(
+              com.fasterxml.jackson.databind.DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
 
   public Modulo3LiquidacionLoteEventListener(MarcarResultadoUtilizadoUseCase caso) {
     this.caso = caso;

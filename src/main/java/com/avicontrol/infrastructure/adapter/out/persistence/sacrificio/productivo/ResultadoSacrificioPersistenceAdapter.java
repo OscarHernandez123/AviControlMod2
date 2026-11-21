@@ -75,6 +75,17 @@ public class ResultadoSacrificioPersistenceAdapter implements ResultadoSacrifici
   }
 
   @Override
+  public Optional<ResultadoSacrificioProductivo> buscarPorLote(UUID loteId) {
+    return jdbc
+        .query(
+            "SELECT * FROM resultados_sacrificio_productivo WHERE lote_id=?",
+            (rs, row) -> map(rs),
+            loteId)
+        .stream()
+        .findFirst();
+  }
+
+  @Override
   public boolean existePorLote(UUID loteId) {
     Integer total =
         jdbc.queryForObject(
