@@ -64,7 +64,7 @@ class EditarRecepcionMedicamentoUseCaseTest {
 
     when(repository.bloquear(id)).thenReturn(Optional.of(anterior));
     when(inventario.tieneMovimientosPosteriores(id)).thenReturn(false);
-    when(catalogo.unidadBaseMedicamento(medId)).thenReturn(UnidadMedidaMedicamento.MILILITRO);
+    when(catalogo.unidadBaseMedicamento(medId)).thenReturn(UnidadMedidaMedicamento.GRAMO);
     when(catalogo.nombreMedicamento(medId)).thenReturn("Enrofloxacina 10%");
 
     RecepcionMedicamento resultado = useCase.editar(cmd);
