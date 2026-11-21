@@ -1,7 +1,0 @@
-.env
-index.demo.html
-*.dump
-
-nginx.roles.active.conf
-ui-*/
-*.tar.gz
