@@ -3,7 +3,7 @@ import Sidebar from '../components/Sidebar';
 import Topbar from '../components/Topbar';
 import ApiMessage from '../components/ApiMessage';
 import {
-  adjustBarnNutritionStage, listCompatibleFoods, listTemplates,
+  adjustBarnNutritionStage, assignBarnNutritionPlan, listCompatibleFoods, listTemplates,
   selectBarnNutritionStageFood, substituteBarnNutritionPlan
 } from '../services/nutritionCatalogApi';
 import { useNutritionBarns } from '../hooks/useNutritionBarns';
@@ -44,6 +44,33 @@ function NutritionistAssignmentsLivePage() {
     });
     return () => controller.abort();
   }, [reloadKey]);
+
+  const assign = async (event) => {
+    event.preventDefault();
+    const lot = selectedBarn?.loteActual;
+    const template = templates.find((item) => item.id === selectedTemplateId);
+    const age = Number(lot?.edad?.diasTotales);
+    if (!lot?.id || !template || !Number.isInteger(age) || age < 1) return;
+    setSaving(true);
+    setError('');
+    try {
+      // Snapshot del alojamiento a la fecha de asignación, sin inventar su fecha histórica de ingreso.
+      const today = new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'America/Bogota', year: 'numeric', month: '2-digit', day: '2-digit'
+      }).format(new Date());
+      await assignBarnNutritionPlan(selectedBarnId, {
+        plantillaId: template.id, loteId: lot.id,
+        codigoLote: lot.codigo || lot.nombre || null,
+        tipoAve: lot.tipoAve || template.tipoAve,
+        fechaIngreso: today, edadIngresoDias: age,
+        poblacionViva: lot.poblacionActual
+      });
+      setSelectedTemplateId('');
+      setToast('Plan nutricional asignado correctamente al lote.');
+      refresh();
+    } catch (cause) { setError(cause.message); }
+    finally { setSaving(false); }
+  };
 
   const substitute = async (event) => {
     event.preventDefault();
@@ -147,8 +174,37 @@ function NutritionistAssignmentsLivePage() {
             {barns.map((item) => <option key={item.id} value={item.id}>{item.nombre}</option>)}
           </select>
           {(loading || barnsLoading) && <p className="avi-page-subtitle">Cargando plan nutricional...</p>}
-          {!barnsLoading && selectedBarn && !plan && <p className="avi-page-subtitle">Este galpón no tiene un plan nutricional asignado.</p>}
-          {plan && (
+          {!barnsLoading && selectedBarn && (!plan || plan.estado === 'PENDIENTE_ASIGNACION') && (
+            <div className="avi-recent-orders-panel">
+              <h2 className="avi-panel-title">Asignar plan nutricional</h2>
+              {!selectedBarn.loteActual ? (
+                <p className="avi-page-subtitle">El galpón no tiene un lote activo para asignar un plan.</p>
+              ) : (
+                <>
+                  <p className="avi-page-subtitle">
+                    Lote: {selectedBarn.loteActual.nombre || selectedBarn.loteActual.id} · {selectedBarn.loteActual.edad?.diasTotales} días · {number(selectedBarn.loteActual.poblacionActual)} aves
+                  </p>
+                  <form className="avi-figma-modal-grid" onSubmit={assign}>
+                    <div className="avi-figma-field">
+                      <label className="avi-figma-label" htmlFor="nutrition-initial-template">Plantilla nutricional</label>
+                      <select id="nutrition-initial-template" className="avi-figma-input"
+                        value={selectedTemplateId} onChange={(event) => setSelectedTemplateId(event.target.value)} required>
+                        <option value="">Seleccionar plantilla</option>
+                        {templates.filter((item) => !selectedBarn.loteActual.tipoAve || item.tipoAve === selectedBarn.loteActual.tipoAve)
+                          .map((item) => <option key={item.id} value={item.id}>{item.nombre} ({item.tipoAve})</option>)}
+                      </select>
+                    </div>
+                    <button className="avi-btn-orange-cta" type="submit"
+                      disabled={saving || loading || !selectedTemplateId || !selectedBarn.loteActual.edad?.diasTotales}>
+                      {saving ? 'Asignando...' : 'Asignar plan al lote'}
+                    </button>
+                  </form>
+                  {!loading && templates.length === 0 && <p className="avi-page-subtitle">Primero crea una plantilla en Planes nutricionales.</p>}
+                </>
+              )}
+            </div>
+          )}
+          {plan && plan.estado !== 'PENDIENTE_ASIGNACION' && (
             <>
               <div className="avi-recent-orders-panel">
                 <div className="avi-panel-header avi-panel-header-full">

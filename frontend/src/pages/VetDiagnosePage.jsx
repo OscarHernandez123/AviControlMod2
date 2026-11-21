@@ -1,4 +1,6 @@
 import IntegrationOperations from '../components/IntegrationOperations';
+import { demoRolesEnabled } from '../utils/demoRoles';
+import { advanceDemoReintegration } from '../services/diagnosesApi';
 import { useEffect, useState } from 'react';
 import Sidebar from '../components/Sidebar';
 import Topbar from '../components/Topbar';
@@ -20,6 +22,7 @@ const todayInColombia = () => new Intl.DateTimeFormat('sv-SE', {
 
 function VetDiagnosePage() {
   const [diagnoses, setDiagnoses] = useState([]);
+  const [reintegrating, setReintegrating] = useState(false);
   const [barns, setBarns] = useState([]);
   const [diseases, setDiseases] = useState([]);
   const [medications, setMedications] = useState([]);
@@ -94,6 +97,22 @@ function VetDiagnosePage() {
     } finally {
       setSaving(false);
     }
+  }
+
+  async function reintegrateDemo() {
+    if (!detail || reintegrating || !window.confirm(
+      '¿Adelantar el reintegro de este diagnóstico DEMO? El galpón volverá a Productivo y se conservarán sus consumos y fechas originales.'
+    )) return;
+    setReintegrating(true);
+    try {
+      const updated = await advanceDemoReintegration(detail.id);
+      setDetail(updated);
+      setDiagnoses((items) => items.map((item) => item.id === updated.id ? updated : item));
+      setMessageType('success');
+      setMessage('Reintegro DEMO completado. El galpón está Productivo y conserva sus consumos.');
+    } catch (error) {
+      setMessageType('error'); setMessage(error.message);
+    } finally { setReintegrating(false); }
   }
 
   async function showDetail(id) {
@@ -303,6 +322,15 @@ function VetDiagnosePage() {
           <p><strong>Sacrificio sanitario:</strong> {detail.requiereSacrificioSanitario ? 'Sí' : 'No'}</p>
           <p style={{ gridColumn: '1 / -1' }}><strong>Observaciones:</strong> {detail.observaciones}</p>
         </div>
+        {demoRolesEnabled && detail.estado === 'ACTIVO' && !detail.requiereSacrificioSanitario && (
+          <div>
+            <p>Control de simulación: adelanta únicamente el reintegro de este diagnóstico.</p>
+            <button type="button" className="avi-figma-btn-orange" onClick={reintegrateDemo}
+              disabled={reintegrating || consumptionSaving}>
+              {reintegrating ? 'Reintegrando...' : 'Adelantar reintegro DEMO'}
+            </button>
+          </div>
+        )}
         {detail.estado === 'ACTIVO' && detail.medicamentoId &&
           <form onSubmit={saveConsumption} className="avi-figma-modal-grid">
             <h3 style={{ gridColumn: '1 / -1' }}>Registrar consumo de medicamento</h3>

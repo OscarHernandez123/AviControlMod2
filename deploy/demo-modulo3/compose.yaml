@@ -19,7 +19,7 @@ services:
       driver: json-file
       options: {max-size: "5m", max-file: "2"}
   backend-demo:
-    image: avicontrol-m2-backend:m3-rest-a454b66
+    image: ${AVICONTROL_DEMO_BACKEND_IMAGE:-avicontrol-m2-backend:m3-rest-a454b66}
     restart: unless-stopped
     mem_limit: 512m
     depends_on:
@@ -27,6 +27,7 @@ services:
     env_file: .env
     environment:
       SPRING_PROFILES_ACTIVE: local
+      AVICONTROL_DEMO_ENABLED: ${AVICONTROL_DEMO_ENABLED:-false}
       AVICONTROL_DB_URL: jdbc:postgresql://postgres-demo:5432/avicontrol_modulo2_demo
       AVICONTROL_DB_USERNAME: avicontrol_demo
       AVICONTROL_DB_PASSWORD: ${AVICONTROL_DEMO_DB_PASSWORD}
@@ -44,6 +45,7 @@ services:
     depends_on: [backend-demo]
     networks: [default, frontend-access]
     ports: ["127.0.0.1:8089:80"]
+    volumes: ["${AVICONTROL_DEMO_NGINX_CONFIG:-./nginx.demo.conf}:/etc/nginx/conf.d/default.conf:ro"]
     logging: *logs
 volumes:
   demo_postgres_data:
