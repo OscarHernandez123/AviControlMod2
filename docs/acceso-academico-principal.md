@@ -1,23 +1,27 @@
-# Acceso académico principal sin contraseña
+# Acceso académico al entorno principal
 
-Desde el 21/11/2026 el frontend principal de AWS abre directamente `http://localhost:8088/roles` mediante el túnel SSH existente. El profesor puede elegir Administrador, Nutricionista, Veterinario o Trabajador y cambiar desde el selector «Rol». No hace falta usuario, contraseña ni alternar ventanas InPrivate. Si queda abierto un diálogo Basic anterior, cancelarlo y recargar la página.
+El proyecto mantiene un único entorno desplegable: el principal, conectado con M1 y M3. Se abre en `http://localhost:8088/roles` mediante el túnel SSH existente. Elegir Administrador, Nutricionista, Veterinario o Trabajador; el selector «Rol» permite cambiar en la misma ventana sin usuario ni contraseña. Si queda abierto un diálogo Basic anterior, cancelarlo y recargar.
 
-Este acceso usa el entorno principal y sus galpones reales de M1. El puerto 8089 y el prefijo HTTPS `/demo/` siguen siendo la copia de pruebas independiente. El frontend académico no muestra el rótulo DEMO ni permite adelantar reintegros simulados.
+## Conexiones
+
+- M1 proporciona galpones y lotes mediante REST; las operaciones asíncronas conservan Kafka y la configuración existente.
+- M3 consulta `https://3.21.155.197/api/integracion/modulo3` y confirma por REST la utilización del resultado de sacrificio.
+- Recepciones, suministros, consumos y resultados deben corresponder al lote de M1 usado durante la prueba principal.
 
 ## Configuración
 
-El modo se compila con `VITE_ACADEMIC_ROLE_SELECTOR=true` (variable Vite o argumento del Dockerfile frontend). `VITE_DEMO_ROLE_SELECTOR` no se activa. El frontend envía el rol de su ruta en `X-Academic-Role` en las peticiones `/api/` al mismo origen; descarta credenciales HTTP antiguas y cabeceras de rol heredadas. El modo DEMO conserva su cabecera y sus controles independientes.
+Compilar con `VITE_ACADEMIC_ROLE_SELECTOR=true` (variable Vite o argumento del Dockerfile frontend). `roleAccess.js` envía `X-Academic-Role` a `/api/` en el mismo origen según la ruta de la pestaña, omitiendo credenciales HTTP antiguas. `RoleSelector.jsx` muestra los cuatro roles.
 
-El proxy usa `deploy/aws/academic-access/nginx.academic.conf.template`. Copiar esta plantilla y `render-academic-access.py` en `~/avicontrol-modulo2/academic-access` del servidor y ejecutar `python3 render-academic-access.py`. Se genera `nginx.active.conf` privado (modo 600), leyendo las identidades ya existentes del `.env` principal. No mostrar ese archivo ni ejecutar `nginx -T`: contiene identidades internas. No se copian claves al HTML, JavaScript, imagen ni repositorio.
+El proxy usa `deploy/aws/academic-access/nginx.academic.conf.template`. Copiar esta plantilla y `render-academic-access.py` en `~/avicontrol-modulo2/academic-access` del servidor y ejecutar `python3 render-academic-access.py`. Se genera `nginx.active.conf` privado (modo 600), leyendo las identidades existentes de `.env`. No mostrar ese archivo ni ejecutar `nginx -T`: contiene identidades internas. Las claves no se incluyen en HTML, JavaScript, imagen ni repositorio.
 
-`deploy/aws/compose.academic.yaml` permite construir el frontend con el modo académico y montar el proxy privado; se combina con el Compose privado. Las rutas del proxy no piden autenticación al navegador. El rol elegido selecciona la identidad interna para conservar las operaciones y su auditoría. La consulta GET de inventario se comparte entre los cuatro roles, permitiendo cargar los medicamentos como Veterinario. Este modo es acceso libre para presentación, no un mecanismo de autenticación de usuarios.
+`deploy/aws/compose.academic.yaml` permite construir el frontend académico y montar el proxy privado; se combina con el Compose privado. El navegador elige el rol sin autenticarse; el proxy usa la identidad interna correspondiente para mantener operaciones y auditoría. La lectura GET de inventario se comparte para que Veterinario pueda cargar los medicamentos. El frontend sigue publicado únicamente en `127.0.0.1:8088`.
 
-En AWS se conserva la configuración real del proyecto en `~/avicontrol-modulo2/compose.yaml`; solo su servicio `frontend` cambió de imagen y agregó el montaje del proxy académico. El backend, PostgreSQL, perfiles, `.env`, adaptadores REST/Kafka de M1, proxy HTTPS y autorización externa de M3 no cambian. El frontend sigue publicado únicamente en `127.0.0.1:8088`.
+El backend, PostgreSQL, perfiles y adaptadores REST/Kafka de M1, proxy HTTPS y autorización externa de M3 conservan su configuración. Los perfiles locales y fixtures existentes se mantienen para las pruebas automatizadas; no definen un segundo entorno desplegado.
 
-## Validación
+## Validación y datos
 
-Checkpoint: `backups/academic-access-20261121-060120` del servidor. Respaldo principal validado con `pg_restore --list`. Se compararon las huellas de todas las tablas de ambas bases: permanecen idénticas. El backend, PostgreSQL, HTTPS y todos los contenedores DEMO no se recrearon. `.env` principal y configuración HTTPS mantienen sus huellas.
+Checkpoint del acceso académico: `backups/academic-access-20261121-060120` del servidor. Respaldo principal validado con `pg_restore --list`; datos y contenedores protegidos conservados. Se verificaron los cuatro roles sin claves, el inventario veterinario, los tres galpones M1, capacidades asíncronas, ApiVersions Kafka y rutas HTTPS M3.
 
-Se comprobaron los cuatro roles sin credenciales de navegador, el inventario veterinario HTTP 200, los tres galpones de M1, capacidades asíncronas activas y ApiVersions de Kafka M1 con respuesta correcta, sin publicar eventos. Las APIs HTTPS de M3 principal y DEMO siguen HTTP 200. El resultado DEMO permanece UTILIZADO tras la confirmación real de M3. También se verificó que el bundle académico no contiene contraseñas ni el control de reintegro DEMO.
+La liquidación y confirmación REST de M3 se validaron previamente con datos simulados. Para la presentación principal falta coordinar con M1 un lote apto y registrar su ciclo desde las pantallas. Los registros de la prueba anterior no se migran a la base principal.
 
-El equipo M3 confirmó la liquidación completa sobre DEMO y el POST de utilización HTTP 200. La ruta DEMO seguirá disponible para pruebas y presentación. El ciclo conjunto sobre los datos del entorno principal sigue pendiente de preparar con un lote de M1; los registros DEMO no se copian a esa base.
+La copia de pruebas ya existente en AWS se conserva temporalmente fuera del despliegue definido por este repositorio, porque M3 todavía la utiliza. Su retirada debe coordinarse después de cambiar M3 a la API principal y conservar sus respaldos. Esta limpieza de ramas no borra bases, volúmenes, certificados ni datos de AWS.

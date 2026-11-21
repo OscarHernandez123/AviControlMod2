@@ -1,5 +1,5 @@
 import './index.css';
-import { roleSelectorEnabled } from './utils/demoRoles';
+import { roleSelectorEnabled } from './utils/roleAccess';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import LoginPage from './pages/LoginPage';
