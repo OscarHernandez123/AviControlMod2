@@ -9,13 +9,13 @@ El servicio `modulo3-https` permite las rutas de integración desde la IP de sal
 Desde la EC2 de M3:
 
 ```bash
-curl -i --user modulo3_consulta \
+curl -i \
   https://3.21.155.197/api/integracion/modulo3/lotes/7331eec8-e447-4868-bdef-8eca3fff8d44/alimentos
 ```
 
-Curl solicita la contraseña sin incluirla en el comando. Entregarla al equipo por un canal privado; no guardarla en Git. Las credenciales siguen almacenadas en `.env` de M2, con permisos 600. No usar `-k` ni desactivar la verificación de certificados.
+M3 no envía usuario, contraseña ni cabecera Authorization. La autorización pública depende de su IP de salida y HTTPS. No usar `-k` ni desactivar la verificación de certificados.
 
-Resultado esperado con la cuenta correcta: HTTP 200 y `{loteId, partidas: []}` mientras el lote no tenga suministros registrados. Un 401 indica que falta autenticación válida. Un 403 desde otro equipo puede ser el bloqueo por IP; confirmar que la salida real de M3 sea 52.15.95.91. No hay interfaz web pública en la raíz: la interfaz administrativa conserva el túnel a localhost:8088.
+Resultado esperado desde la IP autorizada: HTTP 200 y `{loteId, partidas: []}` mientras el lote no tenga suministros registrados. Un 401 desde la entrada pública indica un problema de configuración interna del proxy; M3 no debe resolverlo enviando una contraseña. Un 403 desde otro equipo puede ser el bloqueo por IP; confirmar que la salida real de M3 sea 52.15.95.91. No hay interfaz web pública en la raíz: la interfaz administrativa conserva el túnel a localhost:8088.
 
 Rutas publicadas:
 
@@ -23,13 +23,13 @@ Rutas publicadas:
 - `/api/lotes/{loteId}/alimento-requerido`: GET de proyección.
 - `/api/ordenes-sacrificio/{ordenId}/resultados`: GET de compatibilidad por orden.
 
-El resto de rutas no se publica por esta entrada. El puerto 80 sirve exclusivamente `/.well-known/acme-challenge/`, necesario para emitir y renovar el certificado; no sirve la API por HTTP. El puerto 443 sirve TLS 1.2/1.3 con Basic Auth y control de origen. No se publican PostgreSQL ni el puerto 8080 del backend.
+El resto de rutas no se publica por esta entrada. El puerto 80 sirve exclusivamente `/.well-known/acme-challenge/`, necesario para emitir y renovar el certificado; no sirve la API por HTTP. El puerto 443 sirve TLS 1.2/1.3 con control de origen por IP. No se publican PostgreSQL ni el puerto 8080 del backend.
 
 ## Archivos y montaje
 
 `deploy/aws/modulo3-https` contiene las plantillas Nginx, el fragmento de servicio Compose y las unidades de renovación. Mantiene LF también al clonar en Windows. Los certificados, claves y archivos de ejecución están excluidos de Git.
 
-Los marcadores de las plantillas se sustituyen por `M2_PUBLIC_IP`, `M3_ALLOWED_IP`, `DOCKER_GATEWAY` y, para Compose, `HTTPS_IMAGE`. La puerta de enlace se obtiene de `docker network inspect avicontrol-m2_default`. Se reutiliza la imagen frontend ya desplegada como servidor Nginx, con una configuración independiente; no se recrean los contenedores base.
+Los marcadores de las plantillas se sustituyen por `M2_PUBLIC_IP`, `M3_ALLOWED_IP`, `DOCKER_GATEWAY`, `M3_INTERNAL_AUTHORIZATION` y, para Compose, `HTTPS_IMAGE`. La puerta de enlace se obtiene de `docker network inspect avicontrol-m2_default`. `M3_INTERNAL_AUTHORIZATION` se genera exclusivamente en el servidor a partir de la identidad interna de M3 en `.env`; no se comparte con M3 ni se guarda renderizado en Git. El proxy sobrescribe Authorization del cliente con esa identidad de permisos limitados. El backend privado conserva su autenticación y las demás rutas no se vuelven anónimas. Los archivos Nginx renderizados que contienen esa cabecera tienen permisos 600. Se reutiliza la imagen frontend ya desplegada como servidor Nginx, con una configuración independiente; no se recrean los contenedores base.
 
 Directorio de ejecución: `/home/ec2-user/avicontrol-modulo2/https-modulo3`. La configuración activa se monta como archivo de solo lectura en el contenedor. Al actualizarla, mantener el mismo archivo/inodo, comprobar `docker compose exec -T modulo3-https nginx -t` y recargar con `nginx -s reload`. El resolver de Docker actualiza la dirección del backend si éste se recrea en otro despliegue.
 
@@ -65,7 +65,7 @@ Se verificó:
 - Las 35 tablas públicas mantienen conteos y huellas de contenido.
 - Backend, frontend y PostgreSQL conservan sus contenedores. El archivo `.env` mantiene la misma huella.
 - HTTPS valida cadena y nombre/IP con el almacén de confianza del sistema, sin excepciones TLS.
-- Desde un origen local permitido: GET M3 200, sin credenciales 401 y POST con resultado inexistente 404, sin alterar un resultado real.
+- Desde un origen local permitido: GET M3 200 sin credenciales y POST sin credenciales con resultado inexistente 404, sin alterar un resultado real. Las credenciales proporcionadas por el cliente se ignoran; la identidad de backend siempre es la interna y limitada de M3.
 - Desde la IP externa del equipo de M2: TLS válido y GET rechazado con 403 por el filtro de origen.
 - La renovación simulada, la recarga y el servicio programado funcionan.
 
@@ -77,3 +77,9 @@ Para retirar únicamente HTTPS: deshabilitar el temporizador, detener y quitar s
 
 - [Certificados de IP en Certbot y perfil shortlived](https://letsencrypt.org/2026/03/11/shorter-certs-certbot/).
 - [Renovación y deploy hooks de Certbot](https://eff-certbot.readthedocs.io/en/stable/using.html#renewing-certificates).
+
+## Cambio a autorización pública solo por IP
+
+A petición del usuario, se retiró el requisito externo de usuario y contraseña. Checkpoint del cambio: `/home/ec2-user/avicontrol-modulo2/backups/m3-ip-only-20261121-025248`. El informe confirma GET sin credenciales 200, POST con resultado inexistente 404, versión inválida 400 y rutas administrativas no publicadas 404. Desde una IP externa no autorizada se comprobó 403 incluso enviando X-Forwarded-For falsificado. La interfaz privada conserva HTTP 401 sin autenticación.
+
+No se recrearon los contenedores base, no se modificó `.env` y las 35 tablas conservaron sus huellas. Se recargó únicamente Nginx. La cuenta interna existe para conservar los permisos del backend: esto no exige credenciales al cliente M3 ni habilita acceso general a otras rutas.

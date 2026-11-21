@@ -29,7 +29,9 @@ server {
     # Resolver de Docker para soportar la recreacion posterior del backend.
     resolver 127.0.0.11 valid=10s ipv6=off;
     set $modulo2_backend http://backend:8080;
-    proxy_set_header Authorization $http_authorization;
+    # La identidad M3 es interna: no reenviar credenciales proporcionadas por el cliente.
+    # Este marcador solo se rellena en el servidor; nunca guardar el valor real en Git.
+    proxy_set_header Authorization "{{M3_INTERNAL_AUTHORIZATION}}";
     proxy_set_header Host $host;
     proxy_set_header X-Forwarded-Proto https;
     proxy_set_header X-Forwarded-For $remote_addr;

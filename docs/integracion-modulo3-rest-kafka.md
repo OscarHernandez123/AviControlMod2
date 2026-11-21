@@ -10,7 +10,7 @@ La revisión remota confirma que M3 ya consulta M1; la consulta a M2 y la public
 
 ## Autenticación y alcance
 
-Activar la cuenta exclusiva con variables de entorno:
+Para la entrada pública HTTPS, M3 no envía credenciales: se autoriza su IP de salida `52.15.95.91`. El proxy utiliza internamente la siguiente identidad de servicio para conservar los permisos del backend privado; no compartirla con M3:
 
 ```text
 AVICONTROL_MODULO3_ENABLED=true
@@ -18,7 +18,7 @@ AVICONTROL_MODULO3_USERNAME=modulo3_consulta
 AVICONTROL_MODULO3_PASSWORD=<secreto definido en el entorno>
 ```
 
-La cuenta está desactivada por defecto y no tiene contraseña predeterminada. Al activarla sin contraseña, el arranque falla. Utiliza Basic Auth y rol MODULO3. Puede consultar las tres rutas siguientes, la proyección de alimento por lote y la consulta existente de resultado por orden. Además, puede confirmar el uso de un resultado mediante el único POST documentado abajo. No puede registrar ni corregir resultados, alterar consumos, ni acceder a otras rutas privadas. El administrador conserva acceso a las nuevas consultas.
+La cuenta está desactivada por defecto y no tiene contraseña predeterminada. Al activarla sin contraseña, el arranque falla. La identidad interna utiliza Basic Auth y rol MODULO3; las solicitudes públicas de M3 se identifican por IP en el proxy. Puede consultar las tres rutas siguientes, la proyección de alimento por lote y la consulta existente de resultado por orden. Además, puede confirmar el uso de un resultado mediante el único POST documentado abajo. No puede registrar ni corregir resultados, alterar consumos, ni acceder a otras rutas privadas. El administrador conserva acceso a las nuevas consultas.
 
 ## Rutas GET
 
@@ -71,11 +71,10 @@ M3 consulta M2 mediante GET y confirma que utilizó un resultado enviando un POS
 
 ```http
 POST /api/integracion/modulo3/resultados-sacrificio/utilizado
-Authorization: Basic <credencial de servicio M3>
 Content-Type: application/json
 ```
 
-Acceso exclusivo para el rol MODULO3. Un administrador, trabajador, veterinario o nutricionista no puede suplantar la confirmación de M3. La cuenta de integración se activa con las tres variables de autenticación descritas arriba; no tiene permisos generales de escritura.
+Acceso público exclusivo desde la IP autorizada de M3, sin usuario ni contraseña. El proxy utiliza internamente el rol MODULO3 y sobrescribe cualquier Authorization del cliente. Un administrador, trabajador, veterinario o nutricionista no puede suplantar la confirmación de M3. La cuenta de integración se activa con las tres variables de autenticación descritas arriba; no tiene permisos generales de escritura.
 
 ```json
 {
@@ -109,8 +108,8 @@ Esta respuesta confirma que M2 bloqueó posteriores correcciones del resultado; 
 |---|---|---|
 | 200 | Confirmación aplicada o ya registrada | Marcar el aviso como confirmado |
 | 400 | JSON/campos inválidos, tipo/versión incorrectos o aggregateId distinto | Corregir el contrato; no tratarlo como aceptado |
-| 401 | Credenciales ausentes o incorrectas | Revisar la cuenta configurada |
-| 403 | Identidad sin rol MODULO3 | Usar la identidad de integración |
+| 401 | La identidad interna del proxy no está correctamente configurada | M2 debe revisar su configuración; M3 no debe enviar una contraseña |
+| 403 | IP de salida no autorizada o permiso de ruta denegado | Confirmar que la solicitud sale de 52.15.95.91 y usa una ruta permitida |
 | 404 | Resultado inexistente | Revisar el resultado consultado y el entorno |
 | 409 | El resultado pertenece a otro lote o eventId ya se usó para otro resultado | Revisar identificadores; no generar automáticamente otro evento para ocultar el conflicto |
 
@@ -124,7 +123,7 @@ Si hay timeout, fallo de red o error de servidor, M3 debe conservar el aviso pen
 
 1. Acordar el mapeo de partidas y el criterio D-05 y compartir la ruta POST con M3 para que implemente su cliente REST.
 2. Acceso REST HTTPS publicado y restringido a `52.15.95.91`; el equipo de M3 debe comprobarlo desde su EC2. PostgreSQL y el backend no publican sus puertos.
-3. Compartir por un canal privado la contraseña M3 ya configurada en el servidor. Base HTTPS: `https://3.21.155.197/api/integracion/modulo3`; sin acceso a la interfaz administrativa.
+3. Compartir con M3 la base HTTPS `https://3.21.155.197/api/integracion/modulo3` y confirmar su IP de salida. No necesita credenciales; la interfaz administrativa sigue privada.
 4. Revisar los datos existentes del lote `7331eec8-e447-4868-bdef-8eca3fff8d44`: resultado final con cantidad/peso reales y suministros/consumos asociados. Cualquier dato de prueba nuevo debe acordarse y registrarse mediante los flujos de negocio. No insertar cifras inventadas en AWS.
 5. Consultar desde M3 y enviar un POST de confirmación coordinado. Verificar HTTP 200, UTILIZADO e imposibilidad de corrección posterior. Repetir el mismo aviso para comprobar idempotencia.
 
@@ -179,4 +178,4 @@ Copia local del dump: `build/aws-deploy/m3-rest-a454b66-20261121-021853/database
 
 Las imágenes anteriores se conservaron para reversión. El procedimiento del servidor `/home/ec2-user/avicontrol-modulo2/deploy_m3_rest.py` permite restaurar su configuración anterior con `python3 deploy_m3_rest.py rollback`, sin eliminar volúmenes ni restaurar destructivamente la BD.
 
-La actualización inicial conservó la publicación en `127.0.0.1:8088`. Posteriormente se habilitó HTTPS por IP para M3, con certificado público y renovación automática: ver [configuración y evidencia](https-modulo3-sin-dominio.md). El intercambio privado de credenciales y la primera prueba desde su EC2 siguen pendientes; no requieren infraestructura de M1.
+La actualización inicial conservó la publicación en `127.0.0.1:8088`. Posteriormente se habilitó HTTPS por IP para M3, con certificado público y renovación automática: ver [configuración y evidencia](https-modulo3-sin-dominio.md). M3 ya no necesita recibir credenciales: falta únicamente su primera prueba desde la EC2 autorizada. La comunicación no requiere infraestructura de M1.
