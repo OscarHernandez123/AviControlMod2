@@ -1,6 +1,6 @@
 # Integración REST directa entre M2 y M3
 
-Estado: código a454b66 desplegado y verificado en la EC2 de M2 el 20 de noviembre de 2026. El acceso continúa por túnel SSH; queda pendiente publicar HTTPS para M3 y realizar la prueba entre equipos. No cambia el módulo 1 ni el módulo 3. No necesita migraciones nuevas de base de datos.
+Estado: código a454b66 desplegado y verificado en la EC2 de M2 el 20 de noviembre de 2026. El acceso HTTPS para M3 está operativo en https://3.21.155.197 y limitado a su IP de salida. La interfaz administrativa conserva el túnel SSH. Queda pendiente la prueba desde el entorno de M3; ver [HTTPS sin dominio](https-modulo3-sin-dominio.md). No cambia el módulo 1 ni el módulo 3. No necesita migraciones nuevas de base de datos.
 
 ## Revisión del repositorio de M3
 
@@ -123,8 +123,8 @@ Si hay timeout, fallo de red o error de servidor, M3 debe conservar el aviso pen
 ## Pendientes para AWS y prueba coordinada
 
 1. Acordar el mapeo de partidas y el criterio D-05 y compartir la ruta POST con M3 para que implemente su cliente REST.
-2. Publicar el acceso REST con transporte protegido y acceso desde `52.15.95.91`, sin publicar PostgreSQL ni cambiar la integración M1.
-3. Configurar la contraseña de M3 fuera del repositorio. La instalación actual solo publica el frontend en `127.0.0.1:8088` mediante túnel SSH; todavía no hay URL pública REST para M3.
+2. Acceso REST HTTPS publicado y restringido a `52.15.95.91`; el equipo de M3 debe comprobarlo desde su EC2. PostgreSQL y el backend no publican sus puertos.
+3. Compartir por un canal privado la contraseña M3 ya configurada en el servidor. Base HTTPS: `https://3.21.155.197/api/integracion/modulo3`; sin acceso a la interfaz administrativa.
 4. Revisar los datos existentes del lote `7331eec8-e447-4868-bdef-8eca3fff8d44`: resultado final con cantidad/peso reales y suministros/consumos asociados. Cualquier dato de prueba nuevo debe acordarse y registrarse mediante los flujos de negocio. No insertar cifras inventadas en AWS.
 5. Consultar desde M3 y enviar un POST de confirmación coordinado. Verificar HTTP 200, UTILIZADO e imposibilidad de corrección posterior. Repetir el mismo aviso para comprobar idempotencia.
 
@@ -179,4 +179,4 @@ Copia local del dump: `build/aws-deploy/m3-rest-a454b66-20261121-021853/database
 
 Las imágenes anteriores se conservaron para reversión. El procedimiento del servidor `/home/ec2-user/avicontrol-modulo2/deploy_m3_rest.py` permite restaurar su configuración anterior con `python3 deploy_m3_rest.py rollback`, sin eliminar volúmenes ni restaurar destructivamente la BD.
 
-Esta actualización conserva la publicación en `127.0.0.1:8088`: todavía no es una URL accesible directamente desde la EC2 de M3. La publicación externa HTTPS y el intercambio privado de credenciales son el siguiente paso para la prueba coordinada; no requieren usar infraestructura de M1 para comunicar M2 con M3.
+La actualización inicial conservó la publicación en `127.0.0.1:8088`. Posteriormente se habilitó HTTPS por IP para M3, con certificado público y renovación automática: ver [configuración y evidencia](https-modulo3-sin-dominio.md). El intercambio privado de credenciales y la primera prueba desde su EC2 siguen pendientes; no requieren infraestructura de M1.

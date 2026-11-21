@@ -1,0 +1,8 @@
+letsencrypt/
+work/
+logs/
+webroot/
+nginx.active.conf
+nginx.https.conf
+*.pem
+*.key
